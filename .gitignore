@@ -1,0 +1,7 @@
+# Exclude the changed_files, git_export_staged and last_staged_commit_diff.txt within the commit directory.
+commit/git_export_staged/
+commit/last_staged_commit_diff.txt
+commit/changed_files/
+
+# DS Store.
+.DS_Store

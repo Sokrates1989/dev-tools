@@ -1,0 +1,7 @@
+Generate a docstring for the provided code. Follow this format:
+- Brief summary
+- Parameters (if any)
+- Return values (if any)
+- Exceptions raised (if there are any exceptions explicitly thrown; if there are no Exceptions explicitly thrown -> do not add an Exceptions section)
+
+Use best practices for documentation in the given programming language.

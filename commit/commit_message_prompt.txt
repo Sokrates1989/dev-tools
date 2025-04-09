@@ -1,0 +1,8 @@
+Write a commit message for the git changes provided in the other uploaded file. 
+Write it all in one line and make it very concise and adhere to the following style: 
+
+git commit -m "[ID-XY | Categories] Affected files or feature: more details of the change."
+
+Categories should be similar or one of these: [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation]. Ideally, it should only be one category, but if the changes are bigger, a max of 2 categories can be used. Please make sure that "Affected files or feature:" is replaced and highlights the affected files or features in up to 5 words and keep the ":" at the end of these affected files or features. 
+As ID-XY, use the passed text. 
+Allow me to directly copy the command by adding bash syntax hightlighting and wrapping the command in backticks.

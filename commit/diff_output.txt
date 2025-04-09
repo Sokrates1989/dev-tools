@@ -1,0 +1,282 @@
+diff --git a/lib/constants/enums/user_role_enums.dart b/lib/constants/enums/user_role_enums.dart
+new file mode 100644
+index 0000000..526cee8
+--- /dev/null
++++ b/lib/constants/enums/user_role_enums.dart
+@@ -0,0 +1,27 @@
++/// Enum for valid user roles.
++enum UserRole { user, tester }
++
++/// An extension on the [UserRole] enum that provides utility methods.
++///
++/// This extension includes:
++/// - `name` getter: Retrieves the name of the enum value.
++/// - `fromString`: Converts a string representation into a [UserRole] enum value.
++///
++/// Example:
++/// ```dart
++/// final userRole = UserRoleExtension.fromString('tester'); // Returns UserRole.tester
++/// print(userRole.name); // Outputs: tester
++/// ```
++extension UserRoleExtension on UserRole {
++  String get name => toString().split('.').last;
++
++  static UserRole fromString(String? value) {
++    switch (value?.toLowerCase()) {
++      case 'tester':
++        return UserRole.tester;
++      case 'user':
++      default:
++        return UserRole.user;
++    }
++  }
++}
+\ No newline at end of file
+diff --git a/lib/utils/api/api_repositories/api_user_repository.dart b/lib/utils/api/api_repositories/api_user_repository.dart
+index ac64c2e..e4876b3 100644
+--- a/lib/utils/api/api_repositories/api_user_repository.dart
++++ b/lib/utils/api/api_repositories/api_user_repository.dart
+@@ -57,43 +57,6 @@ class ApiUserRepository {
+     }
+   }
+ 
+-  Future<ApiUser?> getUserName(String code) async {
+-    final url = ApiEndpointPaths.requestUrlString(ApiEndpointPaths.users, code);
+-    logger.v(url);
+-    try {
+-      final response = await _dio.get(url);
+-
+-      if (response.statusCode == 200) {
+-        var data = response.data[0];
+-
+-        ApiUser user = ApiUser.fromJson(data);
+-
+-        return user;
+-      } else {
+-        throw Exception('Failed to validate. StatusCode: ${response.statusCode}, Message: ${response.statusMessage}.');
+-      }
+-    } catch (e) {
+-      throw Exception('Failed to load details: $e');
+-    }
+-  }
+-
+-  Future addUser(ApiUser user) async {
+-    final userData = user.toJson();
+-    logger.v(userData);
+-    try {
+-      _dio.options.headers = {
+-        'Accept': 'application/json',
+-        'Content-Type': 'application/json',
+-      };
+-      final response = await _dio.post(
+-          ApiEndpointPaths.requestUrlString(ApiEndpointPaths.users, null),
+-          data: userData);
+-      logger.v('Response: ${response.data}');
+-    } catch (e) {
+-      logger.v('Error: $e');
+-    }
+-  }
+-
+   /// Creates a new Cognito user by sending the user data to the appropriate API endpoint.
+   ///
+   /// Parameters:
+diff --git a/lib/utils/authentication/authentication_wrapper.dart b/lib/utils/authentication/authentication_wrapper.dart
+index 682c8fc..12d43bb 100644
+--- a/lib/utils/authentication/authentication_wrapper.dart
++++ b/lib/utils/authentication/authentication_wrapper.dart
+@@ -292,7 +292,8 @@ class AuthenticationWrapper {
+     if (context.mounted) {
+       CustomNotification.show(
+         context: context,
+-        messageText: "Sie wurden aus Sicherheitsgründen automatisch abgemeldet.\nBitte loggen Sie sich erneut ein.",
++        messageText:
++            "Sie wurden aus Sicherheitsgründen automatisch abgemeldet.\nBitte loggen Sie sich erneut ein.",
+         icon: CustomNotificationIcon.info,
+       );
+ 
+@@ -341,6 +342,7 @@ class AuthenticationWrapper {
+         SecureUsernameStorage().getUsername(); // Retrieve the username securely
+     final String? jwtToken = await _cognitoAuthService
+         .getJWTToken(); // Obtain the JWT token for authentication
++    final role = await _cognitoAuthService.getUserRoleFromCognito();
+ 
+     // If any of the required user details are missing, reset user state and return null
+     if (userId == null || username == null || jwtToken == null) {
+@@ -351,8 +353,12 @@ class AuthenticationWrapper {
+     }
+ 
+     // Create a UserAuthModel instance with the fetched user information
+-    final userAuthModel =
+-        UserAuthModel(id: userId, username: username, jwtToken: jwtToken);
++    final userAuthModel = UserAuthModel(
++      id: userId,
++      username: username,
++      jwtToken: jwtToken,
++      role: role,
++    );
+ 
+     // Update the Riverpod state with the new user model if `ref` is provided
+     if (ref != null) {
+@@ -389,8 +395,6 @@ class AuthenticationWrapper {
+     return ref.read(userProvider);
+   }
+ 
+-
+-
+   /// Resets all relevant Riverpod provider states upon logout.
+   ///
+   /// This method clears all provider states related to the user session,
+diff --git a/lib/utils/authentication/models/user_auth_model.dart b/lib/utils/authentication/models/user_auth_model.dart
+index 41938a6..5e722ee 100644
+--- a/lib/utils/authentication/models/user_auth_model.dart
++++ b/lib/utils/authentication/models/user_auth_model.dart
+@@ -1,3 +1,4 @@
++import 'package:fontanherzen/constants/enums/user_role_enums.dart';
+ import 'package:fontanherzen/utils/communication/secure_email_storage.dart';
+ 
+ /// A model representing a user's authentication information.
+@@ -19,8 +20,15 @@ class UserAuthModel {
+   final String id;
+   final String username;
+   final String? jwtToken;
++  final UserRole role;
+ 
+-  UserAuthModel({required this.id, required this.username, this.jwtToken});
++
++  UserAuthModel({
++    required this.id,
++    required this.username,
++    required this.role,
++    this.jwtToken,
++  });
+ 
+   /// Retrieves the user's email using the SecureEmailStorage class.
+   String? getEmail() {
+@@ -34,15 +42,22 @@ class UserAuthModel {
+       'id': id,
+       'username': username,
+       'jwtToken': jwtToken,
++      'role': role.name,
+     };
+   }
+ 
+   /// Creates a new UserAuthModel with updated fields.
+-  UserAuthModel copyWith({String? id, String? username, String? jwtToken}) {
++  UserAuthModel copyWith({
++    String? id,
++    String? username,
++    String? jwtToken,
++    UserRole? role,
++  }) {
+     return UserAuthModel(
+       id: id ?? this.id,
+       username: username ?? this.username,
+       jwtToken: jwtToken ?? this.jwtToken,
++      role: role ?? this.role,
+     );
+   }
+ }
+diff --git a/lib/utils/authentication/services/cognito_auth_service.dart b/lib/utils/authentication/services/cognito_auth_service.dart
+index 3349b63..d764b94 100644
+--- a/lib/utils/authentication/services/cognito_auth_service.dart
++++ b/lib/utils/authentication/services/cognito_auth_service.dart
+@@ -1,5 +1,6 @@
+ import 'package:amplify_auth_cognito/amplify_auth_cognito.dart';
+ import 'package:amplify_flutter/amplify_flutter.dart';
++import 'package:fontanherzen/constants/enums/user_role_enums.dart';
+ import 'package:jwt_decode/jwt_decode.dart';
+ 
+ import 'package:fontanherzen/utils/api/api_service.dart';
+@@ -59,7 +60,9 @@ class CognitoAuthService {
+           cognitoAuthenticationResult: CognitoAuthenticationResult.success,
+           user: UserAuthModel(
+               id: _getUserIDFromData(signUpResult.data) ?? "unknown",
+-              username: userName),
++              username: userName,
++            role: UserRole.user,
++          ),
+         );
+       } else {
+         return _handleSignUpErrorFromResponse(signUpResult);
+@@ -182,10 +185,17 @@ class CognitoAuthService {
+ 
+       // Did sign in work?
+       if (signInResult.isSignedIn) {
++        // Fetch user role.
++        final userRole = await getUserRoleFromCognito();
++
+         // Return success.
+         return CognitoAuthResult(
+           cognitoAuthenticationResult: CognitoAuthenticationResult.success,
+-          user: UserAuthModel(id: await getUserId() ?? "", username: userName),
++          user: UserAuthModel(
++            id: await getUserId() ?? "",
++            username: userName,
++            role: userRole,
++          ),
+         );
+       } else {
+         // Return error state.
+@@ -271,7 +281,7 @@ class CognitoAuthService {
+     if (await isUserLoggedIn()) {
+       final userAttributes = await Amplify.Auth.fetchUserAttributes();
+       final subAttribute = userAttributes.firstWhere(
+-            (attr) => attr.userAttributeKey == CognitoUserAttributeKey.sub,
++        (attr) => attr.userAttributeKey == CognitoUserAttributeKey.sub,
+         orElse: () => const AuthUserAttribute(
+           userAttributeKey: CognitoUserAttributeKey.sub,
+           value: '',
+@@ -301,6 +311,35 @@ class CognitoAuthService {
+     }
+   }
+ 
++  /// Fetches the user's role attribute from Cognito user attributes.
++  ///
++  /// This method retrieves the user's attributes from Cognito using `Amplify.Auth.fetchUserAttributes`.
++  /// It checks for a custom attribute named "custom:role" to determine the user's role.
++  /// If the attribute does not exist or an error occurs, a default role (`UserRole.user`) is returned.
++  ///
++  /// Returns:
++  ///   A `Future<UserRole>` indicating the role of the user.
++  ///
++  /// Exceptions:
++  ///   Any exception during the retrieval process results in returning `UserRole.user`.
++  Future<UserRole> getUserRoleFromCognito() async {
++    try {
++      final attributes = await Amplify.Auth.fetchUserAttributes();
++      final roleAttr = attributes.firstWhere(
++            (attr) => attr.userAttributeKey.key == "custom:role",
++        orElse: () => const AuthUserAttribute(
++          userAttributeKey: CognitoUserAttributeKey.custom("role"),
++          value: "user",
++        ),
++      );
++
++      return UserRoleExtension.fromString(roleAttr.value);
++    } catch (e) {
++      return UserRole.user;
++    }
++  }
++
++
+   /// Fetches the current authentication session information using Amplify's Cognito plugin.
+   ///
+   /// Returns:
+@@ -333,7 +372,8 @@ class CognitoAuthService {
+       // logger.d("CognitoAuthService.refreshSession(): Access token refreshed successfully: ${authSession.userPoolTokensResult.value.accessToken.toJson()}");
+       return true;
+     } catch (e) {
+-      logger.e("CognitoAuthService.refreshSession(): Failed to refresh access token: $e");
++      logger.e(
++          "CognitoAuthService.refreshSession(): Failed to refresh access token: $e");
+       return false;
+     }
+   }
+@@ -353,7 +393,6 @@ class CognitoAuthService {
+     }
+   }
+ 
+-
+   /// Getter to retrieve the Cognito plugin instance from Amplify Auth.
+   AmplifyAuthCognito get _cognitoPlugin =>
+       Amplify.Auth.getPlugin(AmplifyAuthCognito.pluginKey);
