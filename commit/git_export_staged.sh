@@ -88,6 +88,10 @@ if [[ "$OS" == "Darwin" ]]; then
     echo ""
     echo "🖼️  macOS environment detected. Preparing export view..."
     print_export_instructions
+
+    # --- Git update check ---
+    bash "$ROOT_DIR/check_for_updates.sh"
+
     read -p "🚀 Press Enter to open the folder now..."
     open "$PARENT_DIR"
 
@@ -97,6 +101,10 @@ elif [[ "$OS" == "Linux" ]]; then
         echo ""
         echo "🖼️  Graphical environment detected. Preparing export view..."
         print_export_instructions
+
+        # --- Git update check ---
+        bash "$ROOT_DIR/check_for_updates.sh"
+
         read -p "🚀 Press Enter to open the folder now..."
         xdg-open "$PARENT_DIR" >/dev/null 2>&1 &
     else
@@ -141,8 +149,16 @@ elif [[ "$OS" == "Linux" ]]; then
         echo "    # or"
         echo "    wl-copy < \"$SNAPSHOT_FILE\""
         echo ""
+
+        # --- Git update check ---
+        bash "$ROOT_DIR/check_for_updates.sh"
+        
     fi
 else
+
+    # --- Git update check ---
+    bash "$ROOT_DIR/check_for_updates.sh"
+
     echo "⚠️ Unknown OS. Please open the folder manually: $PARENT_DIR"
 fi
 
