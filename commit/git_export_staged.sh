@@ -18,18 +18,24 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="$SCRIPT_DIR/git_export_staged/changed_files"
 DIFF_FILE="$SCRIPT_DIR/git_export_staged/last_staged_commit_diff.txt"
 
-# Clean up previous outputs
+# Clean up previous outputs.
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"
 rm -f "$DIFF_FILE"
 
-# Export staged diff to file
+# Export staged diff to file.
 git diff --staged > "$DIFF_FILE"
 
-# Get list of staged files
+# Get list of staged files.
 FILES=$(git diff --name-only --cached)
 
-# Copy staged files to the flat destination directory
+# Exit early if no staged files.
+if [[ -z "$FILES" ]]; then
+    echo "⚠️  No staged files found. Please stage some changes with 'git add' before running this script."
+    exit 0
+fi
+
+# Copy staged files to the flat destination directory.
 while IFS= read -r file; do
     if [[ -f "$file" ]]; then
         cp "$file" "$DEST_DIR/$(basename "$file")"

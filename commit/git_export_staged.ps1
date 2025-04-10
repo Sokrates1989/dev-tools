@@ -27,6 +27,12 @@ git diff --staged > $diffFile
 # Get list of staged files.
 $files = git diff --name-only --cached
 
+# Exit early if no staged files found.
+if (-not $files) {
+    Write-Host "⚠️  No staged files found. Please stage changes with 'git add' before running this script."
+    exit
+}
+
 # Copy each file (flattened into destination folder).
 foreach ($file in $files) {
     if (Test-Path $file) {
