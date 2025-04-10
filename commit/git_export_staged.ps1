@@ -50,3 +50,8 @@ if (Test-Path $commitMsgFile) {
 
 # Open parent folder in Windows Explorer.
 Start-Process "explorer.exe" $parentDir
+
+# User info to show hidden files.
+Write-Host ""
+Write-Host "💡 Tip: Always show hidden files (like .gitignore) to avoid confusion."
+Write-Host "👉 Windows: In Explorer, go to 'View' and check 'Hidden items'."

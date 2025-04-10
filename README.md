@@ -10,37 +10,86 @@ This repository contains curated prompts, helpful scripts, command snippets, and
 
 1. [📖 Overview](#-overview)
 
-2. [🧑‍💻 Usage](#-usage)
+2. [🚀 First-Time Setup](#-first-time-setup)
 
-3. [🛠️ Configuration](#-configuration)
+   - [🔧 Prerequisites](#-prerequisites)
+   - [📦 Installation (Safe User-Space Option)](#-installation-safe-user-space-option)
+   - [🧪 Run the Staged Export Script](#-run-the-staged-export-script)
+
+3. [🧑‍💻 Usage](#-usage)
 
 4. [🧠 Prompts & AI Usage](#-prompts--ai-usage)
 
-- [🧠 Continue / ChatGPT Prompts](#-continue--chatgpt-prompts)
+   - [🧠 Continue / ChatGPT Prompts](#-continue--chatgpt-prompts)
 
 5. [🧰 Useful Git Commands](#-useful-git-commands)
 
-- [🔍 git log Essentials](#-git-log-essentials)
+   - [🔍 git log Essentials](#-git-log-essentials)
 
 6. [📋 Commit Message Helpers](#-commit-message-helpers)
 
-- [✍️ AI-Aided Messages](#-ai-aided-messages)
+   - [✍️ AI-Aided Messages](#-ai-aided-messages)
 
-7. [📂 IDE Integrations](#-ide-integrations)
-
-- [🧩 VSCode & Continue](#-vscode--continue)
-
-... [🛟 Troubleshooting & Notes](#-troubleshooting--notes)
-
- - [📌 Known Issues](#-known-issues)
-
-X. [🚀 Summary](#-summary)
+7. [🚀 Summary](#-summary)
 
 ---
 
 ## 📖 Overview
 
 This project serves as a centralized location for commonly used development aids. Rather than searching the web for syntax or tools every day, this collection brings essential elements together into a format that's copy-paste friendly and IDE-integrated (especially with tools like Continue, ChatGPT, or Anthropic Claude).
+
+---
+
+
+## 🚀 First-Time Setup
+
+### 🔧 Prerequisites
+
+You need **Bash** installed to use this script.
+
+#### macOS
+
+Bash is pre-installed on macOS. No additional setup required.
+
+#### Debian-based systems (Ubuntu, etc.)
+
+```bash
+sudo apt update
+sudo apt install bash
+```
+
+#### Red Hat-based systems (RHEL, Fedora, CentOS)
+
+```bash
+sudo yum update
+sudo yum install bash
+```
+
+---
+
+### 📦 Installation (Safe User-Space Option)
+
+Clone the repository into your home directory under `~/tools/dev-tool`:
+
+```bash
+mkdir -p ~/tools/dev-tool
+cd ~/tools/dev-tool
+git clone https://github.com/Sokrates1989/dev-tools.git .
+```
+
+---
+
+### 🧪 Run the Staged Export Script
+
+After staging your changes via `git add`, you can export all staged files, the diff, and your commit message prompt:
+
+```bash
+bash ~/tools/dev-tool/commit/git_export_staged.sh
+```
+
+- On **macOS**, the folder will open in Finder  
+- On **graphical Linux**, it opens in your file manager  
+- On **CLI-only Linux**, a combined file is generated with guidance on how to copy it
 
 ---
 
@@ -61,12 +110,6 @@ Use the provided prompt structures with Continue or ChatGPT to automate and acce
 - **Explain Code / Audit for Bugs**  
 - **Generate Docstrings / Add Comments**  
 - **Optimize Code**
-
-Example Continue Prompt:
-
-```bash
-@files Write a README using the following template and logic: ...
-```
 
 ---
 
@@ -90,32 +133,11 @@ git log --since="2023-01-01" --until="2023-12-31" -- filename.txt
 
 ---
 
-## 📋 Commit Message Helpers
+## 📋 Commit Message Help
 
-### ✍️ AI-Aided Messages
 
-Use the `commit_message_staged` or `commit_message_any_changes` slash commands with task ID context to auto-generate commit messages.
-
-Example Prompt:
-
-```text
-Write a commit message for the above git changes. Use this format:  
-git commit -m "[ID-XY | Category] Affected file(s): short description"
-```
 
 ---
-
-## 📂 IDE Integrations
-
-### 🧩 VSCode & Continue
-
-- Install the **Continue** extension
-- Configure models via `config.json`
-- Add custom prompts using `customCommands`
-
-Tips:
-- Use @context or @file selection to get focused results
-- Use CMD+L for prompt quicklaunch
 
 ## 🚀 Summary
 

@@ -57,12 +57,14 @@ PARENT_DIR="$SCRIPT_DIR/git_export_staged"
 
 if [[ "$OS" == "Darwin" ]]; then
     echo "📂 Opening folder in Finder..."
+    echo "Show hidden files: 👉 macOS: Press ⌘ + Shift + . in Finder."
     open "$PARENT_DIR"
 elif [[ "$OS" == "Linux" ]]; then
     echo ""
 
     if [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" ]]; then
         echo "🖼️ Detected graphical environment. Opening folder..."
+        echo "Show hidden files: 👉 Linux: Press Ctrl + H in your file manager."
         xdg-open "$PARENT_DIR" >/dev/null 2>&1 &
     else
         echo "🖥️ CLI-only Linux detected."
