@@ -4,9 +4,22 @@
 # Description:
 # 1. Saves the current staged diff (`git diff --staged`) into "last_staged_commit_diff.txt"
 # 2. Copies all staged files into a flat folder named "changed_files"
+# 3. Opens the export folder in File Explorer
 #
 # Platform: Windows PowerShell
 # -----------------------------------------------------------------------------
+
+# Function to show export usage instructions
+function Show-ExportInstructions {
+    Write-Host ""
+    Write-Host "📂 Export folder will open in File Explorer."
+    Write-Host "🔍 To see hidden files (like .gitignore): enable 'Hidden items' in the 'View' tab."
+    Write-Host ""
+    Write-Host "🤖 Copy the content of the opened folder to your preferred AI tool."
+    Write-Host ""
+    Write-Host "📝 Add the related Project Task ID (if available), or just write: \"no task ID\""
+    Write-Host ""
+}
 
 # Get the script directory.
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -40,8 +53,8 @@ foreach ($file in $files) {
     }
 }
 
-
 # Output summary.
+Write-Host ""
 Write-Host "✅ Copied staged files to: $destDir"
 Get-ChildItem $destDir | ForEach-Object { Write-Host $_.Name }
 Write-Host ""
@@ -54,10 +67,9 @@ if (Test-Path $commitMsgFile) {
     Write-Host "📝 Copied commit_message_prompt.txt to export folder."
 }
 
-# Open parent folder in Windows Explorer.
-Start-Process "explorer.exe" $parentDir
-
-# User info to show hidden files.
+# Show instructions and wait before opening the folder.
 Write-Host ""
-Write-Host "💡 Tip: Always show hidden files (like .gitignore) to avoid confusion."
-Write-Host "👉 Windows: In Explorer, go to 'View' and check 'Hidden items'."
+Write-Host "🖼️  Preparing export view..."
+Show-ExportInstructions
+Read-Host "🚀 Press Enter to open the folder now..."
+Start-Process "explorer.exe" $parentDir

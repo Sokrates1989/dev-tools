@@ -18,6 +18,25 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DEST_DIR="$SCRIPT_DIR/git_export_staged/changed_files"
 DIFF_FILE="$SCRIPT_DIR/git_export_staged/last_staged_commit_diff.txt"
 
+
+# ✅ Define the function early
+print_export_instructions() {
+    echo ""
+    if [[ "$OS" == "Darwin" ]]; then
+        echo "📂 Export folder will open in Finder."
+        echo "🔍 To see all files (e.g., .gitignore): Press ⌘ + Shift + ."
+    elif [[ "$OS" == "Linux" ]]; then
+        echo "📂 Export folder will open in your file manager."
+        echo "🔍 To see all files (e.g., .gitignore): Press Ctrl + H"
+    fi
+    echo ""
+    echo "🤖 Copy the content of the opened folder to your preferred AI tool."
+    echo ""
+    echo "📝 Add the related Project Task ID (if available) in the chat, or just write: \"no task ID\""
+    echo ""
+}
+
+
 # Clean up previous outputs.
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"
@@ -61,16 +80,21 @@ fi
 OS=$(uname)
 PARENT_DIR="$SCRIPT_DIR/git_export_staged"
 
+# ---- Platform-specific export handling ----
 if [[ "$OS" == "Darwin" ]]; then
-    echo "📂 Opening folder in Finder..."
-    echo "Show hidden files: 👉 macOS: Press ⌘ + Shift + . in Finder."
+    echo ""
+    echo "🖼️  macOS environment detected. Preparing export view..."
+    print_export_instructions
+    read -p "🚀 Press Enter to open the folder now..."
     open "$PARENT_DIR"
+
 elif [[ "$OS" == "Linux" ]]; then
     echo ""
-
     if [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" ]]; then
-        echo "🖼️ Detected graphical environment. Opening folder..."
-        echo "Show hidden files: 👉 Linux: Press Ctrl + H in your file manager."
+        echo ""
+        echo "🖼️  Graphical environment detected. Preparing export view..."
+        print_export_instructions
+        read -p "🚀 Press Enter to open the folder now..."
         xdg-open "$PARENT_DIR" >/dev/null 2>&1 &
     else
         echo "🖥️ CLI-only Linux detected."
