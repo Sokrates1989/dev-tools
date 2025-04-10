@@ -3,6 +3,9 @@
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INSTRUCTIONS_DIR="$SCRIPT_DIR/readme/instructions"
 
+# --- Git update check ---
+bash "$ROOT_DIR/check_for_updates.sh"
+
 OS=$(uname)
 
 echo ""
@@ -34,6 +37,9 @@ echo "     This ensures correct markdown formatting."
 echo ""
 echo "💡 The more context and examples you provide, the better the resulting README."
 echo ""
+
+# --- Git update check ---
+bash "$ROOT_DIR/check_for_updates.sh"
 
 # Open the instructions folder
 if [[ "$OS" == "Darwin" ]]; then

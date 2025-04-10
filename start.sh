@@ -61,3 +61,6 @@ case "$choice" in
     echo "❌ Invalid choice."
     ;;
 esac
+
+# --- Git update check ---
+bash "$SCRIPT_DIR/check_for_updates.sh"

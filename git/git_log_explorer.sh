@@ -2,6 +2,9 @@
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
+# --- Git update check ---
+bash "$SCRIPT_DIR/check_for_updates.sh"
+
 while true; do
   echo ""
   echo "🔍 Git Log Explorer"
@@ -99,3 +102,6 @@ while true; do
   echo ""
   read -p "🔁 Press Enter to return to the Git log menu..."
 done
+
+# --- Git update check ---
+bash "$SCRIPT_DIR/check_for_updates.sh"

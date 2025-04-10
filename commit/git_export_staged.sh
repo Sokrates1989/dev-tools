@@ -15,9 +15,12 @@
 
 # Resolve script location (so paths work anywhere).
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_DIR="$SCRIPT_DIR/git_export_staged/changed_files"
 DIFF_FILE="$SCRIPT_DIR/git_export_staged/last_staged_commit_diff.txt"
 
+# --- Git update check ---
+bash "$ROOT_DIR/check_for_updates.sh"
 
 # ✅ Define the function early
 print_export_instructions() {
@@ -142,5 +145,8 @@ elif [[ "$OS" == "Linux" ]]; then
 else
     echo "⚠️ Unknown OS. Please open the folder manually: $PARENT_DIR"
 fi
+
+# --- Git update check ---
+bash "$ROOT_DIR/check_for_updates.sh"
 
 exit 0
