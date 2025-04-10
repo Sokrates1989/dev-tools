@@ -15,6 +15,7 @@ if git fetch --quiet && ! git diff --quiet HEAD..origin/HEAD; then
   echo "📦 Updates available in Dev Tools repository!"
   echo "💡 To update, run:"
   echo "   cd \"$SCRIPT_DIR\" && git pull && cd -"
+  echo ""
 fi
 
 cd "$ORIGINAL_DIR"
