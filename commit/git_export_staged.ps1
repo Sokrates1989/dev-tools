@@ -29,6 +29,10 @@ $parentDir = Join-Path $ScriptDir "git_export_staged"
 $destDir = Join-Path $parentDir "changed_files"
 $diffFile = Join-Path $parentDir "last_staged_commit_diff.txt"
 
+# --- Git update check ---
+$RootDir = Join-Path $PSScriptRoot ".." | Resolve-Path | Select-Object -ExpandProperty Path
+& "$RootDir\check_for_updates.ps1"
+
 # Clean up previous outputs.
 Remove-Item -Recurse -Force $destDir -ErrorAction SilentlyContinue
 New-Item -ItemType Directory -Force -Path $destDir | Out-Null
@@ -71,5 +75,11 @@ if (Test-Path $commitMsgFile) {
 Write-Host ""
 Write-Host "🖼️  Preparing export view..."
 Show-ExportInstructions
+
+
+# --- Git update check ---
+$RootDir = Join-Path $PSScriptRoot ".." | Resolve-Path | Select-Object -ExpandProperty Path
+& "$RootDir\check_for_updates.ps1"
+
 Read-Host "🚀 Press Enter to open the folder now..."
 Start-Process "explorer.exe" $parentDir

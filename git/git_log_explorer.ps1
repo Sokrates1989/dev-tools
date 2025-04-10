@@ -1,5 +1,9 @@
 $root = Resolve-Path "$PSScriptRoot\.."
 
+# --- Git update check ---
+$RootDir = Join-Path $PSScriptRoot ".." | Resolve-Path | Select-Object -ExpandProperty Path
+& "$RootDir\check_for_updates.ps1"
+
 while ($true) {
     Write-Host ""
     Write-Host "🔍 Git Log Explorer"
@@ -96,5 +100,11 @@ while ($true) {
     }
 
     Write-Host ""
+
+
+    # --- Git update check ---
+    $RootDir = Join-Path $PSScriptRoot ".." | Resolve-Path | Select-Object -ExpandProperty Path
+    & "$RootDir\check_for_updates.ps1"
+
     Read-Host "🔁 Press Enter to return to the Git log menu..."
 }

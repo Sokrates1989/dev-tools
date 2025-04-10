@@ -29,6 +29,11 @@ if [[ $# -gt 0 ]]; then
     esac
 fi
 
+
+
+# --- Git update check ---
+bash "$SCRIPT_DIR/check_for_updates.sh"
+
 # --- Interactive Menu ---
 echo ""
 echo "🛠️  Dev Tools Launcher"
@@ -40,6 +45,9 @@ echo "2) Git log explorer                  [--log    | -l]"
 echo "3) Show README creation instructions [--readme | -r]"
 echo "q) Exit"
 echo ""
+
+# --- Git update check ---
+bash "$SCRIPT_DIR/check_for_updates.sh"
 
 read -p "Enter your choice [1-3 or q]: " choice
 
@@ -61,6 +69,3 @@ case "$choice" in
     echo "❌ Invalid choice."
     ;;
 esac
-
-# --- Git update check ---
-bash "$SCRIPT_DIR/check_for_updates.sh"

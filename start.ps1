@@ -4,6 +4,10 @@ param(
 
 Write-Host ""
 
+
+# --- Git update check ---
+& "$PSScriptRoot\check_for_updates.ps1"
+
 # --- Argument-based quick start ---
 switch ($Command) {
     "--commit" { & "$PSScriptRoot\commit\git_export_staged.ps1"; return }
@@ -38,6 +42,9 @@ Write-Host "2) Git log explorer                  [--log    | -l]"
 Write-Host "3) Show README creation instructions [--readme | -r]"
 Write-Host "q) Exit"
 Write-Host ""
+
+# --- Git update check ---
+& "$PSScriptRoot\check_for_updates.ps1"
 
 $choice = Read-Host "Enter your choice [1-3 or q]"
 
