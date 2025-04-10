@@ -22,19 +22,23 @@ fi
 echo ""
 echo "🛠️  Dev Tools Launcher"
 echo "======================"
-echo "Choose a tool to run:"
+echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
-echo "1) Export staged Git changes (git_export_staged)"
-echo "2) Exit"
+echo "1) Export staged Git changes         [--commit | -c]"
+echo "2) Git log explorer                  [--log    | -l]"
+echo "q) Exit"
 echo ""
 
-read -p "Enter your choice [1-2]: " choice
+read -p "Enter your choice [1-2 or q]: " choice
 
 case "$choice" in
   1)
     bash "$SCRIPT_DIR/commit/git_export_staged.sh"
     ;;
   2)
+    bash "$SCRIPT_DIR/git/git_log_explorer.sh"
+    ;;
+  q|Q)
     echo "👋 Bye!"
     exit 0
     ;;
