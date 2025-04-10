@@ -1,6 +1,3 @@
-Use this template to create the readme with:
-
-\`\`\`
 # [📌|🚀|🗂️|🧭|..|Choose an icon that best fits for this readme] Name of this Readme
 
 ## 📜 Description
@@ -51,17 +48,17 @@ Provide a more detailed overview of the project, the feature or whatever this RE
 
 Explain how to use the project, the feature or whatever this README is about with examples, if possible.
 
-      \`\`\`bash
+```bash
 
-      # Example usage command.
+# Example usage command.
 
-      \`\`\`
+```
 
-      \`\`\`dart
+```dart
 
-      // Example usage.
+// Example usage.
 
-      \`\`\`
+```
 
 ## 🛠️ Configuration
 
@@ -75,7 +72,7 @@ Add content/ sections depending on the context.
 
 In case there is a UI involved or other visual representations might be helpful -> Tell the user to add screenshots or images.
 
-Pprovide both options, so the user can choose which implementation of the image is preferred.
+Provide both options, so the user can choose which implementation of the image is preferred.
 
 Option1:
 
@@ -114,54 +111,3 @@ Prvide a summary of this readme
 ✅ **Key TakeAway X**
 
 
-
-
-
-
-
-
-But replace every occurrence of \`\`\` with ;;; so that the output changes from this:
-
-      \`\`\`dart
-
-      // Example usage.
-
-      \`\`\`
-
-
-
-to this:
-
-;;;dart
-
-// Example usage.
-
-;;;
-
-
-
-But replace every occurrence of \`\`\` with ;;; so that the output changes from this:
-
-      \`\`\`dart
-
-      // Example usage.
-
-      \`\`\`
-
-
-to this:
-
-;;;dart
-
-// Example usage.
-
-;;;
-
-
-Ensure, that I can copy the readme to the clipboard directly, by wrapping the whole output in
-
-      \`\`\` markdown
-      PUT THE WHOLE OUTPUT WITHIN THESE LINES
-      \`\`\`
-    
-\`\`\`

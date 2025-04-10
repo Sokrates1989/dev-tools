@@ -1,0 +1,53 @@
+Replace every occurrence of ``` with ;;; so that the output changes from this:
+
+```dart
+// Example usage.
+```
+
+```json
+json
+```
+
+```bash
+# bash content.
+```
+
+```anthing
+...
+```
+
+
+
+to this:
+
+;;;dart
+// Example usage.
+;;;
+
+;;;json
+json
+;;;
+
+;;;bash
+# bash content.
+;;;
+
+;;;anthing
+...
+;;;
+
+
+
+
+Ensure, that I can copy the readme to the clipboard directly, by wrapping the whole output in
+
+``` markdown
+PUT THE WHOLE OUTPUT WITHIN THESE LINES
+```
+
+
+To emphasize this there should be not one occurence of ``` in the markdown!!
+
+``` markdown
+NOT ONE ``` in here -> All changed to ;;;
+```

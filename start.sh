@@ -9,10 +9,21 @@ if [[ $# -gt 0 ]]; then
             bash "$SCRIPT_DIR/commit/git_export_staged.sh"
             exit 0
             ;;
+        --log|-l)
+            bash "$SCRIPT_DIR/git/git_log_explorer.sh"
+            exit 0
+            ;;
+        --readme|-r)
+            bash "$SCRIPT_DIR/readme/show_readme_instructions.sh"
+            exit 0
+            ;;
         *)
             echo "❌ Unknown argument: $1"
-            echo "Use without arguments for menu, or use:"
+            echo ""
+            echo "Usage:"
             echo "  --commit | -c   → Run git_export_staged"
+            echo "  --log    | -l   → Run git_log_explorer"
+            echo "  --readme | -r   → Show README creation instructions"
             exit 1
             ;;
     esac
@@ -26,10 +37,11 @@ echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
 echo "1) Export staged Git changes         [--commit | -c]"
 echo "2) Git log explorer                  [--log    | -l]"
+echo "3) Show README creation instructions [--readme | -r]"
 echo "q) Exit"
 echo ""
 
-read -p "Enter your choice [1-2 or q]: " choice
+read -p "Enter your choice [1-3 or q]: " choice
 
 case "$choice" in
   1)
@@ -37,6 +49,9 @@ case "$choice" in
     ;;
   2)
     bash "$SCRIPT_DIR/git/git_log_explorer.sh"
+    ;;
+  3)
+    bash "$SCRIPT_DIR/readme/show_readme_instructions.sh"
     ;;
   q|Q)
     echo "👋 Bye!"
