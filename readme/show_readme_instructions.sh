@@ -1,10 +1,12 @@
 #!/bin/bash
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INSTRUCTIONS_DIR="$SCRIPT_DIR/readme/instructions"
+SCRIPT_PATH="$(realpath "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+INSTRUCTIONS_DIR="$ROOT_DIR/readme/instructions"
 
 # --- Git update check ---
-bash "$SCRIPT_DIR/check_for_updates.sh"
+bash "$ROOT_DIR/check_for_updates.sh"
 
 OS=$(uname)
 
@@ -39,7 +41,7 @@ echo "💡 The more context and examples you provide, the better the resulting R
 echo ""
 
 # --- Git update check ---
-bash "$SCRIPT_DIR/check_for_updates.sh"
+bash "$ROOT_DIR/check_for_updates.sh"
 
 # Open the instructions folder
 if [[ "$OS" == "Darwin" ]]; then

@@ -13,7 +13,8 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 2. [🚀 First-Time Setup](#-first-time-setup)
 
    - [🔧 Prerequisites](#-prerequisites)
-   - [📦 Installation (Safe User-Space Option)](#-installation-safe-user-space-option)
+   - [📦 Installation](#-installation)
+   - [🔗 Optional Symlink Setup (macOS)](#-optional-symlink-setup-macos)
 
 3. [🧑‍💻 Usage](#-usage)
 
@@ -114,6 +115,72 @@ Launch via:
 bash ~/tools/dev-tools/start.sh
 ```
 
+#### 🔗 Optional Symlink Setup (macOS)
+
+To run the toolbox using `dev-tools` from anywhere in your terminal instead of calling `bash ~/tools/dev-tools/start.sh`, follow these steps:
+
+---
+
+#### 🕵️ Step 0: Determine your shell
+
+Check which shell you're currently using:
+
+;;;bash
+echo $SHELL
+;;;
+
+Expected outputs:
+- `/bin/zsh` → you're using **Zsh** (macOS default since Catalina)
+- `/bin/bash` → you're using **Bash**
+
+We'll adjust the config accordingly in the next steps.
+
+---
+
+#### 🛠️ Step-by-Step Instructions
+
+1. ✅ Make the script executable (if not already):
+
+;;;bash
+chmod +x ~/tools/dev-tools/start.sh
+;;;
+
+2. ✅ Create a local bin directory (if it doesn't exist):
+
+;;;bash
+mkdir -p ~/.local/bin
+;;;
+
+3. ✅ Create a symbolic link pointing to your launcher:
+
+;;;bash
+ln -s ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
+;;;
+
+4. ✅ Add `~/.local/bin` to your `PATH`  
+(Choose your shell below ⬇️)
+
+##### For Zsh users (`/bin/zsh`):
+
+;;;bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
+source ~/.zshrc
+;;;
+
+##### For Bash users (`/bin/bash`):
+
+;;;bash
+echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+;;;
+
+5. ✅ Test it from anywhere in your terminal:
+
+;;;bash
+dev-tools
+dev-tools -c   # for quick commit export
+;;;
+
 ---
 
 #### 🪟 Windows
@@ -167,6 +234,14 @@ Installed to `~/tools/dev-tools`:
 bash ~/tools/dev-tools/start.sh           # interactive mode
 bash ~/tools/dev-tools/start.sh --commit  # quick launch: export staged files
 bash ~/tools/dev-tools/start.sh --log     # quick launch: Git log explorer
+```
+
+Symlink usage implemented:
+
+```bash
+dev-tools           # interactive mode
+dev-tools --commit  # quick launch: export staged files
+dev-tools --log     # quick launch: Git log explorer
 ```
 
 ---
