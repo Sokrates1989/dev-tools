@@ -33,9 +33,11 @@ print_export_instructions() {
         echo "🔍 To see all files (e.g., .gitignore): Press Ctrl + H"
     fi
     echo ""
-    echo "🤖 Copy the content of the opened folder to your preferred AI tool."
+    echo "🤖 Copy the content of the opened folder to your preferred AI tool,"
+    echo "   or alternatively just paste the file:"
+    echo "   → $ALL_IN_ONE_AI_MESSAGE_FILE"
     echo ""
-    echo "📝 Add the related Project Task ID (if available) in the chat, or just write: \"no task ID\""
+    echo "📝 Then, add the related Project Task ID (if available), or write: \"no task ID\""
     echo ""
 }
 
@@ -77,6 +79,34 @@ if [[ -f "$COMMIT_MSG_FILE" ]]; then
     cp "$COMMIT_MSG_FILE" "$SCRIPT_DIR/git_export_staged/"
     echo "📝 Copied commit_message_prompt.txt to export folder."
 fi
+
+# Concatenate everything into one single file. 
+ALL_IN_ONE_DIR="$SCRIPT_DIR/git_export_staged/all_in_one"
+ALL_IN_ONE_AI_MESSAGE_FILE="$ALL_IN_ONE_DIR/ai_message.txt"
+mkdir -p "$ALL_IN_ONE_DIR"
+rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
+{
+    echo "===== 📝 COMMIT MESSAGE PROMPT ====="
+    if [[ -f "$COMMIT_MSG_FILE" ]]; then
+        cat "$COMMIT_MSG_FILE"
+    else
+        echo "(no commit_message_prompt.txt found)"
+    fi
+    echo ""
+    echo "===== 🔍 STAGED DIFF ====="
+    cat "$DIFF_FILE"
+    echo ""
+    echo "===== 📁 STAGED FILE CONTENTS ====="
+    for file in $FILES; do
+        if [[ -f "$file" ]]; then
+            echo "--- $(basename "$file") ---"
+            cat "$file"
+            echo ""
+        fi
+    done
+} > "$ALL_IN_ONE_AI_MESSAGE_FILE"
+echo "📦 Combined AI message created at: $ALL_IN_ONE_AI_MESSAGE_FILE"
+
 
 
 # Platform-specific: macOS or Linux open dest folder.

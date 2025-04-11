@@ -16,10 +16,13 @@ function Show-ExportInstructions {
     Write-Host "🔍 To see hidden files (like .gitignore): enable 'Hidden items' in the 'View' tab."
     Write-Host ""
     Write-Host "🤖 Copy the content of the opened folder to your preferred AI tool."
+    Write-Host "   Alternatively, use the single combined file:"
+    Write-Host "   → $allInOneFile"
     Write-Host ""
     Write-Host "📝 Add the related Project Task ID (if available), or just write: \"no task ID\""
     Write-Host ""
 }
+
 
 # Get the script directory.
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -70,6 +73,30 @@ if (Test-Path $commitMsgFile) {
     Copy-Item $commitMsgFile -Destination $parentDir
     Write-Host "📝 Copied commit_message_prompt.txt to export folder."
 }
+
+# Generate all-in-one AI message file.
+$allInOneDir = Join-Path $parentDir "all_in_one"
+$allInOneFile = Join-Path $allInOneDir "ai_message.txt"
+New-Item -ItemType Directory -Force -Path $allInOneDir | Out-Null
+Remove-Item -Force $allInOneFile -ErrorAction SilentlyContinue
+Add-Content $allInOneFile "===== 📝 COMMIT MESSAGE PROMPT ====="
+if (Test-Path $commitMsgFile) {
+    Get-Content $commitMsgFile | Add-Content $allInOneFile
+} else {
+    Add-Content $allInOneFile "(no commit_message_prompt.txt found)"
+}
+Add-Content $allInOneFile "`n===== 🔍 STAGED DIFF ====="
+Get-Content $diffFile | Add-Content $allInOneFile
+Add-Content $allInOneFile "`n===== 📁 STAGED FILE CONTENTS ====="
+foreach ($file in $files) {
+    if (Test-Path $file) {
+        Add-Content $allInOneFile "--- $(Split-Path $file -Leaf) ---"
+        Get-Content $file | Add-Content $allInOneFile
+        Add-Content $allInOneFile ""
+    }
+}
+Write-Host "📦 Combined AI message created at: $allInOneFile"
+
 
 # Show instructions and wait before opening the folder.
 Write-Host ""
