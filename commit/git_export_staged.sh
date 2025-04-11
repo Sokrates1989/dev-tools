@@ -19,6 +19,16 @@ ROOT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEST_DIR="$SCRIPT_DIR/git_export_staged/changed_files"
 DIFF_FILE="$SCRIPT_DIR/git_export_staged/last_staged_commit_diff.txt"
 
+# Load environment variables.
+ENV_FILE="$ROOT_DIR/.env"
+if [[ -f "$ENV_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$ENV_FILE"
+else
+  echo "❌ .env file not found at $ENV_FILE"
+  exit 1
+fi
+
 # --- Git update check ---
 bash "$ROOT_DIR/check_for_updates.sh"
 
@@ -66,18 +76,18 @@ while IFS= read -r file; do
     fi
 done <<< "$FILES"
 
-# Summary output.
-echo "✅ Copied staged files to $DEST_DIR:"
-ls -1 "$DEST_DIR"
-echo ""
-echo "📝 Staged diff saved to $DIFF_FILE"
 
 
 # Copy commit_message_prompt.txt if available
 COMMIT_MSG_FILE="$SCRIPT_DIR/commit_message_prompt.txt"
 if [[ -f "$COMMIT_MSG_FILE" ]]; then
     cp "$COMMIT_MSG_FILE" "$SCRIPT_DIR/git_export_staged/"
-    echo "📝 Copied commit_message_prompt.txt to export folder."
+fi
+
+# Ask for Task ID to append to the AI message
+read -r -p "🔖 Enter related Project Task ID (or press Enter to skip): " TASK_ID
+if [[ -z "$TASK_ID" ]]; then
+  TASK_ID="Please omit the ID-XY from the template this time and just use \"[Categories] Affected files or feature: more details of the change.\""
 fi
 
 # Concatenate everything into one single file. 
@@ -104,93 +114,72 @@ rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
             echo ""
         fi
     done
+    echo ""
+    echo "$TASK_ID"
 } > "$ALL_IN_ONE_AI_MESSAGE_FILE"
-echo "📦 Combined AI message created at: $ALL_IN_ONE_AI_MESSAGE_FILE"
 
 
+# --- Send to Azure OpenAI ---
+echo "🚀 Sending message to Azure OpenAI..."
 
-# Platform-specific: macOS or Linux open dest folder.
-OS=$(uname)
-PARENT_DIR="$SCRIPT_DIR/git_export_staged"
+if command -v jq >/dev/null 2>&1; then
+  RESPONSE=$(curl -s -X POST "${API_BASE}openai/deployments/${DEPLOYMENT}/chat/completions?api-version=${API_VERSION}" \
+    -H "Content-Type: application/json" \
+    -H "api-key: ${API_KEY}" \
+    -d "$(jq -n \
+      --arg content "$(cat "$ALL_IN_ONE_AI_MESSAGE_FILE")" \
+      '{messages: [{role: "system", content: "You are a helpful assistant."}, {role: "user", content: $content}], temperature: 0.7, max_tokens: 16384}')")
 
-# ---- Platform-specific export handling ----
-if [[ "$OS" == "Darwin" ]]; then
+    # echo "🧠 Azure OpenAI Response:"
+    # echo "$RESPONSE" | jq .
+
+    # Extract commit command from assistant's reply.
+    COMMIT_LINE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n 's/.*\(git commit -m .*"\).*/\1/p')
+
+  if [[ -n "$COMMIT_LINE" ]]; then
     echo ""
-    echo "🖼️  macOS environment detected. Preparing export view..."
-    print_export_instructions
+    echo "✅ AI suggested commit command:"
+    echo "$COMMIT_LINE"
 
-    # --- Git update check ---
-    bash "$ROOT_DIR/check_for_updates.sh"
-
-    read -p "🚀 Press Enter to open the folder now..."
-    open "$PARENT_DIR"
-
-elif [[ "$OS" == "Linux" ]]; then
-    echo ""
-    if [[ -n "$DISPLAY" || -n "$WAYLAND_DISPLAY" ]]; then
-        echo ""
-        echo "🖼️  Graphical environment detected. Preparing export view..."
-        print_export_instructions
-
-        # --- Git update check ---
-        bash "$ROOT_DIR/check_for_updates.sh"
-
-        read -p "🚀 Press Enter to open the folder now..."
-        xdg-open "$PARENT_DIR" >/dev/null 2>&1 &
+    # Ask user to confirm or edit
+    if [[ -n "$BASH_VERSION" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
+      read -e -i "$COMMIT_LINE" -p "📝 Press Enter to accept or edit the command: " FINAL_COMMIT
+    elif command -v zsh >/dev/null 2>&1; then
+      FINAL_COMMIT=$(zsh -c "read -e '?📝 Press Enter to accept or edit the command:' cmd; echo \$cmd" <<< "$COMMIT_LINE")
     else
-        echo "🖥️ CLI-only Linux detected."
-        SNAPSHOT_FILE="$PARENT_DIR/combined_staged_snapshot.txt"
-
-        echo "🧩 Creating combined snapshot: $SNAPSHOT_FILE"
-
-        {
-            echo "===== 📝 COMMIT MESSAGE PROMPT ====="
-            if [[ -f "$SCRIPT_DIR/commit_message_prompt.txt" ]]; then
-                cat "$SCRIPT_DIR/commit_message_prompt.txt"
-            else
-                echo "(no commit_message_prompt.txt found)"
-            fi
-            echo ""
-            echo "===== 🔍 STAGED DIFF ====="
-            cat "$DIFF_FILE"
-            echo ""
-            echo "===== 📁 STAGED FILE CONTENTS ====="
-            for file in $FILES; do
-                if [[ -f "$file" ]]; then
-                    echo "--- $(basename "$file") ---"
-                    cat "$file"
-                    echo ""
-                fi
-            done
-        } > "$SNAPSHOT_FILE"
-
-        echo ""
-        echo "📄 Snapshot saved to: $SNAPSHOT_FILE"
-        echo "📋 To copy this content to clipboard, install one of the following:"
-        echo ""
-        echo "🧰 Ubuntu/Debian (X11):"
-        echo "    sudo apt install xclip"
-        echo ""
-        echo "🧰 Wayland (GNOME/KDE):"
-        echo "    sudo apt install wl-clipboard"
-        echo ""
-        echo "🧠 After installing, copy with:"
-        echo "    xclip -selection clipboard < \"$SNAPSHOT_FILE\""
-        echo "    # or"
-        echo "    wl-copy < \"$SNAPSHOT_FILE\""
-        echo ""
-
-        # --- Git update check ---
-        bash "$ROOT_DIR/check_for_updates.sh"
-        
+      echo ""
+      echo "📝 You can copy/paste and edit the following:"
+      echo "$COMMIT_LINE"
+      if command -v pbcopy >/dev/null 2>&1; then
+        echo "$COMMIT_LINE" | pbcopy
+        echo "📋 Commit command copied to clipboard!"
+      fi
+      FINAL_COMMIT=""
     fi
+
+    if [[ -n "$FINAL_COMMIT" ]]; then
+      echo ""
+      echo "🚀 Final commit command:"
+      echo "$FINAL_COMMIT"
+      read -r -p "👉 Do you want to run this commit command now? [y/N]: " CONFIRM
+      if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
+        eval "$FINAL_COMMIT"
+        echo "✅ Commit executed."
+      else
+        echo "ℹ️ Commit not executed. You can run it manually:"
+        echo "$FINAL_COMMIT"
+      fi
+    fi
+
+  else
+    echo "⚠️ Could not extract commit command from AI response."
+  fi
+
 else
-
-    # --- Git update check ---
-    bash "$ROOT_DIR/check_for_updates.sh"
-
-    echo "⚠️ Unknown OS. Please open the folder manually: $PARENT_DIR"
+  echo "❌ 'jq' is required to format the JSON body. Please install it and try again."
 fi
+
+
 
 # --- Git update check ---
 bash "$ROOT_DIR/check_for_updates.sh"
