@@ -14,6 +14,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 
    - [🔧 Prerequisites](#-prerequisites)
    - [📦 Installation](#-installation)
+   - [🧬 Environment Setup](#-environment-setup-required-for-ai-based-features)
    - [🔗 Optional Symlink Setup (macOS)](#-optional-symlink-setup-macos)
 
 3. [🧑‍💻 Usage](#-usage)
@@ -115,6 +116,25 @@ Launch via:
 bash ~/tools/dev-tools/start.sh
 ```
 
+### 🧬 Environment Setup (Required for AI-based features)
+
+To enable features that require API access (e.g. OpenAI), you must set up your environment variables:
+
+1. ✅ Copy the provided `.env.template` file to `.env`:
+
+```bash
+cp .env.template .env
+```
+
+2. ✅ Open the `.env` file in your editor and **add your API key**:
+
+```bash
+# Example content inside .env
+OPENAI_API_KEY=sk-xxxxxx-your-key-here
+```
+
+3. ✅ Save the file.
+
 #### 🔗 Optional Symlink Setup (macOS)
 
 To run the toolbox using `dev-tools` from anywhere in your terminal instead of calling `bash ~/tools/dev-tools/start.sh`, follow these steps:
@@ -125,9 +145,9 @@ To run the toolbox using `dev-tools` from anywhere in your terminal instead of c
 
 Check which shell you're currently using:
 
-;;;bash
+```bash
 echo $SHELL
-;;;
+```
 
 Expected outputs:
 - `/bin/zsh` → you're using **Zsh** (macOS default since Catalina)
@@ -141,45 +161,45 @@ We'll adjust the config accordingly in the next steps.
 
 1. ✅ Make the script executable (if not already):
 
-;;;bash
+```bash
 chmod +x ~/tools/dev-tools/start.sh
-;;;
+```
 
 2. ✅ Create a local bin directory (if it doesn't exist):
 
-;;;bash
+```bash
 mkdir -p ~/.local/bin
-;;;
+```
 
 3. ✅ Create a symbolic link pointing to your launcher:
 
-;;;bash
+```bash
 ln -s ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
-;;;
+```
 
 4. ✅ Add `~/.local/bin` to your `PATH`  
 (Choose your shell below ⬇️)
 
 ##### For Zsh users (`/bin/zsh`):
 
-;;;bash
+```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
 source ~/.zshrc
-;;;
+```
 
 ##### For Bash users (`/bin/bash`):
 
-;;;bash
+```bash
 echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
 source ~/.bashrc
-;;;
+```
 
 5. ✅ Test it from anywhere in your terminal:
 
-;;;bash
+```bash
 dev-tools
 dev-tools -c   # for quick commit export
-;;;
+```
 
 ---
 
