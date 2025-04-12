@@ -19,6 +19,7 @@ if [[ $# -gt 0 ]]; then
             exit 0
             ;;
         --update|-u)
+            # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
             exec bash "$ROOT_DIR/start.sh"
             ;;
@@ -74,7 +75,9 @@ case "$choice" in
     ;;
   u|U)
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
+      # Auto update and restart script.
       bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
+      exec bash "$ROOT_DIR/start.sh"
     else
       echo "✅ Already up to date with the latest version of Dev Tools."
     fi
