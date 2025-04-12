@@ -2,10 +2,10 @@
 
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 
 # --- Git update check ---
-bash "$ROOT_DIR/check_for_updates.sh"
+bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
 while true; do
   echo ""
@@ -106,4 +106,4 @@ while true; do
 done
 
 # --- Git update check ---
-bash "$ROOT_DIR/check_for_updates.sh"
+bash "$ROOT_DIR/global_functions/check_for_updates.sh"

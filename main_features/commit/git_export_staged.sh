@@ -16,7 +16,7 @@
 # Resolve script location (so paths work anywhere).
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
+ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 DEST_DIR="$SCRIPT_DIR/git_export_staged/changed_files"
 DIFF_FILE="$SCRIPT_DIR/git_export_staged/last_staged_commit_diff.txt"
 
@@ -31,7 +31,7 @@ else
 fi
 
 # --- Git update check ---
-bash "$ROOT_DIR/check_for_updates.sh"
+bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
 # ✅ Define the function early
 print_export_instructions() {
@@ -181,8 +181,5 @@ else
 fi
 
 
-
-# --- Git update check ---
-bash "$ROOT_DIR/check_for_updates.sh"
 
 exit 0
