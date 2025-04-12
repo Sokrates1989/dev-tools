@@ -18,6 +18,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
             exit 0
             ;;
+        --update|-u)
+            bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
+            ;;
+
         *)
             echo "❌ Unknown argument: $1"
             echo ""
@@ -32,8 +36,10 @@ fi
 
 
 
-# --- Git update check ---
+# --- Git update check ---´
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
+DEVTOOLS_UPDATE_AVAILABLE=$(bash "$ROOT_DIR/global_functions/check_for_updates_flag.sh")
+
 
 # --- Interactive Menu ---
 echo ""
@@ -44,6 +50,9 @@ echo ""
 echo "1) Export staged Git changes         [--commit | -c]"
 echo "2) Git log explorer                  [--log    | -l]"
 echo "3) Show README creation instructions [--readme | -r]"
+if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
+    echo "u) 🔄 Update Dev Tools now            [--update | -u]"
+fi
 echo "q) Exit"
 echo ""
 
@@ -61,6 +70,13 @@ case "$choice" in
     ;;
   3)
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
+    ;;
+  u|U)
+    if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
+      bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
+    else
+      echo "✅ Already up to date with the latest version of Dev Tools."
+    fi
     ;;
   q|Q)
     echo "👋 Bye!"

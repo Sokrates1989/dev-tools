@@ -1,6 +1,6 @@
 # -----------------------------------------------------------------------------
-# Script: check_for_updates.ps1
-# Description: Displays update information in a human-friendly format.
+# Script: check_for_updates_flag.ps1
+# Description: Returns 1 if updates are available, 0 otherwise. No user output.
 # -----------------------------------------------------------------------------
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -11,14 +11,12 @@ try {
     git fetch | Out-Null
     $diff = git diff HEAD..origin/HEAD
     if ($diff) {
-        Write-Host ""
-        Write-Host "📦 Updates available in Dev Tools repository!"
-        Write-Host "💡 To update, run:"
-        Write-Host "   cd `"$ScriptDir`"; git pull; cd -"
-        Write-Host ""
+        Write-Output "1"
+    } else {
+        Write-Output "0"
     }
 } catch {
-    Write-Host "⚠️ Git check failed: $_"
+    Write-Output "0"
 }
 
 Set-Location $OriginalDir

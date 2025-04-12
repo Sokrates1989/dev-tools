@@ -17,6 +17,8 @@ if git fetch --quiet && ! git diff --quiet HEAD..origin/HEAD; then
   echo "📦 Updates available in Dev Tools repository!"
   echo "💡 To update, run:"
   echo "   cd \"$ROOT_DIR\" && git pull && cd -"
+  echo "   or"
+  echo "   call this tool with -u to auto update"
   echo ""
 fi
 
