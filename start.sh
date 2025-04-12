@@ -20,6 +20,7 @@ if [[ $# -gt 0 ]]; then
             ;;
         --update|-u)
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
+            bash "$ROOT_DIR/start.sh"
             ;;
 
         *)
