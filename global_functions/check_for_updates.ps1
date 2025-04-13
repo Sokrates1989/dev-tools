@@ -10,15 +10,17 @@ Set-Location $ScriptDir
 try {
     git fetch | Out-Null
     $diff = git diff HEAD..origin/HEAD
+
     if ($diff) {
         Write-Host ""
-        Write-Host "📦 Updates available in Dev Tools repository!"
-        Write-Host "💡 To update, run:"
+        Write-Host "Update available in Dev Tools repository."
+        Write-Host "To update, run:"
         Write-Host "   cd `"$ScriptDir`"; git pull; cd -"
         Write-Host ""
     }
-} catch {
-    Write-Host "⚠️ Git check failed: $_"
+}
+catch {
+    Write-Host "Warning: Unable to check for updates. Git may not be initialized."
 }
 
 Set-Location $OriginalDir

@@ -14,10 +14,16 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 
    - [🔧 Prerequisites](#-prerequisites)
    - [📦 Installation](#-installation)
+     - [🐧 Linux](#-linux-installation)
+     - [🍏 macOS](#-macos-one-command-setup-with-global-shortcut)
+     - [🪟 Windows](#-windows-system-wide-installation-with-global-commands)
    - [🧬 Environment Setup](#-environment-setup-required-for-ai-based-features)
-   - [🔗 Optional Symlink Setup (macOS)](#-optional-symlink-setup-macos)
 
 3. [🧑‍💻 Usage](#-usage)
+
+   - [🐧 Linux](#-linux-usage)
+   - [🍏 macOS](#-macos-usage)
+   - [🪟 Windows](#-windows-usage)
 
 4. [🛠️ Configuration](#-configuration)
 
@@ -82,7 +88,7 @@ Download and install from: https://git-scm.com/download/win
 
 ### 📦 Installation
 
-#### 🐧 Linux
+#### 🐧 Linux Installation
 
 Install the toolbox under a global tools directory: `/tools/dev-tools`
 
@@ -100,21 +106,114 @@ bash /tools/dev-tools/start.sh
 
 ---
 
-#### 🍏 macOS
+### 🍏 macOS (One-Command Setup with Global Shortcut)
 
-Install under your user folder at `~/tools/dev-tools`:
+Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
+
+Simply copy and run the following block in your terminal:
 
 ```bash
+# Step 1: Create target directory and clone Dev Tools.
 mkdir -p ~/tools/dev-tools
 cd ~/tools/dev-tools
 git clone https://github.com/Sokrates1989/dev-tools.git .
+
+# Step 2: Ensure script is executable.
+chmod +x ~/tools/dev-tools/start.sh
+
+# Step 3: Create a local bin directory if needed.
+mkdir -p ~/.local/bin
+
+# Step 4: Create a global shortcut called 'dev-tools'.
+ln -sf ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
+
+# Step 5: Add ~/.local/bin to PATH (only if not already set).
+CURRENT_SHELL=$(basename "$SHELL")
+EXPORT_LINE='export PATH="$HOME/.local/bin:$PATH"'
+
+if [[ "$CURRENT_SHELL" == "zsh" ]]; then
+  SHELL_RC="$HOME/.zshrc"
+elif [[ "$CURRENT_SHELL" == "bash" ]]; then
+  SHELL_RC="$HOME/.bashrc"
+else
+  echo "⚠️ Unknown shell: $CURRENT_SHELL – please add ~/.local/bin to your PATH manually."
+  SHELL_RC=""
+fi
+
+if [[ -n "$SHELL_RC" && -f "$SHELL_RC" ]]; then
+  if ! grep -Fxq "$EXPORT_LINE" "$SHELL_RC"; then
+    echo "$EXPORT_LINE" >> "$SHELL_RC"
+    echo "✅ Added PATH update to $SHELL_RC"
+    source "$SHELL_RC"
+  else
+    echo "ℹ️ PATH already set in $SHELL_RC"
+  fi
+fi
+
+# Step 6: Done – launch the tool.
+dev-tools
 ```
 
-Launch via:
+### 🪟 Windows (System-Wide Installation with Global Commands)
 
-```bash
-bash ~/tools/dev-tools/start.sh
+Install Dev Tools into `C:\tools\dev-tools` and make it available globally using `dev-tools` and `open`.
+
+Simply copy and run the following block in a PowerShell window **run as Administrator**:
+
+```powershell
+# Step 1: Create the target directory structure.
+New-Item -ItemType Directory -Path "C:\tools\dev-tools" -Force
+
+# Step 2: Take ownership of the dev-tools folder (avoids permission issues).
+$acl = Get-Acl "C:\tools\dev-tools"
+$acl.SetOwner([System.Security.Principal.NTAccount]"$env:USERNAME")
+Set-Acl "C:\tools\dev-tools" $acl
+
+# Step 3 (optional but recommended): Grant yourself full access recursively.
+$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
+    "$env:USERNAME", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
+)
+$acl.AddAccessRule($rule)
+Set-Acl "C:\tools\dev-tools" $acl
+
+# Step 4: Clone the Dev Tools repository.
+cd C:\tools\dev-tools
+git clone https://github.com/Sokrates1989/dev-tools.git .
+
+# Step 5: Set up quick commands for this session.
+Set-Alias dev-tools "C:\tools\dev-tools\start.ps1"
+Set-Alias open       "C:\tools\dev-tools\global_functions\open.ps1"
+
+# Step 6: Show alias lines and prompt before editing profile.
+Write-Host ""
+Write-Host "📋 Copy the lines below, then paste them into the file that opens:"
+Write-Host ""
+Write-Host "# Dev-tools (https://github.com/Sokrates1989/dev-tools)"
+Write-Host "Set-Alias dev-tools `"C:\tools\dev-tools\start.ps1`""
+Write-Host "Set-Alias open       `"C:\tools\dev-tools\global_functions\open.ps1`""
+Write-Host ""
+Read-Host "📄 Press Enter to open your PowerShell profile..."
+notepad $PROFILE
+
+# Step 7: Create .env file from .env.template.
+Copy-Item "C:\tools\dev-tools\.env.template" "C:\tools\dev-tools\.env" -Force
+
+# Step 8: Configure settings.
+Write-Host ""
+Write-Host "🤖 AI Usage Mode Setup:"
+Write-Host "   - 'manual' → prepares the prompt and opens it for copy/paste into ChatGPT or other AI tools"
+Write-Host "   - 'api'    → directly calls the ChatGPT API using your key and model settings (must provide AI-API settings below)"
+Write-Host ""
+Read-Host "📄 Press Enter to open your .env file for editing..."
+notepad "C:\tools\dev-tools\.env"
+
+
+# Step 9: Done: Luanch the tool.
+Write-Host ""
+Write-Host "After having saved the .env file try it out: Just type:"
+Write-Host "dev-tools"
 ```
+
 
 ### 🧬 Environment Setup (Required for AI-based features)
 
@@ -135,106 +234,11 @@ OPENAI_API_KEY=sk-xxxxxx-your-key-here
 
 3. ✅ Save the file.
 
-#### 🔗 Optional Symlink Setup (macOS)
-
-To run the toolbox using `dev-tools` from anywhere in your terminal instead of calling `bash ~/tools/dev-tools/start.sh`, follow these steps:
-
----
-
-#### 🕵️ Step 0: Determine your shell
-
-Check which shell you're currently using:
-
-```bash
-echo $SHELL
-```
-
-Expected outputs:
-- `/bin/zsh` → you're using **Zsh** (macOS default since Catalina)
-- `/bin/bash` → you're using **Bash**
-
-We'll adjust the config accordingly in the next steps.
-
----
-
-#### 🛠️ Step-by-Step Instructions
-
-1. ✅ Make the script executable (if not already):
-
-```bash
-chmod +x ~/tools/dev-tools/start.sh
-```
-
-2. ✅ Create a local bin directory (if it doesn't exist):
-
-```bash
-mkdir -p ~/.local/bin
-```
-
-3. ✅ Create a symbolic link pointing to your launcher:
-
-```bash
-ln -s ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
-```
-
-4. ✅ Add `~/.local/bin` to your `PATH`  
-(Choose your shell below ⬇️)
-
-##### For Zsh users (`/bin/zsh`):
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.zshrc
-source ~/.zshrc
-```
-
-##### For Bash users (`/bin/bash`):
-
-```bash
-echo 'export PATH="$HOME/.local/bin:$PATH"' >> ~/.bashrc
-source ~/.bashrc
-```
-
-5. ✅ Test it from anywhere in your terminal:
-
-```bash
-dev-tools
-dev-tools -c   # for quick commit export
-```
-
----
-
-#### 🪟 Windows
-
-Install globally under `C:\tools\dev-tools` (admin required **once**):
-
-1. ✅ **Create the folder** (run PowerShell as Administrator):
-
-```powershell
-New-Item -ItemType Directory -Path "C:\tools" -Force
-
-# Optional: Make yourself the owner (avoids needing admin later)
-$acl = Get-Acl "C:\tools"
-$acl.SetOwner([System.Security.Principal.NTAccount]"$env:USERNAME")
-Set-Acl "C:\tools" $acl
-```
-
-2. ✅ **Clone the toolbox** (normal PowerShell):
-
-```powershell
-git clone https://github.com/Sokrates1989/dev-tools.git "C:\tools\dev-tools"
-```
-
-Launch via:
-
-```powershell
-C:\tools\dev-tools\start.ps1
-```
-
 ---
 
 ## 🧑‍💻 Usage
 
-### 🐧 Linux
+### 🐧 Linux Usage
 
 Installed to `/tools/dev-tools`:
 
@@ -246,35 +250,26 @@ bash /tools/dev-tools/start.sh --log      # quick launch: Git log explorer
 
 ---
 
-### 🍏 macOS
+### 🍏 macOS Usage
 
-Installed to `~/tools/dev-tools`:
 
-```bash
-bash ~/tools/dev-tools/start.sh           # interactive mode
-bash ~/tools/dev-tools/start.sh --commit  # quick launch: export staged files
-bash ~/tools/dev-tools/start.sh --log     # quick launch: Git log explorer
-```
-
-Symlink usage implemented:
+🧪 You can now run Dev Tools from anywhere:
 
 ```bash
-dev-tools           # interactive mode
-dev-tools --commit  # quick launch: export staged files
-dev-tools --log     # quick launch: Git log explorer
+dev-tools         # launch the toolbox
+dev-tools -c      # quick export of staged Git commit
 ```
 
 ---
 
-### 🪟 Windows PowerShell
+### 🪟 Windows Usage
 
-Installed to `C:\tools\dev-tools`:
 
 ```powershell
-C:\tools\dev-tools\start.ps1                      # interactive mode
-C:\tools\dev-tools\start.ps1 -Command "--commit"  # quick launch
-C:\tools\dev-tools\start.ps1 -Command "--log"     # quick launch
-```
+dev-tools        # launch the toolbox
+dev-tools -c     # quick export of staged Git commit
+open .           # open current folder in Explorer
+open C:\anywhere
 
 ---
 

@@ -8,10 +8,17 @@ $RootDir = Resolve-Path "$ScriptDir\.." | Select-Object -ExpandProperty Path
 $OriginalDir = Get-Location
 
 Write-Host ""
-Write-Host "🔄 Performing Dev Tools update..."
+Write-Host "Checking for updates..."
 Set-Location $RootDir
-git pull
+
+try {
+    git pull
+    Write-Host ""
+    Write-Host "Update complete."
+}
+catch {
+    Write-Host "Failed to pull updates: $_"
+}
+
 Set-Location $OriginalDir
-Write-Host ""
-Write-Host "✅ Update complete."
 Write-Host ""

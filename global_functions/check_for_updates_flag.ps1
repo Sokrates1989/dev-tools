@@ -15,7 +15,9 @@ try {
     } else {
         Write-Output "0"
     }
-} catch {
+}
+catch {
+    # If anything fails (e.g. not a git repo), return 0 to avoid breaking the tool
     Write-Output "0"
 }
 
