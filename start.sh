@@ -49,13 +49,14 @@ echo "🛠️  Dev Tools Launcher"
 echo "======================"
 echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
-echo "1) Export staged Git changes         [--commit | -c]"
-echo "2) Git log explorer                  [--log    | -l]"
-echo "3) Show README creation instructions [--readme | -r]"
+echo "1) 📤 Export staged Git changes         [--commit | -c]"
+echo "2) 📜 Git log explorer                  [--log    | -l]"
+echo "3) 📘 Show README creation instructions [--readme | -r]"
+echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
 fi
-echo "q) Exit"
+echo "q) ❌ Exit"
 echo ""
 
 # --- Git update check ---
