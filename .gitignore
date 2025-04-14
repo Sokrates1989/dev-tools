@@ -3,6 +3,11 @@ main_features/commit/git_export_staged/
 main_features/commit/last_staged_commit_diff.txt
 main_features/commit/changed_files/
 
+# Exclude merge cache files and folder.
+main_features/merge/git_export_merge/
+main_features/merge/last_staged_merge_diff.txt
+main_features/merge/changed_files/
+
 # DS Store.
 .DS_Store
 **/.DS_Store

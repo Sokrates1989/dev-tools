@@ -10,6 +10,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
             exit 0
             ;;
+        --merge|-m)
+            bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
+            exit 0
+            ;;
         --log|-l)
             bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
             exit 0
@@ -29,6 +33,7 @@ if [[ $# -gt 0 ]]; then
             echo ""
             echo "Usage:"
             echo "  --commit | -c   → Run git_export_staged"
+            echo "  --merge  | -m   → Run git_export_merge"
             echo "  --log    | -l   → Run git_log_explorer"
             echo "  --readme | -r   → Show README creation instructions"
             exit 1
@@ -50,8 +55,9 @@ echo "======================"
 echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
 echo "1) 📤 Export staged Git changes         [--commit | -c]"
-echo "2) 📜 Git log explorer                  [--log    | -l]"
-echo "3) 📘 Show README creation instructions [--readme | -r]"
+echo "2) 🔀 Merge commit assistant            [--merge  | -m]"
+echo "3) 📜 Git log explorer                  [--log    | -l]"
+echo "4) 📘 Show README creation instructions [--readme | -r]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -62,16 +68,19 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-3 or q]: " choice
+read -p "Enter your choice [1-4 or q]: " choice
 
 case "$choice" in
   1)
     bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
     ;;
   2)
-    bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
+    bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
     ;;
   3)
+    bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
+    ;;
+  4)
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
     ;;
   u|U)
