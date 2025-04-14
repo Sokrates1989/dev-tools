@@ -41,7 +41,7 @@ $content = [string](Get-Content $AllInOneFile -Raw -Encoding UTF8)
 $messages = @(
     @{
         role    = "system"
-        content = "You are a helpful assistant that writes clean, concise and context-aware Git merge commit messages."
+        content = "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages."
     },
     @{
         role    = "user"
