@@ -113,45 +113,7 @@ Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command
 Simply copy and run the following block in your terminal:
 
 ```bash
-# Step 1: Create target directory and clone Dev Tools.
-mkdir -p ~/tools/dev-tools
-cd ~/tools/dev-tools
-git clone https://github.com/Sokrates1989/dev-tools.git .
-
-# Step 2: Ensure script is executable.
-chmod +x ~/tools/dev-tools/start.sh
-
-# Step 3: Create a local bin directory if needed.
-mkdir -p ~/.local/bin
-
-# Step 4: Create a global shortcut called 'dev-tools'.
-ln -sf ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
-
-# Step 5: Add ~/.local/bin to PATH (only if not already set).
-CURRENT_SHELL=$(basename "$SHELL")
-EXPORT_LINE='export PATH="$HOME/.local/bin:$PATH"'
-
-if [[ "$CURRENT_SHELL" == "zsh" ]]; then
-  SHELL_RC="$HOME/.zshrc"
-elif [[ "$CURRENT_SHELL" == "bash" ]]; then
-  SHELL_RC="$HOME/.bashrc"
-else
-  echo "⚠️ Unknown shell: $CURRENT_SHELL – please add ~/.local/bin to your PATH manually."
-  SHELL_RC=""
-fi
-
-if [[ -n "$SHELL_RC" && -f "$SHELL_RC" ]]; then
-  if ! grep -Fxq "$EXPORT_LINE" "$SHELL_RC"; then
-    echo "$EXPORT_LINE" >> "$SHELL_RC"
-    echo "✅ Added PATH update to $SHELL_RC"
-    source "$SHELL_RC"
-  else
-    echo "ℹ️ PATH already set in $SHELL_RC"
-  fi
-fi
-
-# Step 6: Done – launch the tool.
-dev-tools
+curl -s https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh | bash
 ```
 
 ### 🪟 Windows (System-Wide Installation with Global Commands)
