@@ -77,7 +77,9 @@ fi
   if [[ -f "$MERGE_MSG_FILE" ]]; then
       cat "$MERGE_MSG_FILE"
   else
-      echo "Generate a concise and meaningful merge commit message summarizing the key changes."
+      echo "Generate a concise and meaningful merge commit message summarizing the key changes adhering to this basic template strictly:"
+      echo "[MERGE | sourceBranch -> targetBranch] Merged feature: short summary of the change."
+      echo "⚠️ Respond ONLY with the final **message line** (no code block, no git command, no commentary)"
   fi
   echo ""
   echo "===== 🧠 GIT LOG (commits from $TARGET_BRANCH not in $CURRENT_BRANCH) ====="
@@ -89,9 +91,9 @@ fi
 
 # --- Decide execution based on AI_MODE ---
 if [[ "$AI_MODE" == "api" ]]; then
-  bash "$SCRIPT_DIR/handle_export_merge_api.sh" "$AI_MESSAGE_FILE"
+  bash "$SCRIPT_DIR/handle_export_merge_api.sh" "$AI_MESSAGE_FILE" "$TARGET_BRANCH"
 else
-  bash "$SCRIPT_DIR/handle_export_merge_manual.sh" "$AI_MESSAGE_FILE"
+  bash "$SCRIPT_DIR/handle_export_merge_manual.sh" "$AI_MESSAGE_FILE" "$TARGET_BRANCH"
 fi
 
 # --- Final update check ---

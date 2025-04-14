@@ -13,7 +13,8 @@ SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
 PARENT_DIR="$SCRIPT_DIR/git_export_merge"
-AI_MESSAGE_FILE="$PARENT_DIR/all_in_one/ai_message.txt"
+AI_MESSAGE_FILE="$1"
+TARGET_BRANCH="$2"
 
 # --- Check if message file exists ---
 if [[ ! -f "$AI_MESSAGE_FILE" ]]; then

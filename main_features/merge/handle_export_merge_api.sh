@@ -11,7 +11,8 @@
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/../.." && pwd)"
-AI_MESSAGE_FILE="$SCRIPT_DIR/git_export_merge/all_in_one/ai_message.txt"
+AI_MESSAGE_FILE="$1"
+TARGET_BRANCH="$2"
 
 # Load environment variables
 ENV_FILE="$ROOT_DIR/.env"
@@ -67,38 +68,46 @@ RESPONSE=$(curl -s -X POST "$API_URL" \
     }')"
 )
 
-# --- Extract and show response ---
-COMMIT_LINE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n 's/.*\(git commit -m .*"\).*/\1/p')
+# --- Extract and validate response ---
+RAW_SUGGESTED_MESSAGE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | xargs)
 
-if [[ -n "$COMMIT_LINE" ]]; then
+if ! echo "$RAW_SUGGESTED_MESSAGE" | grep -qE '^\[MERGE \|.+->.+\]'; then
+  echo "❌ AI response doesn't match expected format."
+  echo "🔍 Received: $RAW_SUGGESTED_MESSAGE"
+  exit 1
+fi
+
+
+# --- Handle merge command ---
+if [[ -n "$RAW_SUGGESTED_MESSAGE" ]]; then
   echo ""
-  echo "✅ AI suggested commit command:"
-  echo "$COMMIT_LINE"
+  echo "✅ AI suggested merge message:"
+  echo "$RAW_SUGGESTED_MESSAGE"
 
   # Let user edit or accept
   if [[ -n "$BASH_VERSION" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-    read -e -i "$COMMIT_LINE" -p "📝 Press Enter to accept or edit the command: " FINAL_COMMIT
+    read -e -i "$RAW_SUGGESTED_MESSAGE" -p "📝 Press Enter to accept or edit the message: " FINAL_MESSAGE
   elif command -v zsh >/dev/null 2>&1; then
-    FINAL_COMMIT=$(zsh -c "read -e '?📝 Press Enter to accept or edit the command:' cmd; echo \$cmd" <<< "$COMMIT_LINE")
+    FINAL_MESSAGE=$(zsh -c "read -e '?📝 Press Enter to accept or edit the command:' cmd; echo \$cmd" <<< "$RAW_SUGGESTED_MESSAGE")
   else
     echo ""
     echo "📝 You can copy/paste and edit the following:"
-    echo "$COMMIT_LINE"
+    echo "$RAW_SUGGESTED_MESSAGE"
     if command -v pbcopy >/dev/null 2>&1; then
-      echo "$COMMIT_LINE" | pbcopy
-      echo "📋 Commit command copied to clipboard!"
+      echo "$RAW_SUGGESTED_MESSAGE" | pbcopy
+      echo "📋 Merge command copied to clipboard!"
     fi
-    FINAL_COMMIT=""
+    FINAL_MESSAGE=""
   fi
 
-  if [[ -n "$FINAL_COMMIT" ]]; then
+  if [[ -n "$FINAL_MESSAGE" ]]; then
     echo ""
-    echo "🚀 Final commit command:"
-    echo "$FINAL_COMMIT"
+    echo "🚀 Final merge command:"
+    echo git merge --no-ff "$TARGET_BRANCH" -m "$FINAL_MESSAGE"
     read -r -p "👉 Do you want to run this commit command now? [y/N]: " CONFIRM
     if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-      eval "$FINAL_COMMIT"
-      echo "✅ Commit executed."
+      git merge --no-ff "$TARGET_BRANCH" -m "$FINAL_MESSAGE"
+      echo "✅ Merge successfully executed."
 
       read -r -p "🚀 Do you want to push the changes now? [y/N]: " PUSH_CONFIRM
       if [[ "$PUSH_CONFIRM" =~ ^[Yy]$ ]]; then
@@ -107,8 +116,8 @@ if [[ -n "$COMMIT_LINE" ]]; then
         echo "ℹ️ Skipped pushing. You can push manually anytime with 'git push'."
       fi
     else
-      echo "ℹ️ Commit not executed. You can run it manually:"
-      echo "$FINAL_COMMIT"
+      echo "ℹ️  not executed. You can run it manually:"
+      echo git merge --no-ff "$TARGET_BRANCH" -m "$FINAL_MESSAGE"
     fi
   fi
 else
