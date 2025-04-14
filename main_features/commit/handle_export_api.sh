@@ -93,6 +93,22 @@ if [[ -n "$COMMIT_LINE" ]]; then
     if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
       eval "$FINAL_COMMIT"
       echo "✅ Commit executed."
+
+      # Ask user to push commits immeadiately to the remote.
+      echo ""
+      read -r -p "🚀 Do you want to push the commit to the remote now? [y/N]: " PUSH_CONFIRM
+      if [[ "$PUSH_CONFIRM" =~ ^[Yy]$ ]]; then
+        echo "📡 Pushing changes to remote..."
+        git push
+        if [[ $? -eq 0 ]]; then
+          echo "✅ Push successful!"
+        else
+          echo "❌ Push failed. Please check your Git configuration or network."
+        fi
+      else
+        echo "ℹ️ Push skipped. You can run 'git push' later manually."
+      fi
+
     else
       echo "ℹ️ Commit not executed. You can run it manually:"
       echo "$FINAL_COMMIT"
