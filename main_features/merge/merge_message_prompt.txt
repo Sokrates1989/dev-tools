@@ -1,0 +1,17 @@
+Write a merge commit message based on the source and target branch names and the purpose of the merge.
+
+Follow this format exactly, using one line only and be very concise:
+
+git commit -m "[MERGE | sourceBranch -> targetBranch] Merged feature: short summary of the change."
+
+Replace "Merged feature:" appropriately with one of these where applicable:
+
+Merged feature:
+Merged hotfix:
+Merged cleanup:
+Merged update:
+Merged refactoring:
+Merged integration:
+
+Keep the summary under 18 words. Use real branch names in sourceBranch and targetBranch.
+Respond only with the final bash command.
