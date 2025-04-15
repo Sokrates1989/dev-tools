@@ -2,7 +2,7 @@ Write a concise and meaningful **merge commit message only** based on the source
 
 Follow this format strictly, using one line only:
 
-[MERGE | sourceBranch -> targetBranch] Merged feature: short summary of the change.
+[MERGE | targetBranch -> sourceBranch] Merged feature: short summary of the change.
 
 Replace "Merged feature:" with one of these where applicable:
 - Merged feature:
