@@ -74,6 +74,7 @@ if [[ -n "$COMMIT_LINE" ]]; then
     read -e -i "$COMMIT_LINE" -p "📝 Press Enter to accept or edit the command: " FINAL_COMMIT
   elif command -v zsh >/dev/null 2>&1; then
     FINAL_COMMIT=$(zsh -c "read -e '?📝 Press Enter to accept or edit the command:' cmd; echo \$cmd" <<< "$COMMIT_LINE")
+    FINAL_COMMIT="${FINAL_COMMIT//\`\`\`/'three_backticks'}"
   else
     echo ""
     echo "📝 You can copy/paste and edit the following:"
