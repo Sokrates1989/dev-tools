@@ -106,10 +106,12 @@ Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command
 Simply copy and run the following block in your terminal:
 
 ```bash
+ORIGINAL_DIR=$(pwd)
 mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
 curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
 bash macos.sh
-cd ~ && rm -rf /tmp/devtools-setup
+cd "$ORIGINAL_DIR"
+rm -rf /tmp/devtools-setup
 ```
 
 ### 🪟 Windows (System-Wide Installation with Global Commands)
