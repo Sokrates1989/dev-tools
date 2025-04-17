@@ -9,39 +9,26 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 ## Table of Contents
 
 1. [📖 Overview](#-overview)
-
 2. [🚀 First-Time Setup](#-first-time-setup)
-
    - [🔧 Prerequisites](#-prerequisites)
    - [📦 Installation](#-installation)
      - [🐧 Linux](#-linux-installation)
-     - [🍏 macOS](#-macos-one-command-setup-with-global-shortcut)
+     - [🍏 macOS](#-macos-manual-setup-with-temp-folder)
      - [🪟 Windows](#-windows-system-wide-installation-with-global-commands)
    - [🧬 Environment Setup](#-environment-setup-required-for-ai-based-features)
-
 3. [🧑‍💻 Usage](#-usage)
-
    - [🐧 Linux](#-linux-usage)
    - [🍏 macOS](#-macos-usage)
    - [🪟 Windows](#-windows-usage)
-
-4. [🛠️ Configuration](#-configuration)
-
-5. [🧭 Toolbox Features](#-toolbox-features)
-
+4. [🧭 Toolbox Features](#-toolbox-features)
    - [🧱 Commit Exporter](#-commit-exporter)
    - [🔍 Git Log Explorer](#-git-log-explorer)
-
-6. [🪟 Platform Support](#-platform-support)
-
+5. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
    - [🪟 Windows PowerShell](#-windows-powershell)
-
-7. [🧪 Extending the Toolbox](#-extending-the-toolbox)
-
+6. [🧪 Extending the Toolbox](#-extending-the-toolbox)
    - [➕ Add More Tools](#-add-more-tools)
-
-8. [🚀 Summary](#-summary)
+7. [🚀 Summary](#-summary)
 
 ---
 
@@ -106,14 +93,17 @@ bash /tools/dev-tools/start.sh
 
 ---
 
-### 🍏 macOS (One-Command Setup with Global Shortcut)
+### 🍏 macOS (Manual Setup with Temp Folder)
 
 Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
 
 Simply copy and run the following block in your terminal:
 
 ```bash
-curl -s https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh | bash
+mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
+curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
+bash macos.sh
+cd ~ && rm -rf /tmp/devtools-setup
 ```
 
 ### 🪟 Windows (System-Wide Installation with Global Commands)
