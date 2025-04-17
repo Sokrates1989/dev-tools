@@ -1,52 +1,25 @@
-Replace every occurrence of ``` with ;;; so that the output changes from this:
+# Instructions for AI:
 
-```dart
-// Example usage.
-```
+IMPORTANT:
+- DO NOT use triple backticks ``` inside the generated markdown content.
+- Instead, use triple semicolons ;;; for code blocks, e.g.
 
-```json
-json
-```
-
+From this:
 ```bash
-# bash content.
+echo hello
 ```
 
-```anthing
-...
-```
-
-
-
-to this:
-
-;;;dart
-// Example usage.
-;;;
-
-;;;json
-json
-;;;
-
+To this:
 ;;;bash
-# bash content.
+echo hello
 ;;;
 
-;;;anthing
-...
-;;;
-
-
-
-
-Ensure, that I can copy the readme to the clipboard directly, by wrapping the whole output in
+- The final output MUST be fully wrapped inside:
 
 ```markdown
-PUT THE WHOLE OUTPUT WITHIN THESE LINES
+<output>
 ```
 
+...but again: NEVER use ``` anywhere *inside* the markdown body! Use only ;;; instead.
 
-To emphasize this there should be not one occurence of ``` within! the markdown!!
-
-PUT THE WHOLE OUTPUT WITHIN THESE LINES ->
-!!! NOT ONE ``` in here -> All changed to ;;; !!!
+=========================
