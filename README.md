@@ -9,6 +9,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 ## Table of Contents
 
 1. [📖 Overview](#-overview)
+
 2. [🚀 First-Time Setup](#-first-time-setup)
    - [🔧 Prerequisites](#-prerequisites)
    - [📦 Installation](#-installation)
@@ -16,18 +17,23 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
      - [🍏 macOS](#-macos-manual-setup-with-temp-folder)
      - [🪟 Windows](#-windows-system-wide-installation-with-global-commands)
    - [🧬 Environment Setup](#-environment-setup-required-for-ai-based-features)
+
 3. [🧑‍💻 Usage](#-usage)
    - [🐧 Linux](#-linux-usage)
    - [🍏 macOS](#-macos-usage)
    - [🪟 Windows](#-windows-usage)
+
 4. [🧭 Toolbox Features](#-toolbox-features)
    - [🧱 Commit Exporter](#-commit-exporter)
    - [🔍 Git Log Explorer](#-git-log-explorer)
+
 5. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
    - [🪟 Windows PowerShell](#-windows-powershell)
+
 6. [🧪 Extending the Toolbox](#-extending-the-toolbox)
    - [➕ Add More Tools](#-add-more-tools)
+
 7. [🚀 Summary](#-summary)
 
 ---
