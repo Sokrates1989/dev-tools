@@ -13,9 +13,7 @@ try {
 
     if ($diff) {
         Write-Host ""
-        Write-Host "Update available in Dev Tools repository."
-        Write-Host "To update, run:"
-        Write-Host "   cd `"$ScriptDir`"; git pull; cd -"
+        Write-Host "Updates available in Dev Tools repository! (run 'dev-tools -u' to update)"
         Write-Host ""
     }
 }
