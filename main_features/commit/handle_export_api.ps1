@@ -80,11 +80,41 @@ $response = Invoke-RestMethod -Uri $fullUrl -Method Post -Headers $headers -Body
 
 # Output response.
 if ($response.choices) {
-    $message = $response.choices[0].message.content
+    $rawCommitLine = $response.choices[0].message.content
+
+    # Remove Markdown code block formatting (```bash ... ```)
+    $commitLine = $rawCommitLine -replace '```[a-z]*', '' -replace '```', ''
+    $commitLine = $commitLine.Trim()
+
     Write-Host ""
     Write-Host "Suggested commit message:"
     Write-Host "--------------------------"
-    Write-Host $message
+    Write-Host $commitLine
+
+    # Auto commit?
+    $confirm = Read-Host "Do you want to run this commit command now? [y/N]"
+    if ($confirm -match "^[Yy]$") {
+        Invoke-Expression $commitLine
+        Write-Host "Commit executed."
+        Write-Host ""
+
+        # Auto push?
+        $pushConfirm = Read-Host "Do you want to push the commit to the remote now? [y/N]"
+        if ($pushConfirm -match "^[Yy]$") {
+            Write-Host "Pushing changes to remote..."
+            git push
+            if ($LASTEXITCODE -eq 0) {
+                Write-Host "Push successful."
+            } else {
+                Write-Host "Push failed. Please check your Git configuration or network."
+            }
+        } else {
+            Write-Host "Push skipped. You can run 'git push' later manually."
+        }
+    } else {
+        Write-Host "Commit not executed. You can run it manually:"
+        Write-Host $commitLine
+    }
 } else {
     Write-Host "API response did not return expected output."
 }
