@@ -54,18 +54,13 @@ if (Test-Path $CommitMsgFile) {
 }
 
 
-# Prompt for Project Task ID
+# Prompt for Project Task ID.
 $TaskID = Read-Host "INPUT: Enter related Project Task ID (or press Enter to skip)"
 if (-not $TaskID) {
     $TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Please ignore any template that starts with [ID-XY | ...]. Instead, format the message like this: [Categories] Affected files or feature: more details of the change. Do not include any dummy or placeholder task ID.'
 }
 
-
-
-# DEBUG:
-Write-Host "TaskID: -> $TaskID"
-
-# Compose the AI message prompt file
+# Compose the AI message prompt file.
 Remove-Item -Force $AiMessageFile -ErrorAction SilentlyContinue
 "" | Out-File $AiMessageFile
 
