@@ -43,23 +43,44 @@ fi
 # --- Compose and send request ---
 echo "🚀 Sending prompt to $API_PROVIDER..."
 
-RESPONSE=$(curl -s -X POST "$API_URL" \
-  -H "Content-Type: application/json" \
-  -H "$AUTH_HEADER" \
-  -d "$(jq -n \
-    --arg content "$(cat "$ALL_IN_ONE_AI_MESSAGE_FILE")" \
+USER_CONTENT=$(cat "$ALL_IN_ONE_AI_MESSAGE_FILE")
+
+# Build JSON payload
+if [[ "$API_PROVIDER" == "openai" ]]; then
+  JSON_PAYLOAD=$(jq -n \
+    --arg model "$DEPLOYMENT" \
+    --arg content "$USER_CONTENT" \
     --arg temp "$TEMPERATURE" \
     --argjson max_tokens "$MAX_TOKENS" \
     '{
-      model: env.DEPLOYMENT,
+      model: $model,
       messages: [
         { role: "system", content: "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." },
         { role: "user", content: $content }
       ],
       temperature: ($temp | tonumber),
       max_tokens: $max_tokens
-    }')"
-)
+    }')
+else
+  JSON_PAYLOAD=$(jq -n \
+    --arg content "$USER_CONTENT" \
+    --arg temp "$TEMPERATURE" \
+    --argjson max_tokens "$MAX_TOKENS" \
+    '{
+      messages: [
+        { role: "system", content: "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." },
+        { role: "user", content: $content }
+      ],
+      temperature: ($temp | tonumber),
+      max_tokens: $max_tokens
+    }')
+fi
+
+# Make the request
+RESPONSE=$(curl -s -X POST "$API_URL" \
+  -H "Content-Type: application/json" \
+  -H "$AUTH_HEADER" \
+  -d "$JSON_PAYLOAD")
 
 # --- Extract and show response ---
 COMMIT_LINE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n 's/.*\(git commit -m .*"\).*/\1/p')
