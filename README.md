@@ -90,7 +90,7 @@ Simply copy and run the following block in your terminal:
 ```bash
 ORIGINAL_DIR=$(pwd)
 mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
-curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/linux.sh
+curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/linux-cli.sh
 bash linux-cli.sh
 cd "$ORIGINAL_DIR"
 rm -rf /tmp/devtools-setup
