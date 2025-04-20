@@ -83,23 +83,22 @@ Download and install from: https://git-scm.com/download/win
 
 #### 🐧 Linux Installation
 
-Install the toolbox under a global tools directory: `/tools/dev-tools`
+Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
+
+Simply copy and run the following block in your terminal:
 
 ```bash
-sudo mkdir -p /tools/dev-tools
-sudo chown "$USER" /tools/dev-tools
-git clone https://github.com/Sokrates1989/dev-tools.git /tools/dev-tools
-```
-
-Launch via:
-
-```bash
-bash /tools/dev-tools/start.sh
+ORIGINAL_DIR=$(pwd)
+mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
+curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/linux.sh
+bash linux-cli.sh
+cd "$ORIGINAL_DIR"
+rm -rf /tmp/devtools-setup
 ```
 
 ---
 
-### 🍏 macOS (Manual Setup with Temp Folder)
+#### 🍏 macOS (Manual Setup with Temp Folder)
 
 Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
 
@@ -114,7 +113,7 @@ cd "$ORIGINAL_DIR"
 rm -rf /tmp/devtools-setup
 ```
 
-### 🪟 Windows (System-Wide Installation with Global Commands)
+#### 🪟 Windows (System-Wide Installation with Global Commands)
 
 Install Dev Tools into `C:\tools\dev-tools` and make it available globally using `dev-tools` and `open`.
 
