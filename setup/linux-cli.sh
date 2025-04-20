@@ -47,8 +47,18 @@ append_export_line() {
 append_export_line "$HOME/.bashrc"
 append_export_line "$HOME/.profile"
 
-# Export PATH immediately for current session
+# Export for current shell
 export PATH="$HOME/.local/bin:$PATH"
+
+# Detect if interactive shell (PS1 is usually set), otherwise forcefully reload
+if [[ -z "$PS1" ]]; then
+  # shell is non-interactive; let's try to simulate login shell load
+  if [[ -f "$HOME/.bashrc" ]]; then
+    source "$HOME/.bashrc"
+  elif [[ -f "$HOME/.profile" ]]; then
+    source "$HOME/.profile"
+  fi
+fi
 
 # Step 6: Set up .env file
 echo ""
@@ -70,7 +80,12 @@ echo ""
 ENV_FILE=~/tools/dev-tools/.env
 ENV_TEMPLATE=~/tools/dev-tools/.env.template
 
-cp -n "$ENV_TEMPLATE" "$ENV_FILE" && echo "✅ Created '.env' from template." || echo "ℹ️  '.env' already exists – skipping copy."
+if [ ! -f "$ENV_FILE" ]; then
+  cp "$ENV_TEMPLATE" "$ENV_FILE"
+  echo "✅ Created '.env' from template."
+else
+  echo "ℹ️  '.env' already exists – skipping copy."
+fi
 
 # --- Interactive Editor Menu ---
 echo ""
