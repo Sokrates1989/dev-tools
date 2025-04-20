@@ -37,16 +37,16 @@ if (-not $apiKey) {
 }
 
 # Compose the prompt.
-$content = [string](Get-Content $AllInOneFile -Raw -Encoding UTF8)
+$content = Get-Content $AllInOneFile -Raw -Encoding UTF8
+# Properly escape special characters for JSON
+$escapedContent = $content -replace '\\', '\\\\' `
+                             -replace '"', '\"' `
+                             -replace "`r", '' `
+                             -replace "`n", '\n'
+
 $messages = @(
-    @{
-        role    = "system"
-        content = "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages."
-    },
-    @{
-        role    = "user"
-        content = $content
-    }
+    @{ role = "system"; content = "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." },
+    @{ role = "user"; content = $escapedContent }
 )
 $payloadObject = @{
     messages    = $messages
@@ -59,8 +59,13 @@ if ($apiProvider -eq "openai") {
     $payloadObject.model = $deployment  # Reuse DEPLOYMENT for the model name (e.g., "gpt-4o")
 }
 
-# Convert to JSON – IMPORTANT: preserve formatting
-$payload = $payloadObject | ConvertTo-Json -Depth 5 -Compress
+# Convert to JSON
+$payload = $payloadObject | ConvertTo-Json -Depth 10 -Compress
+
+
+# Workaround for PowerShell 5.1 JSON body encoding issue
+$utf8NoBomEncoding = New-Object System.Text.UTF8Encoding $false
+$bytes = $utf8NoBomEncoding.GetBytes($payload)
 
 # Determine if OpenAI.com or Azure OpenAI is used.
 $headers = New-Object "System.Collections.Generic.Dictionary[[String],[String]]"
@@ -76,7 +81,7 @@ $headers.Add("Content-Type", "application/json")
 
 
 # Send request.
-$response = Invoke-RestMethod -Uri $fullUrl -Method Post -Headers $headers -Body $payload
+$response = Invoke-RestMethod -Uri $fullUrl -Method Post -Headers $headers -Body $bytes
 
 # Output response.
 if ($response.choices) {
