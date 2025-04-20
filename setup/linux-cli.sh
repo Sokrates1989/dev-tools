@@ -128,7 +128,6 @@ echo "   dev-tools"
 echo ""
 echo "💡 Tip: Use 'dev-tools -c' to generate commit messages from Git changes using AI."
 
-
 echo ""
-echo "🧩 Note: To use 'dev-tools' immediately in this session, run:"
+echo "🧩 If 'dev-tools' is not recognized yet, you can try the following to make it work immediately:"
 echo '   export PATH="$HOME/.local/bin:$PATH"; hash -r'
