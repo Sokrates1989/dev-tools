@@ -90,6 +90,10 @@ foreach ($file in $StagedFiles) {
 }
 
 
+Add-Content $AiMessageFile $TaskID
+Add-Content $AiMessageFile ""
+
+
 # Call the appropriate post-export handler.
 $AI_MODE = $env:AI_MODE
 Write-Host "AI Mode: -> $AI_MODE"
