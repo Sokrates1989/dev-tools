@@ -2,6 +2,25 @@
 
 set -e
 
+# Check if jq is installed
+if ! command -v jq >/dev/null 2>&1; then
+  echo ""
+  echo "❌ 'jq' is not installed."
+  echo "📦 It is required to generate commit and merge messages using AI via API."
+  echo ""
+  read -p "👉 Do you want to install 'jq' now? [Y/n]: " installJq
+  installJq=${installJq:-Y}
+
+  if [[ "$installJq" =~ ^[Yy]$ ]]; then
+    echo "🔧 Installing jq..."
+    sudo apt update && sudo apt install -y jq
+    echo "✅ 'jq' installed successfully."
+  else
+    echo "⚠️  Skipping 'jq' installation. AI-based commit and merge features will not work."
+  fi
+fi
+
+# Install dev-tools.
 echo ""
 echo "🛠️  Installing Dev Tools (Linux CLI)"
 echo "===================================="
