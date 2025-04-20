@@ -127,3 +127,8 @@ echo ""
 echo "   dev-tools"
 echo ""
 echo "💡 Tip: Use 'dev-tools -c' to generate commit messages from Git changes using AI."
+
+
+# Apply PATH immediately for current session
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
