@@ -2,6 +2,10 @@
 
 set -e
 
+echo ""
+echo "🛠️  Installing Dev Tools (Linux CLI)"
+echo "===================================="
+
 # Step 1: Create target directory and clone Dev Tools
 if [[ ! -d ~/tools/dev-tools/.git ]]; then
   echo "🔧 Cloning Dev Tools..."
@@ -23,28 +27,28 @@ mkdir -p ~/.local/bin
 ln -sf ~/tools/dev-tools/start.sh ~/.local/bin/dev-tools
 echo "✅ Shortcut 'dev-tools' created in ~/.local/bin"
 
-# Step 5: Add ~/.local/bin to PATH
-CURRENT_SHELL=$(basename "$SHELL")
+# Step 5: Add ~/.local/bin to PATH persistently and immediately
 EXPORT_LINE='export PATH="$HOME/.local/bin:$PATH"'
 
-if [[ "$CURRENT_SHELL" == "zsh" ]]; then
-  SHELL_RC="$HOME/.zshrc"
-elif [[ "$CURRENT_SHELL" == "bash" ]]; then
-  SHELL_RC="$HOME/.bashrc"
-else
-  echo "⚠️  Unknown shell: $CURRENT_SHELL – please add ~/.local/bin to your PATH manually."
-  SHELL_RC=""
-fi
-
-if [[ -n "$SHELL_RC" && -f "$SHELL_RC" ]]; then
-  if ! grep -Fxq "$EXPORT_LINE" "$SHELL_RC"; then
-    echo "$EXPORT_LINE" >> "$SHELL_RC"
-    echo "✅ Added PATH update to $SHELL_RC"
-    source "$SHELL_RC"
-  else
-    echo "ℹ️  PATH already set in $SHELL_RC"
+# Function to append export line if not present
+append_export_line() {
+  local file="$1"
+  if [ -f "$file" ]; then
+    if ! grep -Fxq "$EXPORT_LINE" "$file"; then
+      echo "$EXPORT_LINE" >> "$file"
+      echo "✅ Added PATH update to $file"
+    else
+      echo "ℹ️  PATH already set in $file"
+    fi
   fi
-fi
+}
+
+# Append to both .bashrc and .profile if available
+append_export_line "$HOME/.bashrc"
+append_export_line "$HOME/.profile"
+
+# Export PATH immediately for current session
+export PATH="$HOME/.local/bin:$PATH"
 
 # Step 6: Set up .env file
 echo ""
