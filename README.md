@@ -94,6 +94,10 @@ curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/lin
 bash linux-cli.sh
 cd "$ORIGINAL_DIR"
 rm -rf /tmp/devtools-setup
+
+# Apply PATH update in current shell (if not already applied)
+export PATH="$HOME/.local/bin:$PATH"
+hash -r
 ```
 
 ---
