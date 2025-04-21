@@ -88,18 +88,70 @@ if ($response.choices) {
     $rawCommitLine = $response.choices[0].message.content
 
     # Remove Markdown code block formatting (```bash ... ```)
-    $commitLine = $rawCommitLine -replace '```[a-z]*', '' -replace '```', ''
-    $commitLine = $commitLine.Trim()
+    $suggestedMessage = $rawCommitLine -replace '```[a-z]*', '' -replace '```', ''
+    $suggestedMessage = $suggestedMessage.Trim()
 
+    # Show suggested commit mesage.
     Write-Host ""
     Write-Host "Suggested commit message:"
     Write-Host "--------------------------"
-    Write-Host $commitLine
+    Write-Host $suggestedMessage
+
+    # Ask the user whether to edit or accept the suggested message
+    Write-Host ""
+    $editChoice = Read-Host "Press [E] to edit the commit message, or press Enter to accept as is"
+
+    if ($editChoice -match "^[Ee]$") {
+        # Sauberer Temp-Dateipfad mit .txt-Endung
+        $tempFile = Join-Path -Path ([System.IO.Path]::GetTempPath()) `
+        -ChildPath ("commit_msg_{0}.txt" -f ([System.Guid]::NewGuid().ToString()))
+
+        # Inhalt sicher schreiben
+        Set-Content -Path $tempFile -Value $suggestedMessage -Encoding UTF8 -Force
+
+        # Editor starten
+        Write-Host ""
+        Write-Host "Opening Notepad so you can edit the commit message..."
+        $notepadProcess = Start-Process -FilePath "notepad.exe" -ArgumentList $tempFile -PassThru
+        $notepadProcess.WaitForExit()
+
+
+        # Inhalt auslesen.
+        $finalCommitMessage = Get-Content -Path $tempFile -Raw -Encoding UTF8
+        Remove-Item $tempFile -Force
+
+        # Validate final commit message.
+        if ([string]::IsNullOrWhiteSpace($finalCommitMessage)) {
+            Write-Host "Commit message is empty. Please rerun the script or commit manually."
+            return
+        }
+        $finalCommitMessage = $finalCommitMessage.Trim()
+
+        # Regex: Must match pattern exactly
+        $pattern = '^git commit -m "([^"]+)"$'
+        if ($finalCommitMessage -notmatch $pattern) {
+            Write-Host "Invalid commit command!"
+            Write-Host 'The command must follow this structure:'
+            Write-Host 'git commit -m "Your message here"'
+            return
+        }
+
+
+    } else {
+        # Accept as-is
+        $finalCommitMessage = $suggestedMessage
+    }
+
+
+    Write-Host ""
+    Write-Host "Final commit message:"
+    Write-Host "--------------------------"
+    Write-Host "$finalCommitMessage"
 
     # Auto commit?
     $confirm = Read-Host "Do you want to run this commit command now? [y/N]"
     if ($confirm -match "^[Yy]$") {
-        Invoke-Expression $commitLine
+        Invoke-Expression $finalCommitMessage
         Write-Host "Commit executed."
         Write-Host ""
 
@@ -118,7 +170,7 @@ if ($response.choices) {
         }
     } else {
         Write-Host "Commit not executed. You can run it manually:"
-        Write-Host $commitLine
+        Write-Host $finalCommitMessage
     }
 } else {
     Write-Host "API response did not return expected output."
