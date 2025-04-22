@@ -94,8 +94,67 @@ if [[ -n "$COMMIT_LINE" ]]; then
   if [[ -n "$BASH_VERSION" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
     read -e -i "$COMMIT_LINE" -p "📝 Press Enter to accept or edit the command: " FINAL_COMMIT
   elif command -v zsh >/dev/null 2>&1; then
-    FINAL_COMMIT=$(zsh -c "read -e '?📝 Press Enter to accept or edit the command:' cmd; echo \$cmd" <<< "$COMMIT_LINE")
-    FINAL_COMMIT="${FINAL_COMMIT//\`\`\`/'three_backticks'}"
+    # macOS specific handling.
+    echo ""
+    read -r -p "📝 Press Enter to accept, type 'n' for [N]ano, 'v' for [V]i, or specify another editor: " choice
+    
+    if [[ -n "$choice" ]]; then
+      # Determine editor based on choice
+      case "$choice" in
+        [nN]*)
+          EDITOR_CHOICE="nano"
+          ;;
+        [vV]*)
+          EDITOR_CHOICE="vi"
+          ;;
+        *)
+          # Use whatever they typed as the editor command
+          EDITOR_CHOICE="$choice"
+          ;;
+      esac
+
+      # Verify editor exists
+      if ! command -v "$EDITOR_CHOICE" >/dev/null 2>&1; then
+        echo "⚠️  Editor '$EDITOR_CHOICE' not found. Falling back to vi."
+        EDITOR_CHOICE="vi"
+      fi
+
+      # Extract just the message content
+      COMMIT_MSG=$(echo "$COMMIT_LINE" | sed -n 's/git commit -m "\(.*\)"/\1/p')
+      
+      # Create temp file with just the message
+      TEMP_FILE=$(mktemp "${TMPDIR:-/tmp}/commit_msg.XXXXXX")
+      echo "$COMMIT_MSG" > "$TEMP_FILE"
+      
+      # Open editor with clear instructions
+      echo ""
+      echo "✏️  Editing with $EDITOR_CHOICE..."
+      echo "   - Modify your commit message"
+      echo "   - Save and exit to continue"
+      echo "   - Cancel the editor to abort"
+      echo ""
+      
+      if ! "$EDITOR_CHOICE" "$TEMP_FILE"; then
+        echo "⚠️  Editor exited with error. Aborting commit."
+        rm -f "$TEMP_FILE"
+        exit 1
+      fi
+      
+      # Read back the edited message
+      EDITED_MSG=$(cat "$TEMP_FILE")
+      rm "$TEMP_FILE"
+      
+      if [[ -z "$EDITED_MSG" ]]; then
+        echo "⚠️  Empty commit message. Aborting."
+        exit 1
+      fi
+      
+      # Reconstruct the full git command
+      FINAL_COMMIT="git commit -m \"$EDITED_MSG\""
+    else
+      # Accept as-is
+      FINAL_COMMIT="$COMMIT_LINE"
+    fi
   else
     echo ""
     echo "📝 You can copy/paste and edit the following:"
