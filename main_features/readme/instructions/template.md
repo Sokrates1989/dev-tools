@@ -1,10 +1,6 @@
 # [📌|🚀|🗂️|🧭|..|Choose an icon that best fits for this readme] Name of this Readme
 
-## 📜 Description
-
 A brief description of the project, the feature or whatever this README is about.
-
----
 
 ## Table of Contents
 
@@ -36,15 +32,17 @@ A brief description of the project, the feature or whatever this README is about
 
 X. [🚀 Summary](#-summary)
 
----
+<br>
+<br>
 
-## 📖 Overview
+# 📖 Overview
 
 Provide a more detailed overview of the project, the feature or whatever this README is about.
 
----
+<br>
+<br>
 
-## 🧑‍💻 Usage
+# 🧑‍💻 Usage
 
 Explain how to use the project, the feature or whatever this README is about with examples, if possible.
 
@@ -60,13 +58,17 @@ Explain how to use the project, the feature or whatever this README is about wit
 
 ```
 
-## 🛠️ Configuration
+<br>
+<br>
 
-Details about configuration options, environment variables, or settings that users might need to modify or be aware of.
+# 🛠️ Configuration
 
----
+Details about configuration options, environment variables, or settings that users might need to modify or be aware of, if there is any configuration needed. If there is no configuration needed just drop this section entirely.
 
-## [📌|🚀|🗂️|🧭|..] Context-Depending
+<br>
+<br>
+
+# [📌|🚀|🗂️|🧭|..] Context-Depending
 
 Add content/ sections depending on the context.
 
@@ -90,15 +92,30 @@ Option2:
 
 ![Image Name](images/image_name.png)
 
----
+<br>
 
-### [📌|🚀|🗂️|🧭|..] Sub Section
+## [📌|🚀|🗂️|🧭|..] Sub Section
 
-If any sections is bigger and can be separated into sub-sections -> do so.
+If any section is bigger and can be separated into sub-sections -> do so.
 
----
+### [📌|🚀|🗂️|🧭|..] Sub Section of Sub Section
 
-## 🚀 Summary
+If any sub-section can be separated into further sub-sections -> do so.
+
+<br>
+
+## [📌|🚀|🗂️|🧭|..] Sub Section 2
+
+If any section is bigger and can be separated into sub-sections -> do so.
+
+### [📌|🚀|🗂️|🧭|..] Sub Section of Sub Section 2
+
+If any sub-section can be separated into further sub-sections -> do so.
+
+<br>
+<br>
+
+# 🚀 Summary
 
 Prvide a summary of this readme
 
