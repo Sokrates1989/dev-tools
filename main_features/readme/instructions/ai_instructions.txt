@@ -17,7 +17,7 @@ echo hello
 - The final output MUST be fully wrapped inside:
 
 ```markdown
-<output>
+YOUR OUTPUT GOES HERE
 ```
 
 ...but again: NEVER use ``` anywhere *inside* the markdown body! Use only ;;; instead.
