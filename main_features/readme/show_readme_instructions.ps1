@@ -6,7 +6,7 @@
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RootDir = Resolve-Path "$PSScriptRoot\..\.." | Select-Object -ExpandProperty Path
-$InstructionsDir = Join-Path $ScriptDir "readme\instructions"
+$InstructionsDir = Join-Path $ScriptDir "instructions"
 
 # --- Git update check ---
 & "$RootDir\global_functions\check_for_updates.ps1"
