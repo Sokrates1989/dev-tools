@@ -20,6 +20,6 @@ echo hello
 YOUR OUTPUT GOES HERE
 ```
 
-...but again: NEVER use ``` anywhere *inside* the markdown body! Use only ;;; instead.
+...but again: NEVER use ``` anywhere *inside* the markdown body! Use always ;;; instead.
 
 =========================
