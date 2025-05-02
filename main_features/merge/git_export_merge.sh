@@ -67,6 +67,7 @@ if git diff --quiet "$CURRENT_BRANCH".."$TARGET_BRANCH"; then
   if [[ "$SWITCH_AFTER_MERGE" =~ ^[Yy]$ ]]; then
     echo "🔁 Switching to '$TARGET_BRANCH'..."
     git checkout "$TARGET_BRANCH"
+    exec bash "$SCRIPT_PATH"
   else
     echo "ℹ️ Staying on '$CURRENT_BRANCH'."
   fi
@@ -87,6 +88,7 @@ if echo "$MERGE_CHECK_OUTPUT" | grep -q "Already up to date."; then
   if [[ "$SWITCH_AFTER_MERGE" =~ ^[Yy]$ ]]; then
     echo "🔁 Switching to '$TARGET_BRANCH'..."
     git checkout "$TARGET_BRANCH"
+    exec bash "$SCRIPT_PATH"
   else
     echo "ℹ️ Staying on '$CURRENT_BRANCH'."
   fi
