@@ -1,38 +1,26 @@
-# [📌|🚀|🗂️|🧭|..|Choose an icon that best fits for this readme] Name of this Readme
+# [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..|Choose an icon that best fits for this readme] Name of this Readme
 
 A brief description of the project, the feature or whatever this README is about.
+
+<br>
 
 ## Table of Contents
 
 1. [📖 Overview](#-overview)
-
 2. [🧑‍💻 Usage](#-usage)
-
-3. [🛠️ Configuration](#-configuration)
-
-4. [[📌|🚀|🗂️|🧭|..] Context-Depending](#-context-depending)
-
-- [[📌|🚀|🗂️|🧭|..] Sub Section](#-sub-section)
-
-5. [[📌|🚀|🗂️|🧭|..] Context-Depending](#-context-depending)
-
-- [[📌|🚀|🗂️|🧭|..] Sub Section](#-sub-section)
-
-6. [[📌|🚀|🗂️|🧭|..] Context-Depending](#-context-depending)
-
-- [[📌|🚀|🗂️|🧭|..] Sub Section](#-sub-section)
-
-7. [[📌|🚀|🗂️|🧭|..] Context-Depending](#-context-depending)
-
-- [[📌|🚀|🗂️|🧭|..] Sub Section](#-sub-section)
-
-... [[📌|🚀|🗂️|🧭|..] Context-Depending](#-context-depending)
-
- - [[📌|🚀|🗂️|🧭|..] Sub Section](#-sub-section)
-
+3. [🛠️ Configuration|Installation|Setup](#-configuration-installation-setup)
+4. [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending](#-context-depending)
+- [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section](#-sub-section)
+5. [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending](#-context-depending)
+- [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section](#-sub-section)
+6. [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending](#-context-depending)
+- [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section](#-sub-section)
+7. [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending](#-context-depending)
+- [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section](#-sub-section)
+... [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending](#-context-depending)
+ - [[📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section](#-sub-section)
 X. [🚀 Summary](#-summary)
 
-<br>
 <br>
 
 # 📖 Overview
@@ -61,14 +49,14 @@ Explain how to use the project, the feature or whatever this README is about wit
 <br>
 <br>
 
-# 🛠️ Configuration
+# 🛠️ Configuration|Installation|Setup
 
 Details about configuration options, environment variables, or settings that users might need to modify or be aware of, if there is any configuration needed. If there is no configuration needed just drop this section entirely.
 
 <br>
 <br>
 
-# [📌|🚀|🗂️|🧭|..] Context-Depending
+# [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Context-Depending
 
 Add content/ sections depending on the context.
 
@@ -94,21 +82,21 @@ Option2:
 
 <br>
 
-## [📌|🚀|🗂️|🧭|..] Sub Section
+## [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section
 
 If any section is bigger and can be separated into sub-sections -> do so.
 
-### [📌|🚀|🗂️|🧭|..] Sub Section of Sub Section
+### [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section of Sub Section
 
 If any sub-section can be separated into further sub-sections -> do so.
 
 <br>
 
-## [📌|🚀|🗂️|🧭|..] Sub Section 2
+## [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section 2
 
 If any section is bigger and can be separated into sub-sections -> do so.
 
-### [📌|🚀|🗂️|🧭|..] Sub Section of Sub Section 2
+### [📌|🚀|📦|🛠️|📖|🧠|💡|🧪|🐞|🔗|🧑‍💻|..] Sub Section of Sub Section 2
 
 If any sub-section can be separated into further sub-sections -> do so.
 
@@ -120,11 +108,6 @@ If any sub-section can be separated into further sub-sections -> do so.
 Prvide a summary of this readme
 
 ✅ **Key TakeAway 1**
-
 ✅ **Key TakeAway 2**
-
 ✅ **Key TakeAway 3**
-
 ✅ **Key TakeAway X**
-
-
