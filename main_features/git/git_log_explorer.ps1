@@ -32,19 +32,8 @@ while ($true) {
     Write-Host " b) Back to main menu"
     Write-Host " q) Quit"
     Write-Host ""
-    
+
     $choice = Read-Host "Enter your choice [1-12, b, q]"
-    Write-Host ""
-
-    switch ($choice) {
-        # ... [unchanged cases] ...
-    }
-
-    Write-Host ""
-    & "$RootDir\global_functions\check_for_updates.ps1"
-    Read-Host "Press Enter to return to the Git log menu..."
-}
-
     Write-Host ""
 
     switch ($choice) {
@@ -115,6 +104,7 @@ while ($true) {
             Write-Host "Invalid choice. Try again."
         }
     }
+
     Write-Host ""
     & "$RootDir\global_functions\check_for_updates.ps1"
     Read-Host "Press Enter to return to the Git log menu..."
