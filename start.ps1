@@ -6,7 +6,10 @@ param (
     [switch]$r,  # readme
     [switch]$readme,  # readme
     [switch]$u,   # update
-    [switch]$update  # update
+    [switch]$update,  # update
+    [switch]$x,  # reset
+    [switch]$reset,  # reset
+    [switch]$revert  # reset
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -30,6 +33,10 @@ if ($u -or $update) {
     & "$RootDir\start.ps1"
     return
 }
+if ($x -or $reset -or $revert) {
+    & "$RootDir\main_features\git\reset_local_changes.ps1"
+    return
+}
 
 
 
@@ -46,18 +53,20 @@ Write-Host ""
 Write-Host "1) Export staged Git changes"
 Write-Host "2) Git log explorer"
 Write-Host "3) Show README instructions"
+Write-Host "4) Forget all local changes and reset branch"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-3, u, q]"
+$choice = Read-Host "Enter your choice [1-4, u, q]"
 
 switch ($choice) {
     "1" { & "$RootDir\main_features\commit\git_export_staged.ps1" }
     "2" { & "$RootDir\main_features\git\git_log_explorer.ps1" }
     "3" { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
+    "4" { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     "u" {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
