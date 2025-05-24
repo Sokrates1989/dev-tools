@@ -15,6 +15,16 @@ param (
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RootDir = Resolve-Path "$ScriptDir" | Select-Object -ExpandProperty Path
 
+
+# Automatically unblock all .ps1 files under the dev-tools directory (Windows only)
+Get-ChildItem -Path "$RootDir" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue | ForEach-Object {
+    try {
+        Unblock-File -Path $_.FullName
+    } catch {
+        # Continue silently if it fails (e.g. on already unblocked or non-Windows systems)
+    }
+}
+
 # === Quick flag execution ===
 if ($c -or $commit) {
     & "$RootDir\main_features\commit\git_export_staged.ps1"
