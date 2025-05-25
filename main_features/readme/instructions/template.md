@@ -34,17 +34,17 @@ Provide a more detailed overview of the project, the feature or whatever this RE
 
 Explain how to use the project, the feature or whatever this README is about with examples, if possible.
 
-```bash
+;;;bash
 
 # Example usage command.
 
-```
+;;;
 
-```dart
+;;;dart
 
 // Example usage.
 
-```
+;;;
 
 <br>
 <br>
