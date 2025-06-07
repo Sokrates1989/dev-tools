@@ -22,6 +22,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
             exit 0
             ;;
+        --reset|-x)
+            bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -58,6 +62,7 @@ echo "1) 📤 Export staged Git changes         [--commit | -c]"
 echo "2) 🔀 Merge commit assistant            [--merge  | -m]"
 echo "3) 📜 Git log explorer                  [--log    | -l]"
 echo "4) 📘 Show README creation instructions [--readme | -r]"
+echo "5) 🧹 Reset Local Git Changes           [--reset  | -x]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -68,7 +73,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-4 or q]: " choice
+read -p "Enter your choice [1-5 or q]: " choice
 
 case "$choice" in
   1)
@@ -82,6 +87,9 @@ case "$choice" in
     ;;
   4)
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
+    ;;
+  5)
+    bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
   u|U)
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
