@@ -1,3 +1,9 @@
+#!/bin/bash
+# -----------------------------------------------------------------------------
+# Script: handle_export_api.sh
+# Description: Sends exported commit data to AI API using settings from .env
+# Platform: Bash/Zsh compatible
+# -----------------------------------------------------------------------------
 
 # --- Resolve paths ---
 SCRIPT_PATH="$(realpath "$0")"
@@ -15,6 +21,11 @@ else
   exit 1
 fi
 
+# Load utility functions
+# shellcheck source=utils/api_utils.sh
+source "$SCRIPT_DIR/utils/api_utils.sh"
+# shellcheck source=utils/ui_utils.sh
+source "$SCRIPT_DIR/utils/ui_utils.sh"
 
 # --- Prerequisite checks ---
 if ! command -v jq >/dev/null 2>&1; then
@@ -27,173 +38,119 @@ if [[ ! -f "$ALL_IN_ONE_AI_MESSAGE_FILE" ]]; then
   exit 1
 fi
 
-
-# --- Build API URL ---
-if [[ "$API_PROVIDER" == "openai" ]]; then
-  API_URL="${API_BASE}chat/completions"
-  AUTH_HEADER="Authorization: Bearer ${API_KEY}"
-elif [[ "$API_PROVIDER" == "azure" ]]; then
-  API_URL="${API_BASE}openai/deployments/${DEPLOYMENT}/chat/completions?api-version=${API_VERSION}"
-  AUTH_HEADER="api-key: ${API_KEY}"
-else
-  echo "❌ Invalid API_PROVIDER in .env: $API_PROVIDER"
+# Validate API configuration
+if ! validate_api_config "$API_KEY" "$API_PROVIDER" "$API_BASE"; then
   exit 1
 fi
 
-# --- Compose and send request ---
+# --- Build API configuration ---
+API_CONFIG=$(build_api_config "$API_PROVIDER" "$API_BASE" "$API_KEY" "$DEPLOYMENT" "$API_VERSION")
+API_URL=$(echo "$API_CONFIG" | cut -d'|' -f1)
+AUTH_HEADER=$(echo "$API_CONFIG" | cut -d'|' -f2)
+
+# --- Compose and send initial request ---
 echo "🚀 Sending prompt to $API_PROVIDER..."
 
 USER_CONTENT=$(cat "$ALL_IN_ONE_AI_MESSAGE_FILE")
 
-# Build JSON payload
-if [[ "$API_PROVIDER" == "openai" ]]; then
-  JSON_PAYLOAD=$(jq -n \
-    --arg model "$DEPLOYMENT" \
-    --arg content "$USER_CONTENT" \
-    --arg temp "$TEMPERATURE" \
-    --argjson max_tokens "$MAX_TOKENS" \
-    '{
-      model: $model,
-      messages: [
-        { role: "system", content: "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." },
-        { role: "user", content: $content }
-      ],
-      temperature: ($temp | tonumber),
-      max_tokens: $max_tokens
-    }')
-else
-  JSON_PAYLOAD=$(jq -n \
-    --arg content "$USER_CONTENT" \
-    --arg temp "$TEMPERATURE" \
-    --argjson max_tokens "$MAX_TOKENS" \
-    '{
-      messages: [
-        { role: "system", content: "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." },
-        { role: "user", content: $content }
-      ],
-      temperature: ($temp | tonumber),
-      max_tokens: $max_tokens
-    }')
-fi
+# Build initial messages
+INITIAL_MESSAGES=$(build_conversation_messages "$USER_CONTENT")
 
-# Make the request
-RESPONSE=$(curl -s -X POST "$API_URL" \
-  -H "Content-Type: application/json" \
-  -H "$AUTH_HEADER" \
-  -d "$JSON_PAYLOAD")
+# Build and send initial request
+JSON_PAYLOAD=$(build_json_payload "$INITIAL_MESSAGES" "$API_PROVIDER" "$DEPLOYMENT" "$TEMPERATURE" "$MAX_TOKENS")
+RESPONSE=$(send_api_request "$JSON_PAYLOAD" "$API_URL" "$AUTH_HEADER")
 
 # --- Extract and show response ---
-COMMIT_LINE=$(echo "$RESPONSE" | jq -r '.choices[0].message.content' | sed -n 's/.*\(git commit -m .*"\).*/\1/p')
+COMMIT_LINE=$(get_commit_message "$RESPONSE")
 
 if [[ -n "$COMMIT_LINE" ]]; then
-  echo ""
-  echo "✅ AI suggested commit command:"
-  echo "$COMMIT_LINE"
+  # Main interaction loop
+  while true; do
+    show_commit_options "$COMMIT_LINE"
+    choice=$(get_user_choice)
 
-  # Let user edit or accept
-  if [[ -n "$BASH_VERSION" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-    read -e -i "$COMMIT_LINE" -p "📝 Press Enter to accept or edit the command: " FINAL_COMMIT
-  elif command -v zsh >/dev/null 2>&1; then
-    # macOS specific handling.
-    echo ""
-    read -r -p "📝 Press Enter to accept, type 'n' for [N]ano, 'v' for [V]i, or specify another editor: " choice
-    
-    if [[ -n "$choice" ]]; then
-      # Determine editor based on choice
-      case "$choice" in
-        [nN]*)
-          EDITOR_CHOICE="nano"
-          ;;
-        [vV]*)
-          EDITOR_CHOICE="vi"
-          ;;
-        *)
-          # Use whatever they typed as the editor command
-          EDITOR_CHOICE="$choice"
-          ;;
-      esac
-
-      # Verify editor exists
-      if ! command -v "$EDITOR_CHOICE" >/dev/null 2>&1; then
-        echo "⚠️  Editor '$EDITOR_CHOICE' not found. Falling back to vi."
-        EDITOR_CHOICE="vi"
-      fi
-
-      # Extract just the message content
-      COMMIT_MSG=$(echo "$COMMIT_LINE" | sed -n 's/git commit -m "\(.*\)"/\1/p')
-      
-      # Create temp file with just the message
-      TEMP_FILE=$(mktemp "${TMPDIR:-/tmp}/commit_msg.XXXXXX")
-      echo "$COMMIT_MSG" > "$TEMP_FILE"
-      
-      # Open editor with clear instructions
-      echo ""
-      echo "✏️  Editing with $EDITOR_CHOICE..."
-      echo "   - Modify your commit message"
-      echo "   - Save and exit to continue"
-      echo "   - Cancel the editor to abort"
-      echo ""
-      
-      if ! "$EDITOR_CHOICE" "$TEMP_FILE"; then
-        echo "⚠️  Editor exited with error. Aborting commit."
-        rm -f "$TEMP_FILE"
-        exit 1
-      fi
-      
-      # Read back the edited message
-      EDITED_MSG=$(cat "$TEMP_FILE")
-      rm "$TEMP_FILE"
-      
-      if [[ -z "$EDITED_MSG" ]]; then
-        echo "⚠️  Empty commit message. Aborting."
-        exit 1
-      fi
-      
-      # Reconstruct the full git command
-      FINAL_COMMIT="git commit -m \"$EDITED_MSG\""
-    else
-      # Accept as-is
-      FINAL_COMMIT="$COMMIT_LINE"
-    fi
-  else
-    echo ""
-    echo "📝 You can copy/paste and edit the following:"
-    echo "$COMMIT_LINE"
-    if command -v pbcopy >/dev/null 2>&1; then
-      echo "$COMMIT_LINE" | pbcopy
-      echo "📋 Commit command copied to clipboard!"
-    fi
-    FINAL_COMMIT=""
-  fi
+    case "$choice" in
+      "")
+        # Accept as-is
+        FINAL_COMMIT="$COMMIT_LINE"
+        break
+        ;;
+      [Ee])
+        # Edit manually
+        FINAL_COMMIT=$(edit_commit_message "$COMMIT_LINE")
+        
+        if [[ $? -ne 0 ]]; then
+          exit 1
+        fi
+        
+        if ! validate_commit_message "$FINAL_COMMIT"; then
+          exit 1
+        fi
+        
+        break
+        ;;
+      [Rr])
+        # Regenerate message
+        echo ""
+        echo "🔄 Regenerating commit message..."
+        
+        # Add context that previous output was not accepted
+        REGENERATE_MESSAGES=$(build_conversation_messages \
+          "$USER_CONTENT" \
+          "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." \
+          "$COMMIT_LINE" \
+          "The previous commit message was not accepted. Please generate a different commit message with a different approach or style.")
+        
+        JSON_PAYLOAD=$(build_json_payload "$REGENERATE_MESSAGES" "$API_PROVIDER" "$DEPLOYMENT" "$TEMPERATURE" "$MAX_TOKENS")
+        RESPONSE=$(send_api_request "$JSON_PAYLOAD" "$API_URL" "$AUTH_HEADER")
+        NEW_COMMIT_LINE=$(get_commit_message "$RESPONSE")
+        
+        if [[ -n "$NEW_COMMIT_LINE" ]]; then
+          COMMIT_LINE="$NEW_COMMIT_LINE"
+          show_regeneration_success
+        else
+          show_api_error "regenerate"
+          exit 1
+        fi
+        ;;
+      [Cc])
+        # Chat with AI
+        chat_prompt=$(get_chat_instructions)
+        
+        if [[ -z "$chat_prompt" ]]; then
+          echo "No chat message provided. Keeping current message."
+        else
+          echo ""
+          echo "💬 Chatting with AI..."
+          
+          # Add chat context
+          CHAT_MESSAGES=$(build_conversation_messages \
+            "$USER_CONTENT" \
+            "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages." \
+            "$COMMIT_LINE" \
+            "$chat_prompt")
+          
+          JSON_PAYLOAD=$(build_json_payload "$CHAT_MESSAGES" "$API_PROVIDER" "$DEPLOYMENT" "$TEMPERATURE" "$MAX_TOKENS")
+          RESPONSE=$(send_api_request "$JSON_PAYLOAD" "$API_URL" "$AUTH_HEADER")
+          NEW_COMMIT_LINE=$(get_commit_message "$RESPONSE")
+          
+          if [[ -n "$NEW_COMMIT_LINE" ]]; then
+            COMMIT_LINE="$NEW_COMMIT_LINE"
+            show_improvement_success
+          else
+            show_api_error "chat"
+            exit 1
+          fi
+        fi
+        ;;
+      *)
+        show_invalid_option
+        ;;
+    esac
+  done
 
   if [[ -n "$FINAL_COMMIT" ]]; then
-    echo ""
-    echo "🚀 Final commit command:"
-    echo "$FINAL_COMMIT"
-    read -r -p "👉 Do you want to run this commit command now? [y/N]: " CONFIRM
-    if [[ "$CONFIRM" =~ ^[Yy]$ ]]; then
-      eval "$FINAL_COMMIT"
-      echo "✅ Commit executed."
-
-      # Ask user to push commits immeadiately to the remote.
-      echo ""
-      read -r -p "🚀 Do you want to push the commit to the remote now? [y/N]: " PUSH_CONFIRM
-      if [[ "$PUSH_CONFIRM" =~ ^[Yy]$ ]]; then
-        echo "📡 Pushing changes to remote..."
-        git push
-        if [[ $? -eq 0 ]]; then
-          echo "✅ Push successful!"
-        else
-          echo "❌ Push failed. Please check your Git configuration or network."
-        fi
-      else
-        echo "ℹ️ Push skipped. You can run 'git push' later manually."
-      fi
-
-    else
-      echo "ℹ️ Commit not executed. You can run it manually:"
-      echo "$FINAL_COMMIT"
-    fi
+    execute_commit "$FINAL_COMMIT"
   fi
 else
   echo "⚠️ Could not extract commit command from AI response."
