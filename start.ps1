@@ -70,14 +70,17 @@ if ($updateAvailable -eq "1") {
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-4, u, q]"
+$choice = Read-Host "Enter your choice [1-4, u, q, or option name]"
 
-switch ($choice) {
-    "1" { & "$RootDir\main_features\commit\git_export_staged.ps1" }
-    "2" { & "$RootDir\main_features\git\git_log_explorer.ps1" }
-    "3" { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
-    "4" { & "$RootDir\main_features\git\reset_local_changes.ps1" }
-    "u" {
+# Convert choice to lowercase for easier matching
+$choiceLower = $choice.ToLower()
+
+switch ($choiceLower) {
+    { $_ -match "^(1|commit|--commit|-c|c)$" } { & "$RootDir\main_features\commit\git_export_staged.ps1" }
+    { $_ -match "^(2|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
+    { $_ -match "^(3|readme|--readme|-r|r)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
+    { $_ -match "^(4|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
+    { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
             & "$RootDir\start.ps1"
@@ -85,6 +88,9 @@ switch ($choice) {
             Write-Host "Already up to date."
         }
     }
-    { $_ -match "^[qQ]$" } { Write-Host "Goodbye."; exit }
-    default { Write-Host "Invalid choice." }
+    { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
+    default { 
+        Write-Host "Invalid choice: $choice"
+        Write-Host "Valid options: 1-4, u, q, or option names like 'commit', '--log', '-r', etc."
+    }
 }

@@ -74,25 +74,28 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-5 or q]: " choice
+read -p "Enter your choice [1-5, u, q, or option name]: " choice
 
-case "$choice" in
-  1)
+# Convert choice to lowercase for easier matching
+choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
+
+case "$choice_lower" in
+  1|"commit"|"--commit"|"-c"|"c")
     bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
     ;;
-  2)
+  2|"merge"|"--merge"|"-m"|"m")
     bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
     ;;
-  3)
+  3|"log"|"--log"|"-l"|"l")
     bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
     ;;
-  4)
+  4|"readme"|"--readme"|"-r"|"r")
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
     ;;
-  5)
+  5|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
     bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
-  u|U)
+  "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
       # Auto update and restart script.
       bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -101,11 +104,12 @@ case "$choice" in
       echo "✅ Already up to date with the latest version of Dev Tools."
     fi
     ;;
-  q|Q)
+  "q"|"quit"|"exit")
     echo "👋 Bye!"
     exit 0
     ;;
   *)
-    echo "❌ Invalid choice."
+    echo "❌ Invalid choice: $choice"
+    echo "Valid options: 1-5, u, q, or option names like 'commit', '--merge', '-l', etc."
     ;;
 esac
