@@ -40,6 +40,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --merge  | -m   → Run git_export_merge"
             echo "  --log    | -l   → Run git_log_explorer"
             echo "  --readme | -r   → Show README creation instructions"
+            echo "  --reset  | -x   → Reset Local Git Changes"
             exit 1
             ;;
     esac
