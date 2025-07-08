@@ -32,6 +32,13 @@ fi
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
+# --- Sync check before amend ---
+echo "🔍 Checking if branch is in sync with remote..."
+if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
+    echo "❌ Sync check failed. Please resolve sync issues before amending."
+    exit 1
+fi
+
 # --- Check if we're in a git repository ---
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
     echo "❌ Not in a git repository. Please navigate to a git repository and try again."

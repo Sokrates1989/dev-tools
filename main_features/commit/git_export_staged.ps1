@@ -13,6 +13,14 @@ $CommitMsgFile     = Join-Path $ScriptDir "commit_message_prompt.txt"
 # Git update check.
 & "$RootDir\global_functions\check_for_updates.ps1"
 
+# --- Sync check before commit ---
+Write-Host "🔍 Checking if branch is in sync with remote..." -ForegroundColor Cyan
+$syncResult = & "$RootDir\global_functions\sync_check.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Sync check failed. Please resolve sync issues before committing." -ForegroundColor Red
+    exit 1
+}
+
 # Load .env file.
 . "$RootDir\global_functions\load_dotenv.ps1"
 Load-DotEnv

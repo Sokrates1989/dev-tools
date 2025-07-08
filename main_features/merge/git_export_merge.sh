@@ -23,6 +23,13 @@ fi
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
+# --- Sync check before merge ---
+echo "🔍 Checking if branch is in sync with remote..."
+if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
+    echo "❌ Sync check failed. Please resolve sync issues before merging."
+    exit 1
+fi
+
 # Detect uncommitted files.
 if ! git diff --quiet || ! git diff --cached --quiet; then
   echo "⚠️ You have uncommitted changes in your working directory."

@@ -23,6 +23,14 @@ Load-DotEnv
 # --- Git update check ---
 & "$RootDir\global_functions\check_for_updates.ps1"
 
+# --- Sync check before amend ---
+Write-Host "🔍 Checking if branch is in sync with remote..." -ForegroundColor Cyan
+$syncResult = & "$RootDir\global_functions\sync_check.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "❌ Sync check failed. Please resolve sync issues before amending." -ForegroundColor Red
+    exit 1
+}
+
 # --- Check if we're in a git repository ---
 try {
     $null = git rev-parse --git-dir 2>$null

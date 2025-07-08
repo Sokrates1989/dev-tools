@@ -36,6 +36,13 @@ fi
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
+# --- Sync check before commit ---
+echo "🔍 Checking if branch is in sync with remote..."
+if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
+    echo "❌ Sync check failed. Please resolve sync issues before committing."
+    exit 1
+fi
+
 # Clean up previous outputs.
 rm -rf "$DEST_DIR"
 mkdir -p "$DEST_DIR"
