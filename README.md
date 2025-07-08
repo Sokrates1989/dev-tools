@@ -89,20 +89,7 @@ Download and install from: https://git-scm.com/download/win
 
 Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
 
-Simply copy and run the following block in your terminal:
-
-```bash
-ORIGINAL_DIR=$(pwd)
-mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
-curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/linux-cli.sh
-bash linux-cli.sh
-cd "$ORIGINAL_DIR"
-rm -rf /tmp/devtools-setup
-
-# Apply PATH update in current shell (if not already applied)
-export PATH="$HOME/.local/bin:$PATH"
-hash -r
-```
+See [INSTALL.md](INSTALL.md) for detailed installation commands.
 
 ---
 
