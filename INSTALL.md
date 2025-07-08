@@ -2,12 +2,30 @@
 
 ## 🍏 macOS / 🐧 Linux Installation
 
-Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
+### Option 1: Direct Download (May require authentication)
 
+Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent  
+Copy below and execute in the terminal:
 ```bash
 ORIGINAL_DIR=$(pwd)
 mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
 curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
+bash macos.sh
+cd "$ORIGINAL_DIR"
+rm -rf /tmp/devtools-setup
+```
+
+**If you see HTML content instead of the script, use this alternative:**
+
+```bash
+ORIGINAL_DIR=$(pwd)
+mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
+
+# Create macos.sh manually
+touch macos.sh
+nano macos.sh
+# Copy content from: https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
+
 bash macos.sh
 cd "$ORIGINAL_DIR"
 rm -rf /tmp/devtools-setup
@@ -21,7 +39,7 @@ Install Dev Tools into `C:\tools\dev-tools` and make it available globally:
 # Run in PowerShell as Administrator
 New-Item -ItemType Directory -Path "C:\tools\dev-tools" -Force
 cd C:\tools\dev-tools
-git clone https://github.com/Sokrates1989/dev-tools.git .
+git clone https://gitlab.com/speedie3/dev-tools-engaige.git .
 Copy-Item "C:\tools\dev-tools\.env.template" "C:\tools\dev-tools\.env" -Force
 notepad $PROFILE
 # Add these lines to your profile:
