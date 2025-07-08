@@ -30,6 +30,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/amend/git_amend.sh"
             exit 0
             ;;
+        --remove-gitignored|-i)
+            bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -46,6 +50,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --readme | -r   → Show README creation instructions"
             echo "  --reset  | -x   → Reset Local Git Changes"
             echo "  --amend  | -a   → Amend Last Commit"
+            echo "  --remove-gitignored | -i → Remove Gitignored Files"
             exit 1
             ;;
     esac
@@ -70,6 +75,7 @@ echo "3) 📜 Git log explorer                  [--log    | -l]"
 echo "4) 📘 Show README creation instructions [--readme | -r]"
 echo "5) 🧹 Reset Local Git Changes           [--reset  | -x]"
 echo "6) 🔄 Amend Last Commit                 [--amend  | -a]"
+echo "7) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -80,7 +86,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-6, u, q, or option name]: " choice
+read -p "Enter your choice [1-7, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -103,6 +109,9 @@ case "$choice_lower" in
     ;;
   6|"amend"|"--amend"|"-a"|"a")
     bash "$ROOT_DIR/main_features/amend/git_amend.sh"
+    ;;
+  7|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"gitignored"|"--gitignored")
+    bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
