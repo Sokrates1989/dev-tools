@@ -23,18 +23,22 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
    - [🍏 macOS](#-macos-usage)
    - [🪟 Windows](#-windows-usage)
 
-4. [🧭 Toolbox Features](#-toolbox-features)
+4. [🗑️ Uninstallation](#-uninstallation)
+   - [🐧 Linux / 🍏 macOS](#-linux--macos-uninstallation)
+   - [🪟 Windows](#-windows-uninstallation)
+
+5. [🧭 Toolbox Features](#-toolbox-features)
    - [🧱 Commit Exporter](#-commit-exporter)
    - [🔍 Git Log Explorer](#-git-log-explorer)
 
-5. [🪟 Platform Support](#-platform-support)
+6. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
    - [🪟 Windows PowerShell](#-windows-powershell)
 
-6. [🧪 Extending the Toolbox](#-extending-the-toolbox)
+7. [🧪 Extending the Toolbox](#-extending-the-toolbox)
    - [➕ Add More Tools](#-add-more-tools)
 
-7. [🚀 Summary](#-summary)
+8. [🚀 Summary](#-summary)
 
 ---
 
@@ -106,76 +110,13 @@ hash -r
 
 Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
 
-Simply copy and run the following block in your terminal:
-
-```bash
-ORIGINAL_DIR=$(pwd)
-mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
-curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
-bash macos.sh
-cd "$ORIGINAL_DIR"
-rm -rf /tmp/devtools-setup
-```
+See [INSTALL.md](INSTALL.md) for detailed installation commands.
 
 #### 🪟 Windows (System-Wide Installation with Global Commands)
 
 Install Dev Tools into `C:\tools\dev-tools` and make it available globally using `dev-tools` and `open`.
 
-Simply copy and run the following block in a PowerShell window **run as Administrator**:
-
-```powershell
-# Step 1: Create the target directory structure.
-New-Item -ItemType Directory -Path "C:\tools\dev-tools" -Force
-
-# Step 2: Take ownership of the dev-tools folder (avoids permission issues).
-$acl = Get-Acl "C:\tools\dev-tools"
-$acl.SetOwner([System.Security.Principal.NTAccount]"$env:USERNAME")
-Set-Acl "C:\tools\dev-tools" $acl
-
-# Step 3 (optional but recommended): Grant yourself full access recursively.
-$rule = New-Object System.Security.AccessControl.FileSystemAccessRule(
-    "$env:USERNAME", "FullControl", "ContainerInherit,ObjectInherit", "None", "Allow"
-)
-$acl.AddAccessRule($rule)
-Set-Acl "C:\tools\dev-tools" $acl
-
-# Step 4: Clone the Dev Tools repository.
-cd C:\tools\dev-tools
-git clone https://github.com/Sokrates1989/dev-tools.git .
-
-# Step 5: Set up quick commands for this session.
-Set-Alias dev-tools "C:\tools\dev-tools\start.ps1"
-Set-Alias open       "C:\tools\dev-tools\global_functions\open.ps1"
-
-# Step 6: Show alias lines and prompt before editing profile.
-Write-Host ""
-Write-Host "📋 Copy the lines below, then paste them into the file that opens:"
-Write-Host ""
-Write-Host "# Dev-tools (https://github.com/Sokrates1989/dev-tools)"
-Write-Host "Set-Alias dev-tools `"C:\tools\dev-tools\start.ps1`""
-Write-Host "Set-Alias open       `"C:\tools\dev-tools\global_functions\open.ps1`""
-Write-Host ""
-Read-Host "📄 Press Enter to open your PowerShell profile..."
-notepad $PROFILE
-
-# Step 7: Create .env file from .env.template.
-Copy-Item "C:\tools\dev-tools\.env.template" "C:\tools\dev-tools\.env" -Force
-
-# Step 8: Configure settings.
-Write-Host ""
-Write-Host "🤖 AI Usage Mode Setup:"
-Write-Host "   - 'manual' → prepares the prompt and opens it for copy/paste into ChatGPT or other AI tools"
-Write-Host "   - 'api'    → directly calls the ChatGPT API using your key and model settings (must provide AI-API settings below)"
-Write-Host ""
-Read-Host "📄 Press Enter to open your .env file for editing..."
-notepad "C:\tools\dev-tools\.env"
-
-
-# Step 9: Done: Luanch the tool.
-Write-Host ""
-Write-Host "After having saved the .env file try it out: Just type:"
-Write-Host "dev-tools"
-```
+See [INSTALL.md](INSTALL.md) for detailed installation commands.
 
 
 ### 🧬 Environment Setup (Required for AI-based features)
@@ -206,9 +147,9 @@ OPENAI_API_KEY=sk-xxxxxx-your-key-here
 Installed to `/tools/dev-tools`:
 
 ```bash
-bash /tools/dev-tools/start.sh            # interactive mode
-bash /tools/dev-tools/start.sh --commit   # quick launch: export staged files
-bash /tools/dev-tools/start.sh --log      # quick launch: Git log explorer
+dev-tools            # interactive mode
+dev-tools --commit   # quick launch: export staged files
+dev-tools --log      # quick launch: Git log explorer
 ```
 
 ---
@@ -233,6 +174,46 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 open .           # open current folder in Explorer
 open C:\anywhere
+
+---
+
+## 🗑️ Uninstallation
+
+### 🐧 Linux / 🍏 macOS Uninstallation
+
+To completely remove Dev Tools and all its components, run the uninstall script:
+
+```bash
+# Run the uninstall script from the installed location:
+bash ~/tools/dev-tools/setup/uninstall.sh
+```
+
+The uninstaller will:
+- ✅ Remove the global `dev-tools` command
+- ✅ Delete the `~/tools/dev-tools` directory
+- ✅ Remove PATH updates from your shell config (`.zshrc` or `.bashrc`)
+- ✅ Clean up empty directories
+- ✅ Create backups of modified config files
+
+### 🪟 Windows Uninstallation
+
+To completely remove Dev Tools from Windows:
+
+```powershell
+# Remove the aliases from your PowerShell profile
+notepad $PROFILE
+# Delete these lines from the file:
+# Set-Alias dev-tools "C:\tools\dev-tools\start.ps1"
+# Set-Alias open       "C:\tools\dev-tools\global_functions\open.ps1"
+
+# Remove the installation directory
+Remove-Item -Recurse -Force "C:\tools\dev-tools"
+
+# Remove the tools directory if empty
+if ((Get-ChildItem "C:\tools" -ErrorAction SilentlyContinue | Measure-Object).Count -eq 0) {
+    Remove-Item "C:\tools"
+}
+```
 
 ---
 

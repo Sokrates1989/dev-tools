@@ -1,0 +1,43 @@
+# 🚀 Quick Install Commands
+
+## 🍏 macOS / 🐧 Linux Installation
+
+Install Dev Tools under `~/tools/dev-tools`, create a global `dev-tools` command, and make it persistent:
+
+```bash
+ORIGINAL_DIR=$(pwd)
+mkdir -p /tmp/devtools-setup && cd /tmp/devtools-setup
+curl -sO https://raw.githubusercontent.com/Sokrates1989/dev-tools/main/setup/macos.sh
+bash macos.sh
+cd "$ORIGINAL_DIR"
+rm -rf /tmp/devtools-setup
+```
+
+## 🪟 Windows Installation
+
+Install Dev Tools into `C:\tools\dev-tools` and make it available globally:
+
+```powershell
+# Run in PowerShell as Administrator
+New-Item -ItemType Directory -Path "C:\tools\dev-tools" -Force
+cd C:\tools\dev-tools
+git clone https://github.com/Sokrates1989/dev-tools.git .
+Copy-Item "C:\tools\dev-tools\.env.template" "C:\tools\dev-tools\.env" -Force
+notepad $PROFILE
+# Add these lines to your profile:
+# Set-Alias dev-tools "C:\tools\dev-tools\start.ps1"
+# Set-Alias open       "C:\tools\dev-tools\global_functions\open.ps1"
+```
+
+## 🗑️ Uninstallation
+
+### macOS / Linux
+```bash
+bash ~/tools/dev-tools/setup/uninstall.sh
+```
+
+### Windows
+```powershell
+Remove-Item -Recurse -Force "C:\tools\dev-tools"
+# Remove aliases from PowerShell profile manually
+``` 
