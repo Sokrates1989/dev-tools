@@ -46,6 +46,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
             exit 0
             ;;
+        --create-branch|-n)
+            bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -101,14 +105,15 @@ echo "🔄 Branch Management (4-6):"
 echo "4) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b]"
 echo "5) 🔄 Sync All Branches                 [--sync-branches | -s]"
 echo "6) 📡 Track Remote Branches             [--track-remote | -t]"
+echo "7) 🌱 Create New Branch                  [--create-branch | -n]"
 echo ""
-echo "🔍 Debug & Investigation (7-8):"
-echo "7) 📜 Git log explorer                  [--log    | -l]"
-echo "8) 🔄 Amend Last Commit                 [--amend  | -a]"
+echo "🔍 Debug & Investigation (8-9):"
+echo "8) 📜 Git log explorer                  [--log    | -l]"
+echo "9) 🔄 Amend Last Commit                 [--amend  | -a]"
 echo ""
-echo "🧹 Cleanup & Reset (9-10):"
-echo "9) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
-echo "10) 🧹 Reset Local Git Changes          [--reset  | -x]"
+echo "�� Cleanup & Reset (10-11):"
+echo "10) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
+echo "11) 🧹 Reset Local Git Changes          [--reset  | -x]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -119,7 +124,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-10, u, q, or option name]: " choice
+read -p "Enter your choice [1-11, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -143,16 +148,19 @@ case "$choice_lower" in
   6|"track-remote"|"--track-remote"|"-t"|"t"|"track"|"--track")
     bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
     ;;
-  7|"log"|"--log"|"-l"|"l")
+  7|"create-branch"|"--create-branch"|"-n"|"n"|"new-branch"|"newbranch")
+    bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
+    ;;
+  8|"log"|"--log"|"-l"|"l")
     bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
     ;;
-  8|"amend"|"--amend"|"-a"|"a")
+  9|"amend"|"--amend"|"-a"|"a")
     bash "$ROOT_DIR/main_features/amend/git_amend.sh"
     ;;
-  9|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"gitignored"|"--gitignored")
+  10|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"gitignored"|"--gitignored")
     bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
     ;;
-  10|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
+  11|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
     bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
   "u"|"update"|"--update"|"-u")
@@ -170,6 +178,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-10, u, q, or option names like 'commit', '--merge', '-l', etc."
+    echo "Valid options: 1-11, u, q, or option names like 'commit', '--merge', '-l', etc."
     ;;
 esac

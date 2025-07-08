@@ -21,7 +21,9 @@ param (
     [switch]$m,  # merge
     [switch]$merge,  # merge
     [switch]$t,  # track-remote
-    [switch]$track-remote  # track-remote
+    [switch]$track-remote,  # track-remote
+    [switch]$n,  # create-branch
+    [switch]$'create-branch'  # create-branch
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -83,6 +85,10 @@ if ($t -or $track-remote) {
     & "$RootDir\main_features\track-remote\track_remote.ps1"
     return
 }
+if ($n -or $'create-branch') {
+    & "$RootDir\main_features\create-branch\create_branch.ps1"
+    return
+}
 
 
 
@@ -104,22 +110,23 @@ Write-Host ""
 Write-Host "🔄 Branch Management (4-6):"
 Write-Host "4) 🌿 Clean Up Merged Branches"
 Write-Host "5) 🔄 Sync All Branches"
-Write-Host "6) 📡 Track Remote Branches"
+Write-Host "6) 📡 Track Remote Branches             [--track-remote | -t]"
+Write-Host "7) 🌱 Create New Branch                  [--create-branch | -n]"
 Write-Host ""
-Write-Host "🔍 Debug & Investigation (7-8):"
-Write-Host "7) 📜 Git log explorer"
-Write-Host "8) 🔄 Amend Last Commit"
+Write-Host "🔍 Debug & Investigation (8-9):"
+Write-Host "8) 📜 Git log explorer                  [--log    | -l]"
+Write-Host "9) 🔄 Amend Last Commit                 [--amend  | -a]"
 Write-Host ""
-Write-Host "🧹 Cleanup & Reset (9-10):"
-Write-Host "9) 🧹 Remove Gitignored Files"
-Write-Host "10) 🧹 Reset Local Git Changes"
+Write-Host "🧹 Cleanup & Reset (10-11):"
+Write-Host "10) 🧹 Remove Gitignored Files"
+Write-Host "11) 🧹 Reset Local Git Changes"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-10, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-11, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -131,10 +138,11 @@ switch ($choiceLower) {
     { $_ -match "^(4|branch-cleanup|--branch-cleanup|-b|b|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
     { $_ -match "^(5|sync-branches|--sync-branches|-s|s|sync|--sync)$" } { & "$RootDir\main_features\sync-branches\sync_branches.ps1" }
     { $_ -match "^(6|track-remote|--track-remote|-t|t|track|--track)$" } { & "$RootDir\main_features\track-remote\track_remote.ps1" }
-    { $_ -match "^(7|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
-    { $_ -match "^(8|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
-    { $_ -match "^(9|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
-    { $_ -match "^(10|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
+    { $_ -match "^(7|create-branch|--create-branch|-n|n|new-branch|newbranch)$" } { & "$RootDir\main_features\create-branch\create_branch.ps1" }
+    { $_ -match "^(8|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
+    { $_ -match "^(9|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
+    { $_ -match "^(10|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
+    { $_ -match "^(11|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -146,6 +154,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-10, u, q, or option names like 'commit', '--log', '-r', etc."
+        Write-Host "Valid options: 1-11, u, q, or option names like 'commit', '--log', '-r', etc."
     }
 }
