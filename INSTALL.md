@@ -1,6 +1,6 @@
 # 🚀 Quick Install Commands
 
-## 🍏 macOS / 🐧 Linux Installation
+## 🍏 macOS Installation
 
 ### Option 1: Direct Download (May require authentication)
 
