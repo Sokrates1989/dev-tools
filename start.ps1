@@ -13,7 +13,9 @@ param (
     [switch]$a,  # amend
     [switch]$amend,  # amend
     [switch]$i,  # remove-gitignored
-    [switch]$remove-gitignored  # remove-gitignored
+    [switch]$remove-gitignored,  # remove-gitignored
+    [switch]$b,  # branch-cleanup
+    [switch]$branch-cleanup  # branch-cleanup
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -59,6 +61,10 @@ if ($i -or $remove-gitignored) {
     & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1"
     return
 }
+if ($b -or $branch-cleanup) {
+    & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1"
+    return
+}
 
 
 
@@ -78,13 +84,14 @@ Write-Host "3) Show README instructions"
 Write-Host "4) Forget all local changes and reset branch"
 Write-Host "5) Amend Last Commit"
 Write-Host "6) Remove Gitignored Files"
+Write-Host "7) Clean Up Merged Branches"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-6, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-7, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -96,6 +103,7 @@ switch ($choiceLower) {
     { $_ -match "^(4|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(5|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
     { $_ -match "^(6|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
+    { $_ -match "^(7|branch-cleanup|--branch-cleanup|-b|b|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -107,6 +115,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-6, u, q, or option names like 'commit', '--log', '-r', etc."
+        Write-Host "Valid options: 1-7, u, q, or option names like 'commit', '--log', '-r', etc."
     }
 }
