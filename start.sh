@@ -26,6 +26,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
             exit 0
             ;;
+        --amend|-a)
+            bash "$ROOT_DIR/main_features/amend/git_amend.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -41,6 +45,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --log    | -l   → Run git_log_explorer"
             echo "  --readme | -r   → Show README creation instructions"
             echo "  --reset  | -x   → Reset Local Git Changes"
+            echo "  --amend  | -a   → Amend Last Commit"
             exit 1
             ;;
     esac
@@ -64,6 +69,7 @@ echo "2) 🔀 Merge commit assistant            [--merge  | -m]"
 echo "3) 📜 Git log explorer                  [--log    | -l]"
 echo "4) 📘 Show README creation instructions [--readme | -r]"
 echo "5) 🧹 Reset Local Git Changes           [--reset  | -x]"
+echo "6) 🔄 Amend Last Commit                 [--amend  | -a]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -74,7 +80,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-5, u, q, or option name]: " choice
+read -p "Enter your choice [1-6, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -94,6 +100,9 @@ case "$choice_lower" in
     ;;
   5|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
     bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
+    ;;
+  6|"amend"|"--amend"|"-a"|"a")
+    bash "$ROOT_DIR/main_features/amend/git_amend.sh"
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then

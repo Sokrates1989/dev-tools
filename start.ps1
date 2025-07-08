@@ -9,7 +9,9 @@ param (
     [switch]$update,  # update
     [switch]$x,  # reset
     [switch]$reset,  # reset
-    [switch]$revert  # reset
+    [switch]$revert,  # reset
+    [switch]$a,  # amend
+    [switch]$amend  # amend
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -47,6 +49,10 @@ if ($x -or $reset -or $revert) {
     & "$RootDir\main_features\git\reset_local_changes.ps1"
     return
 }
+if ($a -or $amend) {
+    & "$RootDir\main_features\amend\git_amend.ps1"
+    return
+}
 
 
 
@@ -64,13 +70,14 @@ Write-Host "1) Export staged Git changes"
 Write-Host "2) Git log explorer"
 Write-Host "3) Show README instructions"
 Write-Host "4) Forget all local changes and reset branch"
+Write-Host "5) Amend Last Commit"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-4, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-5, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -80,6 +87,7 @@ switch ($choiceLower) {
     { $_ -match "^(2|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
     { $_ -match "^(3|readme|--readme|-r|r)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
     { $_ -match "^(4|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
+    { $_ -match "^(5|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -91,6 +99,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-4, u, q, or option names like 'commit', '--log', '-r', etc."
+        Write-Host "Valid options: 1-5, u, q, or option names like 'commit', '--log', '-r', etc."
     }
 }
