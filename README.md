@@ -24,7 +24,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
    - [🪟 Windows](#-windows-usage)
 
 4. [🗑️ Uninstallation](#-uninstallation)
-   - [🐧 Linux / 🍏 macOS](#-linux--macos-uninstallation)
+   - [🐧 Linux / 🍏 macOS](#-linux---macos-uninstallation)
    - [🪟 Windows](#-windows-uninstallation)
 
 5. [🧭 Toolbox Features](#-toolbox-features)
@@ -174,7 +174,7 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 open .           # open current folder in Explorer
 open C:\anywhere
-
+```
 ---
 
 ## 🗑️ Uninstallation
