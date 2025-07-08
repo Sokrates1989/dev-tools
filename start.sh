@@ -38,6 +38,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
             exit 0
             ;;
+        --sync-branches|-s)
+            bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -56,6 +60,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --amend  | -a   → Amend Last Commit"
             echo "  --remove-gitignored | -i → Remove Gitignored Files"
             echo "  --branch-cleanup | -b → Clean Up Merged Branches"
+            echo "  --sync-branches | -s → Sync All Branches"
             exit 1
             ;;
     esac
@@ -82,6 +87,7 @@ echo "5) 🧹 Reset Local Git Changes           [--reset  | -x]"
 echo "6) 🔄 Amend Last Commit                 [--amend  | -a]"
 echo "7) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
 echo "8) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b]"
+echo "9) 🔄 Sync All Branches                 [--sync-branches | -s]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -92,7 +98,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-8, u, q, or option name]: " choice
+read -p "Enter your choice [1-9, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -121,6 +127,9 @@ case "$choice_lower" in
     ;;
   8|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"cleanup"|"--cleanup")
     bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
+    ;;
+  9|"sync-branches"|"--sync-branches"|"-s"|"s"|"sync"|"--sync")
+    bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
