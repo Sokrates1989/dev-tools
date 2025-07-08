@@ -16,7 +16,7 @@
 
 # --- Resolve paths ---
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$RootDir = Resolve-Path "$ScriptDir\..\.." | Select-Object -ExpandProperty Path
+$RootDir = Resolve-Path "$ScriptDir\.." | Select-Object -ExpandProperty Path
 
 # Load environment variables.
 . "$RootDir\global_functions\load_dotenv.ps1"
