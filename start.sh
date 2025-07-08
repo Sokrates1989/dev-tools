@@ -56,16 +56,24 @@ if [[ $# -gt 0 ]]; then
             echo "❌ Unknown argument: $1"
             echo ""
             echo "Usage:"
-            echo "  --commit | -c   → Run git_export_staged"
-            echo "  --merge  | -m   → Run git_export_merge"
-            echo "  --log    | -l   → Run git_log_explorer"
+            echo ""
+            echo "🔄 Core Operations:"
+            echo "  --commit | -c   → Commit Message Helper"
+            echo "  --merge  | -m   → Merge commit assistant"
             echo "  --readme | -r   → Show README creation instructions"
-            echo "  --reset  | -x   → Reset Local Git Changes"
-            echo "  --amend  | -a   → Amend Last Commit"
-            echo "  --remove-gitignored | -i → Remove Gitignored Files"
+            echo ""
+            echo "🔄 Branch Management:"
             echo "  --branch-cleanup | -b → Clean Up Merged Branches"
             echo "  --sync-branches | -s → Sync All Branches"
             echo "  --track-remote | -t → Track Remote Branches"
+            echo ""
+            echo "🔍 Debug & Investigation:"
+            echo "  --log    | -l   → Git log explorer"
+            echo "  --amend  | -a   → Amend Last Commit"
+            echo ""
+            echo "🧹 Cleanup & Reset:"
+            echo "  --remove-gitignored | -i → Remove Gitignored Files"
+            echo "  --reset  | -x   → Reset Local Git Changes"
             exit 1
             ;;
     esac
@@ -84,16 +92,23 @@ echo "🛠️  Dev Tools Launcher"
 echo "======================"
 echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
-echo "1) 📤 Export staged Git changes         [--commit | -c]"
+echo "🔄 Core Operations (1-3):"
+echo "1) 📤 Commit Message Helper             [--commit | -c]"
 echo "2) 🔀 Merge commit assistant            [--merge  | -m]"
-echo "3) 📜 Git log explorer                  [--log    | -l]"
-echo "4) 📘 Show README creation instructions [--readme | -r]"
-echo "5) 🧹 Reset Local Git Changes           [--reset  | -x]"
-echo "6) 🔄 Amend Last Commit                 [--amend  | -a]"
-echo "7) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
-echo "8) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b]"
-echo "9) 🔄 Sync All Branches                 [--sync-branches | -s]"
-echo "10) 📡 Track Remote Branches            [--track-remote | -t]"
+echo "3) 📘 Show README creation instructions [--readme | -r]"
+echo ""
+echo "🔄 Branch Management (4-6):"
+echo "4) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b]"
+echo "5) 🔄 Sync All Branches                 [--sync-branches | -s]"
+echo "6) 📡 Track Remote Branches             [--track-remote | -t]"
+echo ""
+echo "🔍 Debug & Investigation (7-8):"
+echo "7) 📜 Git log explorer                  [--log    | -l]"
+echo "8) 🔄 Amend Last Commit                 [--amend  | -a]"
+echo ""
+echo "🧹 Cleanup & Reset (9-10):"
+echo "9) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
+echo "10) 🧹 Reset Local Git Changes          [--reset  | -x]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -116,29 +131,29 @@ case "$choice_lower" in
   2|"merge"|"--merge"|"-m"|"m")
     bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
     ;;
-  3|"log"|"--log"|"-l"|"l")
-    bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
-    ;;
-  4|"readme"|"--readme"|"-r"|"r")
+  3|"readme"|"--readme"|"-r"|"r")
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
     ;;
-  5|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
-    bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
-    ;;
-  6|"amend"|"--amend"|"-a"|"a")
-    bash "$ROOT_DIR/main_features/amend/git_amend.sh"
-    ;;
-  7|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"gitignored"|"--gitignored")
-    bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
-    ;;
-  8|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"cleanup"|"--cleanup")
+  4|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"cleanup"|"--cleanup")
     bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
     ;;
-  9|"sync-branches"|"--sync-branches"|"-s"|"s"|"sync"|"--sync")
+  5|"sync-branches"|"--sync-branches"|"-s"|"s"|"sync"|"--sync")
     bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
     ;;
-  10|"track-remote"|"--track-remote"|"-t"|"t"|"track"|"--track")
+  6|"track-remote"|"--track-remote"|"-t"|"t"|"track"|"--track")
     bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
+    ;;
+  7|"log"|"--log"|"-l"|"l")
+    bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
+    ;;
+  8|"amend"|"--amend"|"-a"|"a")
+    bash "$ROOT_DIR/main_features/amend/git_amend.sh"
+    ;;
+  9|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"gitignored"|"--gitignored")
+    bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
+    ;;
+  10|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert")
+    bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then

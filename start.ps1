@@ -96,16 +96,23 @@ Write-Host "Dev Tools Launcher"
 Write-Host "==================="
 Write-Host "Choose a tool to run:"
 Write-Host ""
-Write-Host "1) Export staged Git changes"
-Write-Host "2) Git log explorer"
-Write-Host "3) Show README instructions"
-Write-Host "4) Forget all local changes and reset branch"
-Write-Host "5) Amend Last Commit"
-Write-Host "6) Remove Gitignored Files"
-Write-Host "7) Clean Up Merged Branches"
-Write-Host "8) Sync All Branches"
-Write-Host "9) Merge Commit Assistant"
-Write-Host "10) Track Remote Branches"
+Write-Host "🔄 Core Operations (1-3):"
+Write-Host "1) 📤 Commit Message Helper"
+Write-Host "2) 🔀 Merge commit assistant"
+Write-Host "3) 📘 Show README creation instructions"
+Write-Host ""
+Write-Host "🔄 Branch Management (4-6):"
+Write-Host "4) 🌿 Clean Up Merged Branches"
+Write-Host "5) 🔄 Sync All Branches"
+Write-Host "6) 📡 Track Remote Branches"
+Write-Host ""
+Write-Host "🔍 Debug & Investigation (7-8):"
+Write-Host "7) 📜 Git log explorer"
+Write-Host "8) 🔄 Amend Last Commit"
+Write-Host ""
+Write-Host "🧹 Cleanup & Reset (9-10):"
+Write-Host "9) 🧹 Remove Gitignored Files"
+Write-Host "10) 🧹 Reset Local Git Changes"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
@@ -119,15 +126,15 @@ $choiceLower = $choice.ToLower()
 
 switch ($choiceLower) {
     { $_ -match "^(1|commit|--commit|-c|c)$" } { & "$RootDir\main_features\commit\git_export_staged.ps1" }
-    { $_ -match "^(2|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
+    { $_ -match "^(2|merge|--merge|-m|m)$" } { & "$RootDir\main_features\merge\git_export_merge.ps1" }
     { $_ -match "^(3|readme|--readme|-r|r)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
-    { $_ -match "^(4|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
-    { $_ -match "^(5|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
-    { $_ -match "^(6|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
-    { $_ -match "^(7|branch-cleanup|--branch-cleanup|-b|b|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
-    { $_ -match "^(8|sync-branches|--sync-branches|-s|s|sync|--sync)$" } { & "$RootDir\main_features\sync-branches\sync_branches.ps1" }
-    { $_ -match "^(9|merge|--merge|-m|m)$" } { & "$RootDir\main_features\merge\git_export_merge.ps1" }
-    { $_ -match "^(10|track-remote|--track-remote|-t|t|track|--track)$" } { & "$RootDir\main_features\track-remote\track_remote.ps1" }
+    { $_ -match "^(4|branch-cleanup|--branch-cleanup|-b|b|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
+    { $_ -match "^(5|sync-branches|--sync-branches|-s|s|sync|--sync)$" } { & "$RootDir\main_features\sync-branches\sync_branches.ps1" }
+    { $_ -match "^(6|track-remote|--track-remote|-t|t|track|--track)$" } { & "$RootDir\main_features\track-remote\track_remote.ps1" }
+    { $_ -match "^(7|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
+    { $_ -match "^(8|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
+    { $_ -match "^(9|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
+    { $_ -match "^(10|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
