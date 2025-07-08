@@ -42,6 +42,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
             exit 0
             ;;
+        --track-remote|-t)
+            bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -61,6 +65,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --remove-gitignored | -i → Remove Gitignored Files"
             echo "  --branch-cleanup | -b → Clean Up Merged Branches"
             echo "  --sync-branches | -s → Sync All Branches"
+            echo "  --track-remote | -t → Track Remote Branches"
             exit 1
             ;;
     esac
@@ -88,6 +93,7 @@ echo "6) 🔄 Amend Last Commit                 [--amend  | -a]"
 echo "7) 🧹 Remove Gitignored Files           [--remove-gitignored | -i]"
 echo "8) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b]"
 echo "9) 🔄 Sync All Branches                 [--sync-branches | -s]"
+echo "10) 📡 Track Remote Branches            [--track-remote | -t]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -98,7 +104,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-9, u, q, or option name]: " choice
+read -p "Enter your choice [1-10, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -131,6 +137,9 @@ case "$choice_lower" in
   9|"sync-branches"|"--sync-branches"|"-s"|"s"|"sync"|"--sync")
     bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
     ;;
+  10|"track-remote"|"--track-remote"|"-t"|"t"|"track"|"--track")
+    bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
+    ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
       # Auto update and restart script.
@@ -146,6 +155,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-5, u, q, or option names like 'commit', '--merge', '-l', etc."
+    echo "Valid options: 1-10, u, q, or option names like 'commit', '--merge', '-l', etc."
     ;;
 esac
