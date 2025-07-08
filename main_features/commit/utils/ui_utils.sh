@@ -29,67 +29,55 @@ edit_commit_message() {
     read -e -i "$commit_line" -p "📝 Press Enter to accept or edit the command: " final_commit
     echo "$final_commit"
   elif command -v zsh >/dev/null 2>&1; then
-    # macOS specific handling
+    # macOS specific handling - manual file edit approach
     echo ""
-    read -r -p "📝 Press Enter to accept, type 'n' for [N]ano, 'v' for [V]i, or specify another editor: " editor_choice
     
-    if [[ -n "$editor_choice" ]]; then
-      # Determine editor based on choice
-      case "$editor_choice" in
-        [nN]*)
-          EDITOR_CHOICE="nano"
-          ;;
-        [vV]*)
-          EDITOR_CHOICE="vi"
-          ;;
-        *)
-          # Use whatever they typed as the editor command
-          EDITOR_CHOICE="$editor_choice"
-          ;;
-      esac
-
-      # Verify editor exists
-      if ! command -v "$EDITOR_CHOICE" >/dev/null 2>&1; then
-        echo "⚠️  Editor '$EDITOR_CHOICE' not found. Falling back to vi."
-        EDITOR_CHOICE="vi"
-      fi
-
-      # Extract just the message content
-      COMMIT_MSG=$(echo "$commit_line" | sed -n 's/git commit -m "\(.*\)"/\1/p')
-      
-      # Create temp file with just the message
-      TEMP_FILE=$(mktemp "${TMPDIR:-/tmp}/commit_msg.XXXXXX")
-      echo "$COMMIT_MSG" > "$TEMP_FILE"
-      
-      # Open editor with clear instructions
-      echo ""
-      echo "✏️  Editing with $EDITOR_CHOICE..."
-      echo "   - Modify your commit message"
-      echo "   - Save and exit to continue"
-      echo "   - Cancel the editor to abort"
-      echo ""
-      
-      if ! "$EDITOR_CHOICE" "$TEMP_FILE"; then
-        echo "⚠️  Editor exited with error. Aborting commit."
-        rm -f "$TEMP_FILE"
-        return 1
-      fi
-      
-      # Read back the edited message
-      EDITED_MSG=$(cat "$TEMP_FILE")
-      rm "$TEMP_FILE"
-      
-      if [[ -z "$EDITED_MSG" ]]; then
-        echo "⚠️  Empty commit message. Aborting."
-        return 1
-      fi
-      
-      # Reconstruct the full git command
-      echo "git commit -m \"$EDITED_MSG\""
+    # Extract just the message content
+    COMMIT_MSG=$(echo "$commit_line" | sed -n 's/git commit -m "\(.*\)"/\1/p')
+    
+    # Use predictable temp file location
+    TEMP_DIR="/tmp/dev-tools"
+    TEMP_FILE="$TEMP_DIR/commit_msg.txt"
+    mkdir -p "$TEMP_DIR"
+    echo "$COMMIT_MSG" > "$TEMP_FILE"
+    
+    echo "📝 Commit message saved to: $TEMP_FILE"
+    echo ""
+    echo "Please edit the commit message in your preferred editor:"
+    echo "  ➤ Open the file: $TEMP_FILE"
+    echo "  ➤ Edit the commit message"
+    echo "  ➤ Save the file"
+    echo "  ➤ Close the editor"
+    echo ""
+    
+    # Try to open the file with default editor
+    if command -v open >/dev/null 2>&1; then
+      echo "🔧 Opening file with default editor..."
+      open "$TEMP_FILE"
     else
-      # Accept as-is
-      echo "$commit_line"
+      echo "📂 Please open this file manually: $TEMP_FILE"
     fi
+    
+    echo ""
+    read -p "🔁 Press [Enter] once you've edited the file and saved it..." _
+    
+    # Check if file still exists
+    if [[ ! -f "$TEMP_FILE" ]]; then
+      echo "❌ File was deleted. Aborting commit."
+      return 1
+    fi
+    
+    # Read back the edited message
+    EDITED_MSG=$(cat "$TEMP_FILE")
+    rm "$TEMP_FILE"
+    
+    if [[ -z "$EDITED_MSG" ]]; then
+      echo "⚠️  Empty commit message. Aborting."
+      return 1
+    fi
+    
+    # Reconstruct the full git command
+    echo "git commit -m \"$EDITED_MSG\""
   else
     echo ""
     echo "📝 You can copy/paste and edit the following:"
