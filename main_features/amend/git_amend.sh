@@ -32,13 +32,6 @@ fi
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-# --- Sync check before amend ---
-echo "🔍 Checking if branch is in sync with remote..."
-if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
-    echo "❌ Sync check failed. Please resolve sync issues before amending."
-    exit 1
-fi
-
 # --- Check if we're in a git repository ---
 if ! git rev-parse --git-dir > /dev/null 2>&1; then
     echo "❌ Not in a git repository. Please navigate to a git repository and try again."
@@ -49,6 +42,18 @@ fi
 if ! git rev-parse HEAD > /dev/null 2>&1; then
     echo "❌ No commits found in this repository. Please make at least one commit first."
     exit 1
+fi
+
+# --- Check if there are any staged files ---
+STAGED_FILES=$(git diff --name-only --cached)
+
+# Exit early if no staged files.
+if [[ -z "$STAGED_FILES" ]]; then
+    echo "⚠️  No staged files found. Please stage some changes with 'git add' before running this script."
+    echo ""
+    echo "💡 Amending without new staged changes is pointless since there's nothing new to amend."
+    echo "   Stage your changes first, then run this script again."
+    exit 0
 fi
 
 # --- Get the last commit hash and check if it's been pushed ---

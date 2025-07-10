@@ -23,14 +23,6 @@ Load-DotEnv
 # --- Git update check ---
 & "$RootDir\global_functions\check_for_updates.ps1"
 
-# --- Sync check before amend ---
-Write-Host "🔍 Checking if branch is in sync with remote..." -ForegroundColor Cyan
-$syncResult = & "$RootDir\global_functions\sync_check.ps1"
-if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Sync check failed. Please resolve sync issues before amending." -ForegroundColor Red
-    exit 1
-}
-
 # --- Check if we're in a git repository ---
 try {
     $null = git rev-parse --git-dir 2>$null
@@ -45,6 +37,18 @@ try {
 } catch {
     Write-Host "❌ No commits found in this repository. Please make at least one commit first."
     exit 1
+}
+
+# --- Check if there are any staged files ---
+$StagedFiles = git diff --name-only --cached
+
+# Exit early if no staged files.
+if ([string]::IsNullOrEmpty($StagedFiles)) {
+    Write-Host "⚠️  No staged files found. Please stage some changes with 'git add' before running this script."
+    Write-Host ""
+    Write-Host "💡 Amending without new staged changes is pointless since there's nothing new to amend."
+    Write-Host "   Stage your changes first, then run this script again."
+    exit 0
 }
 
 # --- Get the last commit hash and check if it's been pushed ---
