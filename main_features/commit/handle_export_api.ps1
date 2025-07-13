@@ -53,7 +53,7 @@ $escapedContent = $content -replace '\\', '\\\\' `
 $messages = New-ConversationMessages -UserContent $escapedContent
 
 # Send initial request
-Write-Host "🚀 Sending prompt to $apiProvider..."
+Write-Host "Sending prompt to $apiProvider..."
 $response = Send-ApiRequest -Messages $messages -ApiUrl $apiUrl -ApiProvider $apiProvider -ApiKey $apiKey -Deployment $deployment -Version $version -Temperature $temperature -MaxTokens $maxToken
 $suggestedMessage = Get-CommitMessage -Response $response
 
@@ -83,7 +83,7 @@ if ($suggestedMessage) {
             { $_ -match "^[Rr]$" } {
                 # Regenerate message
                 Write-Host ""
-                Write-Host "🔄 Regenerating commit message..."
+                Write-Host "Regenerating commit message..."
                 
                 # Add context that previous output was not accepted
                 $regenerateMessages = New-ConversationMessages -UserContent $escapedContent -PreviousMessage $suggestedMessage -AdditionalPrompt "The previous commit message was not accepted. Please generate a different commit message with a different approach or style."
@@ -92,7 +92,7 @@ if ($suggestedMessage) {
                 $newSuggestedMessage = Get-CommitMessage -Response $response
                 
                 if (-not $newSuggestedMessage) {
-                    Write-Host "❌ Failed to regenerate commit message. Please try again."
+                    Write-Host "Failed to regenerate commit message. Please try again."
                     return
                 }
                 
@@ -108,7 +108,7 @@ if ($suggestedMessage) {
                     $continueLoop = $true
                 } else {
                     Write-Host ""
-                    Write-Host "💬 Chatting with AI..."
+                    Write-Host "Chatting with AI..."
                     
                     # Add chat context
                     $chatMessages = New-ConversationMessages -UserContent $escapedContent -PreviousMessage $suggestedMessage -AdditionalPrompt $chatPrompt
@@ -117,7 +117,7 @@ if ($suggestedMessage) {
                     $newSuggestedMessage = Get-CommitMessage -Response $response
                     
                     if (-not $newSuggestedMessage) {
-                        Write-Host "❌ Failed to chat with AI. Please try again."
+                        Write-Host "Failed to chat with AI. Please try again."
                         return
                     }
                     

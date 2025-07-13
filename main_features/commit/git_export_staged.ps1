@@ -9,15 +9,14 @@ $AllInOneDir       = Join-Path $ExportDir "all_in_one"
 $AiMessageFile     = Join-Path $AllInOneDir "ai_message.txt"
 $CommitMsgFile     = Join-Path $ScriptDir "commit_message_prompt.txt"
 
-
 # Git update check.
 & "$RootDir\global_functions\check_for_updates.ps1"
 
 # --- Sync check before commit ---
-Write-Host "🔍 Checking if branch is in sync with remote..." -ForegroundColor Cyan
+Write-Host "Checking if branch is in sync with remote..." -ForegroundColor Cyan
 $syncResult = & "$RootDir\global_functions\sync_check.ps1"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Sync check failed. Please resolve sync issues before committing." -ForegroundColor Red
+    Write-Host "Sync check failed. Please resolve sync issues before committing." -ForegroundColor Red
     exit 1
 }
 
@@ -32,14 +31,12 @@ if (Test-Path $ExportDir) {
 New-Item -ItemType Directory -Path $ChangedFilesDir -Force | Out-Null
 New-Item -ItemType Directory -Path $AllInOneDir -Force | Out-Null
 
-
 # Check if any files are staged.
 $StagedFiles = git diff --cached --name-only
 if (-not $StagedFiles) {
     Write-Host "WARNING: No staged files to export."
     exit 1
 }
-
 
 # Export each staged file to flat folder.
 foreach ($file in $StagedFiles) {
@@ -51,16 +48,13 @@ foreach ($file in $StagedFiles) {
     }
 }
 
-
 # Save the diff to a file.
 git diff --staged > $DiffFile
-
 
 # Copy commit_message_prompt.txt if available.
 if (Test-Path $CommitMsgFile) {
     Copy-Item $CommitMsgFile -Destination $ExportDir
 }
-
 
 # Prompt for Project Task ID.
 $TaskID = Read-Host "INPUT: Enter related Project Task ID (or press Enter to skip)"
@@ -97,10 +91,8 @@ foreach ($file in $StagedFiles) {
     }
 }
 
-
 Add-Content $AiMessageFile $TaskID
 Add-Content $AiMessageFile ""
-
 
 # Call the appropriate post-export handler.
 $AI_MODE = $env:AI_MODE

@@ -13,17 +13,17 @@ param (
     [switch]$a,  # amend
     [switch]$amend,  # amend
     [switch]$i,  # remove-gitignored
-    [switch]$remove-gitignored,  # remove-gitignored
+    [switch]$remove_gitignored,  # remove-gitignored
     [switch]$b,  # branch-cleanup
-    [switch]$branch-cleanup,  # branch-cleanup
+    [switch]$branch_cleanup,  # branch-cleanup
     [switch]$s,  # sync-branches
-    [switch]$sync-branches,  # sync-branches
+    [switch]$sync_branches,  # sync-branches
     [switch]$m,  # merge
     [switch]$merge,  # merge
     [switch]$t,  # track-remote
-    [switch]$track-remote,  # track-remote
+    [switch]$track_remote,  # track-remote
     [switch]$n,  # create-branch
-    [switch]$'create-branch'  # create-branch
+    [switch]$create_branch  # create-branch
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -65,15 +65,15 @@ if ($a -or $amend) {
     & "$RootDir\main_features\amend\git_amend.ps1"
     return
 }
-if ($i -or $remove-gitignored) {
+if ($i -or $remove_gitignored) {
     & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1"
     return
 }
-if ($b -or $branch-cleanup) {
+if ($b -or $branch_cleanup) {
     & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1"
     return
 }
-if ($s -or $sync-branches) {
+if ($s -or $sync_branches) {
     & "$RootDir\main_features\sync-branches\sync_branches.ps1"
     return
 }
@@ -81,11 +81,11 @@ if ($m -or $merge) {
     & "$RootDir\main_features\merge\git_export_merge.ps1"
     return
 }
-if ($t -or $track-remote) {
+if ($t -or $track_remote) {
     & "$RootDir\main_features\track-remote\track_remote.ps1"
     return
 }
-if ($n -or $'create-branch') {
+if ($n -or $create_branch) {
     & "$RootDir\main_features\create-branch\create_branch.ps1"
     return
 }
@@ -102,24 +102,24 @@ Write-Host "Dev Tools Launcher"
 Write-Host "==================="
 Write-Host "Choose a tool to run:"
 Write-Host ""
-Write-Host "🔄 Core Operations (1-3):"
-Write-Host "1) 📤 Commit Message Helper"
-Write-Host "2) 🔀 Merge commit assistant"
-Write-Host "3) 📘 Show README creation instructions"
+Write-Host "Core Operations (1-3):"
+Write-Host "1) Commit Message Helper"
+Write-Host "2) Merge commit assistant"
+Write-Host "3) Show README creation instructions"
 Write-Host ""
-Write-Host "🔄 Branch Management (4-6):"
-Write-Host "4) 🌿 Clean Up Merged Branches"
-Write-Host "5) 🔄 Sync All Branches"
-Write-Host "6) 📡 Track Remote Branches             [--track-remote | -t]"
-Write-Host "7) 🌱 Create New Branch                  [--create-branch | -n]"
+Write-Host "Branch Management (4-7):"
+Write-Host "4) Clean Up Merged Branches"
+Write-Host "5) Sync All Branches"
+Write-Host "6) Track Remote Branches             [--track-remote | -t]"
+Write-Host "7) Create New Branch                  [--create-branch | -n]"
 Write-Host ""
-Write-Host "🔍 Debug & Investigation (8-9):"
-Write-Host "8) 📜 Git log explorer                  [--log    | -l]"
-Write-Host "9) 🔄 Amend Last Commit                 [--amend  | -a]"
+Write-Host "Debug & Investigation (8-9):"
+Write-Host "8) Git log explorer                  [--log    | -l]"
+Write-Host "9) Amend Last Commit                 [--amend  | -a]"
 Write-Host ""
-Write-Host "🧹 Cleanup & Reset (10-11):"
-Write-Host "10) 🧹 Remove Gitignored Files"
-Write-Host "11) 🧹 Reset Local Git Changes"
+Write-Host "Cleanup & Reset (10-11):"
+Write-Host "10) Remove Gitignored Files"
+Write-Host "11) Reset Local Git Changes"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }

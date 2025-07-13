@@ -120,7 +120,7 @@ function Get-UserChoice {
 # Function to get chat instructions from user
 function Get-ChatInstructions {
     Write-Host ""
-    Write-Host "💬 Enter your message to chat with the AI about the commit message:"
+    Write-Host "Enter your message to chat with the AI about the commit message:"
     Write-Host "Example: 'Make it more concise' or 'Add more technical details' or any other instruction."
     Write-Host ""
     
