@@ -18,7 +18,9 @@ The feature performs a comprehensive analysis and cleanup process:
 3. **Merge Analysis**: Checks which branches are fully merged with main or dev
 4. **Safety Checks**: Warns if you're on a branch that will be removed
 5. **Interactive Removal**: Asks for confirmation for each branch (local and remote)
-6. **Detailed Feedback**: Provides comprehensive summary of actions taken
+6. **Stale Reference Detection**: Automatically detects stale remote-tracking references
+7. **Remote Prune Integration**: Offers to clean up stale references with `git remote prune origin`
+8. **Detailed Feedback**: Provides comprehensive summary of actions taken
 
 ## Safety Features
 
@@ -62,7 +64,8 @@ The feature performs a comprehensive analysis and cleanup process:
 3. **Results Display**: Shows which branches are merged and which aren't
 4. **Safety Check**: Warns if you're on a branch that will be removed
 5. **Interactive Removal**: Processes each merged branch with individual confirmations
-6. **Summary**: Provides detailed report of all actions taken
+6. **Stale Reference Check**: Detects and offers to clean up stale remote-tracking references
+7. **Summary**: Provides detailed report of all actions taken
 
 ## Example Output
 
@@ -117,7 +120,19 @@ with either main or dev branches (excluding main and dev themselves).
 ✅ Successfully removed remote branches:
    🌐 feature/login
 
-💡 Tip: You can run 'git remote prune origin' to clean up stale remote references.
+🔎 Checking for stale remote-tracking references...
+
+🔎 Found stale remote-tracking references:
+   - origin/old-feature
+   - origin/deprecated-branch
+
+💡 These are local cached references to remote branches that
+   have been deleted. They can be safely cleaned up with:
+   'git remote prune origin'
+
+🗑️  Clean up stale remote references now? [y/N]: y
+🔄 Running 'git remote prune origin'...
+✅ Stale references cleaned up.
 ```
 
 ## When to Use

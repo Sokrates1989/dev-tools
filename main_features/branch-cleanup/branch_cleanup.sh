@@ -262,6 +262,27 @@ for branch_info in "${MERGED_BRANCHES[@]}"; do
     echo ""
 done
 
+# --- Function to detect stale remote references ---
+get_stale_remote_branches() {
+    local remote_name="${1:-origin}"
+    local stale_branches=()
+    
+    # Run git fetch with prune dry-run to detect stale references
+    local fetch_output
+    if fetch_output=$(git fetch "$remote_name" --prune --dry-run 2>&1); then
+        # Parse output to find what would be pruned
+        while IFS= read -r line; do
+            if [[ "$line" =~ \[would\ prune\].*$remote_name/(.+) ]]; then
+                stale_branches+=("$remote_name/${BASH_REMATCH[1]}")
+            elif [[ "$line" =~ ^\ -\ \[would\ prune\].*$remote_name/(.+) ]]; then
+                stale_branches+=("$remote_name/${BASH_REMATCH[1]}")
+            fi
+        done <<< "$fetch_output"
+    fi
+    
+    printf '%s\n' "${stale_branches[@]}"
+}
+
 # --- Summary ---
 echo "🎉 Branch cleanup completed!"
 echo ""
@@ -294,4 +315,36 @@ if [[ ${#REMOVED_LOCAL[@]} -eq 0 && ${#REMOVED_REMOTE[@]} -eq 0 ]]; then
     echo "ℹ️  No branches were removed."
 fi
 
-echo "💡 Tip: You can run 'git remote prune origin' to clean up stale remote references." 
+# --- Check for stale remote-tracking branches ---
+echo "🔎 Checking for stale remote-tracking references..."
+
+# Get stale remote branches
+mapfile -t STALE_REFS < <(get_stale_remote_branches)
+
+if [[ ${#STALE_REFS[@]} -gt 0 ]]; then
+    echo ""
+    echo "🔎 Found stale remote-tracking references:"
+    for ref in "${STALE_REFS[@]}"; do
+        echo "   - $ref"
+    done
+    echo ""
+    echo "💡 These are local cached references to remote branches that"
+    echo "   have been deleted. They can be safely cleaned up with:"
+    echo "   'git remote prune origin'"
+    echo ""
+    
+    # Ask user if they want to prune
+    read -r -p "🗑️  Clean up stale remote references now? [y/N]: " choice
+    if [[ "$choice" =~ ^[Yy]$ ]]; then
+        echo "🔄 Running 'git remote prune origin'..."
+        if git remote prune origin; then
+            echo "✅ Stale references cleaned up."
+        else
+            echo "❌ Failed to prune remote references."
+        fi
+    else
+        echo "ℹ️  Skipped. Run 'git remote prune origin' manually when needed."
+    fi
+else
+    echo "✅ Your remote-tracking references are already clean!"
+fi 
