@@ -318,8 +318,11 @@ fi
 # --- Check for stale remote-tracking branches ---
 echo "🔎 Checking for stale remote-tracking references..."
 
-# Get stale remote branches
-mapfile -t STALE_REFS < <(get_stale_remote_branches)
+# Get stale remote branches (compatible with older Bash versions)
+STALE_REFS=()
+while IFS= read -r line; do
+    [[ -n "$line" ]] && STALE_REFS+=("$line")
+done < <(get_stale_remote_branches)
 
 if [[ ${#STALE_REFS[@]} -gt 0 ]]; then
     echo ""
