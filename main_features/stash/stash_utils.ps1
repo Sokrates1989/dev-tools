@@ -16,7 +16,7 @@ function Test-GitRepository {
         }
         return $true
     } catch {
-        Write-Host "❌ Error: Not in a Git repository."
+        Write-Host "[ERROR] Not in a Git repository."
         Write-Host "Please navigate to a Git repository and try again."
         return $false
     }
@@ -34,7 +34,7 @@ function Get-StashCount {
 
 # Function to display repository status
 function Show-RepositoryStatus {
-    Write-Host "📋 Current Repository Status:"
+    Write-Host "Current Repository Status:"
     $repoPath = git rev-parse --show-toplevel
     $repoName = Split-Path -Leaf $repoPath
     $currentBranch = git branch --show-current
@@ -46,7 +46,7 @@ function Show-RepositoryStatus {
 # Function to display stash count and latest stash
 function Show-StashSummary {
     $stashCount = Get-StashCount
-    Write-Host "📦 Current Stash Count: $stashCount"
+    Write-Host "Current Stash Count: $stashCount"
     if ($stashCount -gt 0) {
         $latestStash = git stash list | Select-Object -First 1
         Write-Host "Latest stash: $latestStash"
@@ -79,7 +79,7 @@ function Get-ValidatedStashRef {
         # User entered a number, convert to stash reference
         $stashIndex = [int]$Input - 1
         if ($stashIndex -lt 0 -or $stashIndex -ge $StashCount) {
-            Write-Host "❌ Invalid stash index. Please enter a number between 1 and $StashCount."
+            Write-Host "[ERROR] Invalid stash index. Please enter a number between 1 and $StashCount."
             return $null
         }
         return "stash@{$stashIndex}"
@@ -88,13 +88,13 @@ function Get-ValidatedStashRef {
         if ($Input -match 'stash@\{(\d+)\}') {
             $stashIndex = [int]$matches[1]
             if ($stashIndex -ge $StashCount) {
-                Write-Host "❌ Invalid stash reference. Stash $Input does not exist."
+                Write-Host "[ERROR] Invalid stash reference. Stash $Input does not exist."
                 return $null
             }
         }
         return $Input
     } else {
-        Write-Host "❌ Invalid input. Please enter a number or stash reference like 'stash@{0}'."
+        Write-Host "[ERROR] Invalid input. Please enter a number or stash reference like 'stash@{0}'."
         return $null
     }
 }
@@ -109,24 +109,24 @@ function Get-StashInfo {
 
 # Function to show working directory status
 function Show-WorkingDirectoryStatus {
-    Write-Host "📋 Current working directory status:"
+    Write-Host "Current working directory status:"
     $gitStatus = git status --porcelain
     $hasChanges = $gitStatus -and ($gitStatus | Measure-Object).Count -gt 0
     
     if (-not $hasChanges) {
-        Write-Host "✅ Working directory is clean."
+        Write-Host "[OK] Working directory is clean."
     } else {
-        Write-Host "⚠️  Working directory has uncommitted changes:"
+        Write-Host "[WARNING] Working directory has uncommitted changes:"
         $gitStatus | ForEach-Object { Write-Host "  $_" }
         Write-Host ""
-        Write-Host "⚠️  Warning: Stash operations may conflict with current changes."
+        Write-Host "[WARNING] Stash operations may conflict with current changes."
     }
 }
 
 # Function to wait for user to continue
 function Wait-ForContinue {
     Write-Host ""
-    Read-Host "🔁 Press Enter to continue"
+    Read-Host "Press Enter to continue"
 }
 
 # Function to confirm destructive action

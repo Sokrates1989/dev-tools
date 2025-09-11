@@ -21,7 +21,7 @@ param (
 $FullPath = Resolve-Path -Path $Path -ErrorAction SilentlyContinue
 
 if (-not $FullPath) {
-    Write-Host "❌ Could not resolve path: $Path"
+    Write-Host "[ERROR] Could not resolve path: $Path"
     exit 1
 }
 

@@ -1,6 +1,7 @@
 param()
 
-Write-Host "`n🌱 Create a New Branch"
+Write-Host ""
+Write-Host "Create a New Branch"
 Write-Host "====================="
 
 # Get current branch
@@ -28,20 +29,20 @@ if ([string]::IsNullOrWhiteSpace($baseChoice)) {
 # Check if base branch exists
 $localBranches = git branch --format='%(refname:short)'
 if (-not ($localBranches -contains $baseBranch)) {
-    Write-Host "❌ Base branch '$baseBranch' does not exist. Aborting." -ForegroundColor Red
+    Write-Host "[ERROR] Base branch '$baseBranch' does not exist. Aborting." -ForegroundColor Red
     exit 1
 }
 
 $newBranch = Read-Host "Enter new branch name"
 if ([string]::IsNullOrWhiteSpace($newBranch)) {
-    Write-Host "❌ Branch name cannot be empty. Aborting." -ForegroundColor Red
+    Write-Host "[ERROR] Branch name cannot be empty. Aborting." -ForegroundColor Red
     exit 1
 }
 
 # Check for remote branch with same name
 $remoteExists = git ls-remote --exit-code --heads origin $newBranch 2>$null
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "❌ A remote branch named '$newBranch' already exists on origin." -ForegroundColor Red
+    Write-Host "[ERROR] A remote branch named '$newBranch' already exists on origin." -ForegroundColor Red
     $tryAgain = Read-Host "Choose a different name? (y/N)"
     if ($tryAgain -notmatch '^[Yy]$') {
         Write-Host "Aborting."
@@ -52,7 +53,7 @@ if ($LASTEXITCODE -eq 0) {
 
 # Check if local branch already exists
 if ($localBranches -contains $newBranch) {
-    Write-Host "❌ Local branch '$newBranch' already exists. Aborting." -ForegroundColor Red
+    Write-Host "[ERROR] Local branch '$newBranch' already exists. Aborting." -ForegroundColor Red
     exit 1
 }
 
@@ -63,11 +64,14 @@ if ($localBranches -contains $newBranch) {
 # Create new branch
 & git checkout -b $newBranch
 
-Write-Host "`nPushing new branch to remote and setting upstream..."
+
+Write-Host ""
+Write-Host "Pushing new branch to remote and setting upstream..."
 & git push --set-upstream origin $newBranch
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "`n✅ Branch '$newBranch' created from '$baseBranch' and pushed to origin."
+    Write-Host ""
+    Write-Host "[OK] Branch '$newBranch' created from '$baseBranch' and pushed to origin."
     Write-Host "   You are now on '$newBranch'."
 } else {
-    Write-Host "❌ Failed to push branch to remote." -ForegroundColor Red
+    Write-Host "[ERROR] Failed to push branch to remote." -ForegroundColor Red
 } 

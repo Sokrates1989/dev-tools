@@ -11,7 +11,7 @@ function Show-CommitOptions {
     )
     
     Write-Host ""
-    Write-Host "✅ AI suggested commit command:"
+    Write-Host "[OK] AI suggested commit command:"
     Write-Host "--------------------------"
     Write-Host $CommitMessage
 

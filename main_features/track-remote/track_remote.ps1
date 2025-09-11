@@ -60,7 +60,7 @@ Write-Host ""
 
 # --- Get current branch ---
 $CurrentBranch = git branch --show-current
-Write-Host "📍 Current branch: $CurrentBranch" -ForegroundColor Yellow
+Write-Host "Current branch: $CurrentBranch" -ForegroundColor Yellow
 Write-Host ""
 
 # --- Step 1: Fetch all remote branches ---

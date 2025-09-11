@@ -28,10 +28,10 @@ Load-DotEnv
 & "$RootDir\global_functions\check_for_updates.ps1"
 
 # --- Sync check before merge ---
-Write-Host "🔍 Checking if branch is in sync with remote..." -ForegroundColor Cyan
+Write-Host "Checking if branch is in sync with remote..." -ForegroundColor Cyan
 $syncResult = & "$RootDir\global_functions\sync_check.ps1"
 if ($LASTEXITCODE -ne 0) {
-    Write-Host "❌ Sync check failed. Please resolve sync issues before merging." -ForegroundColor Red
+    Write-Host "[ERROR] Sync check failed. Please resolve sync issues before merging." -ForegroundColor Red
     exit 1
 }
 
@@ -45,29 +45,29 @@ try {
 }
 
 if ($hasUncommitted) {
-    Write-Host "⚠️ You have uncommitted changes in your working directory." -ForegroundColor Yellow
-    Write-Host "💡 Please commit or stash your changes before proceeding with the merge." -ForegroundColor Cyan
+    Write-Host "[WARNING] You have uncommitted changes in your working directory." -ForegroundColor Yellow
+    Write-Host "[INFO] Please commit or stash your changes before proceeding with the merge." -ForegroundColor Cyan
     exit 1
 }
 
 # --- Detect current branch ---
 $CurrentBranch = git branch --show-current
 if (-not $CurrentBranch) {
-    Write-Host "❌ Could not detect current Git branch." -ForegroundColor Red
+    Write-Host "[ERROR] Could not detect current Git branch." -ForegroundColor Red
     exit 1
 }
 
 Write-Host ""
-Write-Host "🔀 Merge Commit Message Assistant" -ForegroundColor Cyan
+Write-Host "Merge Commit Message Assistant" -ForegroundColor Cyan
 Write-Host "==================================" -ForegroundColor Cyan
-Write-Host "📍 You are currently on branch: $CurrentBranch" -ForegroundColor Yellow
+Write-Host "You are currently on branch: $CurrentBranch" -ForegroundColor Yellow
 Write-Host ""
 
 # --- List other local branches ---
 $AvailableBranches = git for-each-ref --format='%(refname:short)' refs/heads | Where-Object { $_ -ne $CurrentBranch }
 
 if (-not $AvailableBranches) {
-    Write-Host "⚠️  No other branches available to merge." -ForegroundColor Yellow
+    Write-Host "[WARNING] No other branches available to merge." -ForegroundColor Yellow
     exit 0
 }
 
@@ -88,58 +88,58 @@ $choice = Read-Host "Enter your choice [1-$($branchOptions.Count)]"
 if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $branchOptions.Count) {
     $TargetBranch = $branchOptions[[int]$choice - 1]
 } else {
-    Write-Host "❌ Invalid selection. Please try again." -ForegroundColor Red
+    Write-Host "[ERROR] Invalid selection. Please try again." -ForegroundColor Red
     exit 1
 }
 
 # 1. Detect if there's anything at all to merge
 $diffResult = git diff --quiet "$CurrentBranch".."$TargetBranch" 2>$null
 if ($LASTEXITCODE -eq 0) {
-    Write-Host "✅ '$TargetBranch' is already fully merged into '$CurrentBranch'. No changes to merge." -ForegroundColor Green
-    $switchAfterMerge = Read-Host "🔄 Do you want to switch to '$TargetBranch' now? [y/N]"
+    Write-Host "[OK] '$TargetBranch' is already fully merged into '$CurrentBranch'. No changes to merge." -ForegroundColor Green
+    $switchAfterMerge = Read-Host " Do you want to switch to '$TargetBranch' now? [y/N]"
     if ($switchAfterMerge -match "^[Yy]$") {
-        Write-Host "🔁 Switching to '$TargetBranch'..." -ForegroundColor Cyan
+        Write-Host " Switching to '$TargetBranch'..." -ForegroundColor Cyan
         git checkout $TargetBranch
         & $MyInvocation.MyCommand.Definition
     } else {
-        Write-Host "ℹ️ Staying on '$CurrentBranch'." -ForegroundColor Gray
+        Write-Host "[INFO] Staying on '$CurrentBranch'." -ForegroundColor Gray
     }
     exit 0
 }
 
 # 2. Use dry-run merge to detect conflicts
 Write-Host ""
-Write-Host "🧪 Checking if there are actual differences to merge..." -ForegroundColor Cyan
+Write-Host "Checking if there are actual differences to merge..." -ForegroundColor Cyan
 $mergeCheckOutput = git merge --no-commit --no-ff $TargetBranch 2>&1
 $mergeExitCode = $LASTEXITCODE
 
 # --- Handle merge result ---
 if ($mergeCheckOutput -match "Already up to date.") {
-    Write-Host "✅ Branch '$TargetBranch' is already fully merged into '$CurrentBranch'. No merge commit needed." -ForegroundColor Green
+    Write-Host "[OK] Branch '$TargetBranch' is already fully merged into '$CurrentBranch'. No merge commit needed." -ForegroundColor Green
     git merge --abort >$null 2>&1
-    $switchAfterMerge = Read-Host "🔄 Do you want to switch to '$TargetBranch' now? [y/N]"
+    $switchAfterMerge = Read-Host " Do you want to switch to '$TargetBranch' now? [y/N]"
     if ($switchAfterMerge -match "^[Yy]$") {
-        Write-Host "🔁 Switching to '$TargetBranch'..." -ForegroundColor Cyan
+        Write-Host " Switching to '$TargetBranch'..." -ForegroundColor Cyan
         git checkout $TargetBranch
         & $MyInvocation.MyCommand.Definition
     } else {
-        Write-Host "ℹ️ Staying on '$CurrentBranch'." -ForegroundColor Gray
+        Write-Host "[INFO] Staying on '$CurrentBranch'." -ForegroundColor Gray
     }
     exit 0
 } elseif ($mergeCheckOutput -match "Automatic merge went well; stopped before committing as requested") {
-    Write-Host "✅ Automatic merge is possible. Proceeding to generate commit message..." -ForegroundColor Green
+    Write-Host "[OK] Automatic merge is possible. Proceeding to generate commit message..." -ForegroundColor Green
     # continue with AI message logic
 } elseif ($mergeCheckOutput -match "Automatic merge failed; fix conflicts") {
     Write-Host ""
-    Write-Host "🧨 Merge conflict detected!" -ForegroundColor Red
+    Write-Host "[ERROR] Merge conflict detected!" -ForegroundColor Red
 
     # Show conflict summary
     $mergeCheckOutput | Where-Object { $_ -match "CONFLICT" } | ForEach-Object {
-        Write-Host "⚠️ $_" -ForegroundColor Yellow
+        Write-Host "[WARNING] $_" -ForegroundColor Yellow
     }
 
     Write-Host ""
-    Write-Host "🔍 Showing detailed conflicts (via 'git diff'):" -ForegroundColor Cyan
+    Write-Host "Showing detailed conflicts (via 'git diff'):" -ForegroundColor Cyan
     Write-Host ""
     git diff
 
@@ -152,7 +152,7 @@ if ($mergeCheckOutput -match "Already up to date.") {
         # Check if the direction is ok by applying some idea of hierarchy to the branches (dev is inferior to main e.g.)
         $lesserMainlineBranchesRegex = "^(dev)$"
         if ($TargetBranch -match $lesserMainlineBranchesRegex -and $CurrentBranch -notmatch $lesserMainlineBranchesRegex) {
-            Write-Host "⚠️ You're trying to merge a lesser mainline branch ('$TargetBranch') into a higher one ('$CurrentBranch')." -ForegroundColor Yellow
+            Write-Host "[WARNING] You're trying to merge a lesser mainline branch ('$TargetBranch') into a higher one ('$CurrentBranch')." -ForegroundColor Yellow
             $shouldSwitchDirection = $true
         }
     }
@@ -160,13 +160,13 @@ if ($mergeCheckOutput -match "Already up to date.") {
     # If just one is a mainline branch -> check if the direction is correct
     if ($CurrentBranch -match $mainlineBranchesRegex -and $TargetBranch -notmatch $mainlineBranchesRegex) {
         Write-Host ""
-        Write-Host "⚠️  You're trying to merge '$TargetBranch' into '$CurrentBranch' (a mainline branch)." -ForegroundColor Yellow
+        Write-Host "[WARNING] You're trying to merge '$TargetBranch' into '$CurrentBranch' (a mainline branch)." -ForegroundColor Yellow
         $shouldSwitchDirection = $true
     }
 
     # Help user fix direction
     if ($shouldSwitchDirection) {
-        Write-Host "💡 Consider resolving the conflict in '$TargetBranch' instead:" -ForegroundColor Cyan
+        Write-Host "[INFO] Consider resolving the conflict in '$TargetBranch' instead:" -ForegroundColor Cyan
         Write-Host ""
         Write-Host "   → Checkout to '$TargetBranch'" -ForegroundColor White
         Write-Host "   → Run: dev-tools -m" -ForegroundColor White
@@ -174,13 +174,13 @@ if ($mergeCheckOutput -match "Already up to date.") {
         Write-Host "   → Then redo the merge: dev-tools -m" -ForegroundColor White
         Write-Host ""
 
-        $switchInstead = Read-Host "👉 Switch to '$TargetBranch' now and merge '$CurrentBranch' into it instead? [y/N]"
+        $switchInstead = Read-Host "Switch to '$TargetBranch' now and merge '$CurrentBranch' into it instead? [y/N]"
         if ($switchInstead -match "^[Yy]$") {
             git merge --abort >$null 2>&1
-            Write-Host "🧼 Merge aborted. No changes were applied." -ForegroundColor Yellow
-            Write-Host "🔄 Switching to '$TargetBranch'..." -ForegroundColor Cyan
+            Write-Host "[INFO] Merge aborted. No changes were applied." -ForegroundColor Yellow
+            Write-Host "Switching to '$TargetBranch'..." -ForegroundColor Cyan
             git checkout $TargetBranch
-            Write-Host "✅ Switching to '$TargetBranch'" -ForegroundColor Green
+            Write-Host "[OK] Switching to '$TargetBranch'" -ForegroundColor Green
             git status
             Write-Host "please run merge assistant again now" -ForegroundColor Cyan
             exit 0
@@ -188,7 +188,7 @@ if ($mergeCheckOutput -match "Already up to date.") {
     }
 
     Write-Host ""
-    Write-Host "🧭 To resolve this merge, you have 2 options:" -ForegroundColor Cyan
+    Write-Host "To resolve this merge, you have 2 options:" -ForegroundColor Cyan
     Write-Host "---------------------------------------------" -ForegroundColor Gray
     Write-Host "y)  Solve it manually:" -ForegroundColor White
     Write-Host "    a) Edit the conflicting files shown above." -ForegroundColor Gray
@@ -202,20 +202,20 @@ if ($mergeCheckOutput -match "Already up to date.") {
     Write-Host ""
 
     # Prompt user: fix now or abort
-    $fixConflicts = Read-Host "🧩 Do you want to resolve these conflicts now? [y/N]"
+    $fixConflicts = Read-Host "Do you want to resolve these conflicts now? [y/N]"
 
     if ($fixConflicts -match "^[Yy]$") {
-        Write-Host "🛠️  You're now in a merge state. Resolve the conflicts as described above." -ForegroundColor Yellow
-        Write-Host "👉 Once done, run: git add <files> && dev-tools -c" -ForegroundColor Cyan
-        Write-Host "💡 You can run 'git status' anytime for help." -ForegroundColor Cyan
+        Write-Host "[INFO] You're now in a merge state. Resolve the conflicts as described above." -ForegroundColor Yellow
+        Write-Host "Once done, run: git add <files> && dev-tools -c" -ForegroundColor Cyan
+        Write-Host "[INFO] You can run 'git status' anytime for help." -ForegroundColor Cyan
         exit 0
     } else {
         git merge --abort >$null 2>&1
-        Write-Host "🧼 Merge aborted. No changes were applied." -ForegroundColor Yellow
+        Write-Host "[INFO] Merge aborted. No changes were applied." -ForegroundColor Yellow
         exit 1
     }
 } else {
-    Write-Host "⚠️ Unexpected merge output:" -ForegroundColor Yellow
+    Write-Host "[WARNING] Unexpected merge output:" -ForegroundColor Yellow
     Write-Host $mergeCheckOutput -ForegroundColor Red
     git merge --abort >$null 2>&1
     Write-Host "merge aborted" -ForegroundColor Red
@@ -227,19 +227,19 @@ git merge --abort >$null 2>&1
 
 # --- Write AI message file ---
 $aiContent = @"
-===== 🔀 MERGE COMMIT MESSAGE PROMPT =====
+===== MERGE COMMIT MESSAGE PROMPT =====
 You're about to merge branch '$TargetBranch' into '$CurrentBranch'.
 
 $(if (Test-Path $MergeMsgFile) { Get-Content $MergeMsgFile } else { @"
 Generate a concise and meaningful merge commit message summarizing the key changes adhering to this basic template strictly:
 [MERGE | $TargetBranch -> $CurrentBranch] Merged feature: short summary of the change.
-⚠️ Respond ONLY with the final **message line** (no code block, no git command, no commentary)
+[WARNING] Respond ONLY with the final **message line** (no code block, no git command, no commentary)
 "@ })
 
-===== 🧠 GIT LOG (commits from $TargetBranch not in $CurrentBranch) =====
+===== GIT LOG (commits from $TargetBranch not in $CurrentBranch) =====
 $(git log --oneline "$CurrentBranch".."$TargetBranch")
 
-===== 🔍 DIFF ($TargetBranch vs $CurrentBranch) =====
+===== DIFF ($TargetBranch vs $CurrentBranch) =====
 $(git diff "$CurrentBranch".."$TargetBranch")
 "@
 

@@ -7,7 +7,7 @@
 # -----------------------------------------------------------------------------
 
 Write-Host ""
-Write-Host "📜 List All Stashes – Dev Tools"
+Write-Host "List All Stashes – Dev Tools"
 Write-Host "==============================="
 
 # Check if there are any stashes
@@ -15,14 +15,14 @@ $stashList = git stash list
 $stashCount = if ($stashList) { ($stashList | Measure-Object).Count } else { 0 }
 
 if ($stashCount -eq 0) {
-    Write-Host "📦 No stashes found."
+    Write-Host "[INFO] No stashes found."
     Write-Host ""
-    Write-Host "💡 Tip: Create a stash using one of the stash operations."
+    Write-Host "[INFO] Tip: Create a stash using one of the stash operations."
     exit 0
 }
 
 Write-Host ""
-Write-Host "📦 Found $stashCount stash(es):"
+Write-Host "Found $stashCount stash(es):"
 Write-Host ""
 
 # List all stashes with enhanced formatting
@@ -41,7 +41,7 @@ $stashList | ForEach-Object -Begin { $index = 1 } -Process {
 }
 
 Write-Host ""
-Write-Host "💡 Tips:"
+Write-Host "[INFO] Tips:"
 Write-Host "  • Use 'Show content of specific stash' to view stash details"
 Write-Host "  • Use 'Apply specific stash' to apply a stash by its index (e.g., stash@{0})"
 Write-Host "  • Use 'Drop specific stash' to remove a stash by its index"
