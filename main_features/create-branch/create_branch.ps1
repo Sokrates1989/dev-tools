@@ -8,7 +8,14 @@ Write-Host "====================="
 $currentBranch = git rev-parse --abbrev-ref HEAD
 
 # List local branches
-$branches = git for-each-ref --format='%(refname:short)' refs/heads/ | ForEach-Object { $_.Trim() }
+$branchOutput = git for-each-ref --format='%(refname:short)' refs/heads/
+$branches = $branchOutput -split '\r?\n' | ForEach-Object { $_.Trim() } | Where-Object { -not [string]::IsNullOrWhiteSpace($_) }
+$branches = @($branches)
+
+if ($branches.Count -eq 0) {
+    Write-Host "[ERROR] No local branches found. Aborting." -ForegroundColor Red
+    exit 1
+}
 
 Write-Host "Current branch: $currentBranch"
 Write-Host ""
@@ -27,8 +34,8 @@ if ([string]::IsNullOrWhiteSpace($baseChoice)) {
 }
 
 # Check if base branch exists
-$localBranches = git branch --format='%(refname:short)'
-if (-not ($localBranches -contains $baseBranch)) {
+& git show-ref --verify --quiet ("refs/heads/$baseBranch") 2>$null
+if ($LASTEXITCODE -ne 0) {
     Write-Host "[ERROR] Base branch '$baseBranch' does not exist. Aborting." -ForegroundColor Red
     exit 1
 }
@@ -52,7 +59,8 @@ if ($LASTEXITCODE -eq 0) {
 }
 
 # Check if local branch already exists
-if ($localBranches -contains $newBranch) {
+& git show-ref --verify --quiet ("refs/heads/$newBranch") 2>$null
+if ($LASTEXITCODE -eq 0) {
     Write-Host "[ERROR] Local branch '$newBranch' already exists. Aborting." -ForegroundColor Red
     exit 1
 }
