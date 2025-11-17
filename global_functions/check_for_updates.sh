@@ -10,7 +10,17 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
 ORIGINAL_DIR="$(pwd)"
 
+if [[ -f "$SCRIPT_DIR/git_credential_check.sh" ]]; then
+  # shellcheck source=/dev/null
+  GIT_CRED_CHECK_SCRIPT="$SCRIPT_DIR/git_credential_check.sh"
+fi
+
 cd "$ROOT_DIR"
+
+if [[ -n "$GIT_CRED_CHECK_SCRIPT" ]]; then
+  # shellcheck source=/dev/null
+  source "$GIT_CRED_CHECK_SCRIPT"
+fi
 
 if git fetch --quiet && ! git diff --quiet HEAD..origin/HEAD; then
   echo ""

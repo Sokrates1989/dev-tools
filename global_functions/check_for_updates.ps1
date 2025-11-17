@@ -7,6 +7,14 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $OriginalDir = Get-Location
 Set-Location $ScriptDir
 
+$RootDir = Resolve-Path "$ScriptDir\.." | Select-Object -ExpandProperty Path
+Set-Location $RootDir
+
+$CredentialCheckScript = Join-Path $ScriptDir "git_credential_check.ps1"
+if (Test-Path $CredentialCheckScript) {
+    . $CredentialCheckScript
+}
+
 try {
     git fetch | Out-Null
     $diff = git diff HEAD..origin/HEAD
