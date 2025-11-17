@@ -59,19 +59,19 @@ if (-not $helper) {
 
 if ($helper) { return }
 
-Write-Host ""  # spacer
-Write-Host "🔐  GitHub credentials will be requested for every git command." -ForegroundColor Yellow
-Write-Host "   • Remote 'origin' uses HTTPS: $remoteUrl" -ForegroundColor Yellow
-Write-Host "   • No credential helper is configured for this user." -ForegroundColor Yellow
-Write-Host ""  # spacer
-Write-Host "Recommended fixes:" -ForegroundColor Cyan
-Write-Host "  1) Switch to SSH (recommended):" -ForegroundColor White
-Write-Host "     ssh-keygen -t ed25519 -C \"your-email@example.com\"" -ForegroundColor DarkGray
-Write-Host "     git remote set-url origin git@github.com:<owner>/<repo>.git" -ForegroundColor DarkGray
-Write-Host "  2) Cache HTTPS credentials temporarily:" -ForegroundColor White
+Write-Host ''  # spacer
+Write-Host '🔐  GitHub credentials will be requested for every git command.' -ForegroundColor Yellow
+Write-Host ("   • Remote 'origin' uses HTTPS: {0}" -f $remoteUrl) -ForegroundColor Yellow
+Write-Host '   • No credential helper is configured for this user.' -ForegroundColor Yellow
+Write-Host ''  # spacer
+Write-Host 'Recommended fixes:' -ForegroundColor Cyan
+Write-Host '  1) Switch to SSH (recommended):' -ForegroundColor White
+Write-Host '     ssh-keygen -t ed25519 -C "your-email@example.com"' -ForegroundColor DarkGray
+Write-Host '     git remote set-url origin git@github.com:<owner>/<repo>.git' -ForegroundColor DarkGray
+Write-Host '  2) Cache HTTPS credentials temporarily:' -ForegroundColor White
 Write-Host "     git config --global credential.helper 'cache --timeout=3600'" -ForegroundColor DarkGray
-Write-Host "  3) Store a Personal Access Token (plaintext):" -ForegroundColor White
-Write-Host "     git config --global credential.helper store" -ForegroundColor DarkGray
-Write-Host ""  # spacer
+Write-Host '  3) Store a Personal Access Token (plaintext):' -ForegroundColor White
+Write-Host '     git config --global credential.helper store' -ForegroundColor DarkGray
+Write-Host ''  # spacer
 
 Set-Item -Path "env:$noticeFlagName" -Value "1"
