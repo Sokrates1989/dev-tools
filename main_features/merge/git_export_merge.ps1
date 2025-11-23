@@ -93,7 +93,7 @@ if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $branch
 }
 
 # 1. Detect if there's anything at all to merge
-$diffResult = git diff --quiet "$CurrentBranch".."$TargetBranch" 2>$null
+$diffResult = git diff --quiet $CurrentBranch $TargetBranch 2>$null
 if ($LASTEXITCODE -eq 0) {
     Write-Host "[OK] '$TargetBranch' is already fully merged into '$CurrentBranch'. No changes to merge." -ForegroundColor Green
     $switchAfterMerge = Read-Host " Do you want to switch to '$TargetBranch' now? [y/N]"
@@ -236,21 +236,25 @@ Generate a concise and meaningful merge commit message summarizing the key chang
 [WARNING] Respond ONLY with the final **message line** (no code block, no git command, no commentary)
 "@ })
 
-===== GIT LOG (commits from $TargetBranch not in $CurrentBranch) =====
-$(git log --oneline "$CurrentBranch".."$TargetBranch")
+===== GIT LOG (last 100 commits from $TargetBranch not in $CurrentBranch) =====
+$(git log --oneline "$CurrentBranch".."$TargetBranch" -n 100)
 
-===== DIFF ($TargetBranch vs $CurrentBranch) =====
-$(git diff "$CurrentBranch".."$TargetBranch")
+===== DIFF SUMMARY ($TargetBranch vs $CurrentBranch) =====
+$(git diff --stat $CurrentBranch $TargetBranch)
 "@
 
 $aiContent | Out-File -FilePath $AiMessageFile -Encoding UTF8
 
 # --- Decide execution based on AI_MODE ---
 if ($env:AI_MODE -eq "api") {
+    # Write-Host "[DEBUG] Merge assistant using API mode" -ForegroundColor Gray
     & "$ScriptDir\handle_export_merge_api.ps1" $AiMessageFile $TargetBranch
+    # Write-Host "[DEBUG] Merge API handler finished" -ForegroundColor Gray
 } else {
+    # Write-Host "[DEBUG] Merge assistant using manual mode" -ForegroundColor Gray
     & "$ScriptDir\handle_export_merge_manual.ps1" $AiMessageFile $TargetBranch
+    # Write-Host "[DEBUG] Merge manual handler finished" -ForegroundColor Gray
 }
 
 # --- Final update check ---
-& "$RootDir\global_functions\check_for_updates.ps1" 
+& "$RootDir\global_functions\check_for_updates.ps1"

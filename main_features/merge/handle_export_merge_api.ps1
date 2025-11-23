@@ -16,56 +16,77 @@ $TargetBranch = $args[1]
 . "$RootDir\global_functions\load_dotenv.ps1"
 Load-DotEnv
 
-# --- Prerequisite checks ---
-if (-not (Get-Command jq -ErrorAction SilentlyContinue)) {
-    Write-Host "[ERROR] 'jq' is required but not installed. Please install it and try again." -ForegroundColor Red
-    exit 1
-}
+# Load shared API utilities from commit feature
+. "$RootDir\main_features\commit\utils\api_utils.ps1"
 
+# --- Prerequisite checks ---
 if (-not (Test-Path $AiMessageFile)) {
     Write-Host "[ERROR] Cannot find AI message file: $AiMessageFile" -ForegroundColor Red
     exit 1
 }
 
-# --- Build API URL ---
-if ($env:API_PROVIDER -eq "openai") {
-    $ApiUrl = "$env:API_BASE/chat/completions"
-    $AuthHeader = "Authorization: Bearer $env:API_KEY"
-} elseif ($env:API_PROVIDER -eq "azure") {
-    $ApiUrl = "$env:API_BASE/openai/deployments/$env:DEPLOYMENT/chat/completions?api-version=$env:API_VERSION"
-    $AuthHeader = "api-key: $env:API_KEY"
-} else {
-    Write-Host "[ERROR] Invalid API_PROVIDER in .env: $env:API_PROVIDER" -ForegroundColor Red
+# --- Extract API settings ---
+$apiUrl = $env:API_BASE
+# Remove any trailing slash from the base URL
+if ($apiUrl.EndsWith("/")) {
+    $apiUrl = $apiUrl.Substring(0, $apiUrl.Length - 1)
+}
+$apiProvider = $env:API_PROVIDER
+$apiKey = $env:API_KEY
+$deployment = $env:DEPLOYMENT
+$version = $env:API_VERSION
+[double]$temperature = [double]$env:TEMPERATURE
+[int]$maxTokens = [int]$env:MAX_TOKENS
+
+# --- Compose request body ---
+Write-Host "[INFO] Sending prompt to $apiProvider..." -ForegroundColor Cyan
+
+$content = Get-Content $AiMessageFile -Raw -Encoding UTF8
+
+# Properly escape special characters for JSON (same as commit flow)
+$escapedContent = $content -replace '\\', '\\\\' `
+                             -replace '"', '\"' `
+                             -replace "`r", '' `
+                             -replace "`n", '\n'
+
+$systemPrompt = "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git merge commit messages."
+
+# Build messages array using shared helper
+$messages = New-ConversationMessages -UserContent $escapedContent -SystemPrompt $systemPrompt
+
+# Send request via shared API helper
+try {
+    # Write-Host "[DEBUG] Calling API at: $apiUrl" -ForegroundColor Gray
+    $response = Send-ApiRequest -Messages $messages -ApiUrl $apiUrl -ApiProvider $apiProvider -ApiKey $apiKey -Deployment $deployment -Version $version -Temperature $temperature -MaxTokens $maxTokens
+    # Write-Host "[DEBUG] Received response" -ForegroundColor Gray
+} catch {
+    Write-Host "[ERROR] API request failed: $($_.Exception.Message)" -ForegroundColor Red
+    Write-Host "[ERROR] Exception type: $($_.Exception.GetType().FullName)" -ForegroundColor Red
+    if ($_.Exception.Response) {
+        try {
+            $stream = $_.Exception.Response.GetResponseStream()
+            if ($stream) {
+                $reader = New-Object System.IO.StreamReader($stream)
+                $body = $reader.ReadToEnd()
+                if ($body) {
+                    Write-Host "[INFO] Response body:" -ForegroundColor Yellow
+                    Write-Host $body
+                }
+            }
+        } catch {
+            # ignore secondary errors while reading error body
+        }
+    }
     exit 1
 }
 
-# --- Compose and send request ---
-Write-Host "[INFO] Sending prompt to $env:API_PROVIDER..." -ForegroundColor Cyan
-
-$messageContent = Get-Content $AiMessageFile -Raw
-$requestBody = @{
-    model = $env:DEPLOYMENT
-    messages = @(
-        @{
-            role = "system"
-            content = "You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git merge commit messages."
-        }
-        @{
-            role = "user"
-            content = $messageContent
-        }
-    )
-    temperature = [double]$env:TEMPERATURE
-    max_tokens = [int]$env:MAX_TOKENS
-} | ConvertTo-Json -Depth 10
-
-$response = Invoke-RestMethod -Uri $ApiUrl -Method POST -Headers @{
-    "Content-Type" = "application/json"
-    "Authorization" = $AuthHeader
-} -Body $requestBody
-
 # --- Extract and validate response ---
-$rawSuggestedMessage = $response.choices[0].message.content.Trim()
+if (-not $response) {
+    Write-Host "[ERROR] No response received from API" -ForegroundColor Red
+    exit 1
+}
+
+$rawSuggestedMessage = Get-CommitMessage -Response $response
 
 if ($rawSuggestedMessage -notmatch '^\[MERGE \|.+->.+\]') {
     Write-Host "[ERROR] AI response doesn't match expected format." -ForegroundColor Red
