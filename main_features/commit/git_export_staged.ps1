@@ -56,8 +56,169 @@ if (Test-Path $CommitMsgFile) {
     Copy-Item $CommitMsgFile -Destination $ExportDir
 }
 
+# Load version utilities
+. (Join-Path $ScriptDir "utils\version_utils.ps1")
+
+# Initialize variables for replacements
+$jiraId = $null
+$imageVersion = $null
+$versionFilesStaged = $null
+
+# Detect CI/CD setup
+$hasCiCd = Test-CiCdSetup
+
+if ($hasCiCd) {
+    Write-Host ""
+    Write-Host " CI/CD configuration detected in this repository" -ForegroundColor Cyan
+    
+    # Get current version info
+    $versionInfo = Get-CurrentVersion
+    
+    # Check if .ci.env is staged for commit
+    $repoRoot = git rev-parse --show-toplevel 2>$null
+    if ($repoRoot) {
+        $repoRoot = $repoRoot -replace '/', '\'
+        $ciEnvPath = Join-Path $repoRoot ".ci.env"
+        
+        # Check if .ci.env is in staged files
+        $ciEnvStaged = git diff --cached --name-only | Where-Object { $_ -eq ".ci.env" }
+        
+        if ($ciEnvStaged) {
+            Write-Host ""
+            Write-Host "NOTE: .ci.env is staged and will be committed" -ForegroundColor Cyan
+            
+            # Get old and new version from git diff
+            $diffOutput = git diff --cached $ciEnvPath 2>$null | Out-String
+            $oldVersion = $null
+            $newVersion = $null
+            
+            # Match lines with IMAGE_VERSION, handling BOM and special characters
+            if ($diffOutput -match '(?m)^\-IMAGE_VERSION=([^\r\n]+)') {
+                $oldVersion = $Matches[1].Trim()
+            }
+            if ($diffOutput -match '(?m)^\+[^\r\n]*IMAGE_VERSION=([^\r\n]+)') {
+                $newVersion = $Matches[1].Trim()
+            }
+            
+            if ($oldVersion -and $newVersion -and $oldVersion -ne $newVersion) {
+                Write-Host "  Version change: $oldVersion -> $newVersion" -ForegroundColor Green
+                
+                # Ask user if they want to accept this staged version
+                Write-Host ""
+                $acceptStaged = Read-Host " Accept this staged version change? [Y/n]"
+                if ($acceptStaged -notmatch '^[Nn]$') {
+                    # User accepts the staged version
+                    $imageVersion = $newVersion
+                    Write-Host "  Using staged version: $imageVersion" -ForegroundColor Cyan
+                    
+                    # Update .env to match .ci.env to keep them in sync
+                    $envFile = Join-Path $repoRoot ".env"
+                    if (Test-Path $envFile) {
+                        $envContent = Get-Content $envFile -ErrorAction SilentlyContinue
+                        $envHasVersion = $envContent | Where-Object { $_ -match '^IMAGE_VERSION=' }
+                        
+                        if ($envHasVersion) {
+                            # Update existing IMAGE_VERSION in .env
+                            $updated = $false
+                            $newEnvContent = @()
+                            foreach ($line in $envContent) {
+                                if (-not $updated -and $line -match '^IMAGE_VERSION=') {
+                                    $newEnvContent += "IMAGE_VERSION=$imageVersion"
+                                    $updated = $true
+                                }
+                                else {
+                                    $newEnvContent += $line
+                                }
+                            }
+                            $newEnvContent | Set-Content -Path $envFile -Encoding UTF8
+                            Write-Host "  Synced .env to version: $imageVersion" -ForegroundColor Gray
+                        }
+                    }
+                }
+                else {
+                    # User wants to change the version
+                    Write-Host ""
+                    Write-Host "Current IMAGE_VERSION:" -ForegroundColor Cyan
+                    $envDisplay = if ($versionInfo.EnvVersion) { $versionInfo.EnvVersion } else { "<not set>" }
+                    $ciEnvDisplay = if ($versionInfo.CiEnvVersion) { $versionInfo.CiEnvVersion } else { "<not set>" }
+                    Write-Host "  - .env    : $envDisplay" -ForegroundColor Gray
+                    Write-Host "  - .ci.env : $ciEnvDisplay" -ForegroundColor Gray
+                    
+                    $newVersionChoice = Invoke-VersionUpdatePrompt -VersionInfo $versionInfo
+                    if ($newVersionChoice) {
+                        # Update version in files and stage them
+                        $versionFilesStaged = Update-RepoVersion -NewVersion $newVersionChoice
+                        if ($versionFilesStaged) {
+                            $imageVersion = $newVersionChoice
+                            Write-Host ""
+                            Write-Host " Version updated to: $imageVersion" -ForegroundColor Green
+                        }
+                    }
+                }
+            }
+            elseif ($newVersion) {
+                Write-Host "  Current staged version: $newVersion" -ForegroundColor Gray
+                # Use the staged version for commit message
+                $imageVersion = $newVersion
+            }
+        }
+        else {
+            # No staged .ci.env, show normal prompt
+            Write-Host ""
+            Write-Host "Current IMAGE_VERSION:" -ForegroundColor Cyan
+            $envDisplay = if ($versionInfo.EnvVersion) { $versionInfo.EnvVersion } else { "<not set>" }
+            $ciEnvDisplay = if ($versionInfo.CiEnvVersion) { $versionInfo.CiEnvVersion } else { "<not set>" }
+            Write-Host "  - .env    : $envDisplay" -ForegroundColor Gray
+            Write-Host "  - .ci.env : $ciEnvDisplay" -ForegroundColor Gray
+            
+            if ($versionInfo.Version) {
+                Write-Host "  Base version: $($versionInfo.Version) (from $($versionInfo.Source))" -ForegroundColor Green
+            }
+            else {
+                Write-Host "  No version found - will default to 0.0.0" -ForegroundColor Yellow
+            }
+            
+            Write-Host ""
+            $updateVersion = Read-Host " Do you want to update IMAGE_VERSION? [y/N]"
+            if ($updateVersion -match '^[Yy]$') {
+                $newVersionChoice = Invoke-VersionUpdatePrompt -VersionInfo $versionInfo
+                
+                if ($newVersionChoice) {
+                    # Update version in files and stage them
+                    $versionFilesStaged = Update-RepoVersion -NewVersion $newVersionChoice
+                    if ($versionFilesStaged) {
+                        $imageVersion = $newVersionChoice
+                        Write-Host ""
+                        Write-Host " Version updated to: $imageVersion" -ForegroundColor Green
+                    }
+                }
+            }
+        }
+    }
+    else {
+        # No CI/CD, no version management needed
+    }
+}
+
+# Ask for JIRA Task ID
+Write-Host ""
+$addJira = Read-Host " Do you want to add a JIRA task ID to the commit message? [y/N]"
+if ($addJira -match '^[Yy]$') {
+    $jiraId = Invoke-JiraIdPrompt
+}
+
+# Create file to pass variables to handle_export_api
+$varsFile = Join-Path $ExportDir ".commit_vars"
+@"
+JIRA_ID=$jiraId
+IMAGE_VERSION=$imageVersion
+VERSION_FILES_STAGED=$versionFilesStaged
+"@ | Out-File -FilePath $varsFile -Encoding UTF8
+
+# Set TaskID for backwards compatibility
+$TaskID = "JIRA_ID_PLACEHOLDER"
+
 # Prompt for Project Task ID.
-$TaskID = Read-Host "INPUT: Enter related Project Task ID (or press Enter to skip)"
 if (-not $TaskID) {
     $TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Please ignore any template that starts with [ID-XY | ...]. Instead, format the message like this: [Categories] Affected files or feature: more details of the change. Do not include any dummy or placeholder task ID.'
 }

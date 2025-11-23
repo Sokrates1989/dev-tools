@@ -1,29 +1,48 @@
-# Commit Message Helper
+# Commit Message Helper with Automated Version Management
 
 ## Overview
 
-The Commit Message Helper is a powerful tool that exports staged Git changes and generates AI-powered commit messages. It creates a comprehensive snapshot of your changes, exports them to a structured format, and uses AI to generate descriptive commit messages that follow best practices.
+The Commit Message Helper is a powerful tool that exports staged Git changes, manages semantic versioning for CI/CD workflows, and generates AI-powered commit messages. It automatically detects CI/CD configurations, manages IMAGE_VERSION across `.env` and `.ci.env` files, and creates professional commit messages with version tracking.
 
 ## What it does
 
 This tool performs the following operations:
 
-1. **Exports staged changes** - Creates a structured export of all staged files and their changes
-2. **Generates commit messages** - Uses AI to create descriptive, professional commit messages
-3. **Supports multiple modes** - Works with API-based AI or manual prompt generation
-4. **Creates change snapshots** - Saves staged files to a `changed_files/` directory
-5. **Provides diff summaries** - Generates detailed diff output for review
-6. **Handles various file types** - Works with any type of file in your repository
+1. **CI/CD Detection** - Automatically detects `.ci.env` files and CI/CD configurations
+2. **Version Management** - Manages IMAGE_VERSION in `.env` and `.ci.env` files with semantic versioning
+3. **Smart Version Selection** - Uses the higher semantic version when files differ
+4. **Staged Version Detection** - Detects existing version changes and prompts for acceptance
+5. **JIRA Integration** - Optionally includes JIRA task IDs in commit messages
+6. **AI Commit Messages** - Generates professional messages with version and JIRA tracking
+7. **Exports staged changes** - Creates a structured export of all staged files and their changes
+8. **Automatic File Sync** - Keeps `.env` and `.ci.env` in sync when accepting staged versions
 
 ## Features
 
-- **Comprehensive export** - Exports all staged files with their complete content
+### Version Management
+- **Automatic CI/CD detection** - Detects `.ci.env` and GitHub workflows
+- **Semantic version comparison** - Compares MAJOR.MINOR.PATCH versions intelligently
+- **Higher version selection** - Always uses the highest version as base
+- **Staged version detection** - Shows old → new version changes from git diff
+- **Accept/reject prompts** - User can accept staged version or choose a new one
+- **Auto-increment options** - PATCH, MINOR, or MAJOR version bumps
+- **File synchronization** - Keeps `.env` and `.ci.env` in perfect sync
+- **Smart staging** - Only stages `.ci.env` for commit (`.env` stays local)
+
+### Commit Message Generation
+- **Version tracking** - Includes IMAGE_VERSION in commit message: `[0.3.1 | Feature]`
+- **JIRA integration** - Optional JIRA task ID: `[PROJ-123 | 0.3.1 | Feature]`
+- **Clean placeholders** - Removes unused placeholders automatically
 - **AI-powered messages** - Generates commit messages using OpenAI or Azure AI
+- **Interactive workflow** - Review, edit, regenerate, or chat with AI
 - **Multiple AI modes** - Supports both API-based and manual AI interaction
+
+### Export and Safety
+- **Comprehensive export** - Exports all staged files with their complete content
 - **Structured output** - Creates organized file exports and diff summaries
-- **Interactive workflow** - Review and edit generated commit messages
 - **Safety checks** - Validates staged changes and repository state
-- **Cross-platform** - Works on Linux, macOS, and Windows
+- **Cross-platform** - Works on Linux, macOS, and Windows (PowerShell and Bash)
+- **File integrity** - Preserves line endings and file structure
 
 ## Usage
 
@@ -200,6 +219,81 @@ changed_files/
 │       └── old-helper.js         # Deleted file (marked)
 ├── diff_output.txt               # Complete diff summary
 └── export_info.txt               # Export metadata
+```
+
+## Version Management Workflows
+
+### Scenario 1: Accepting Staged Version Change
+
+When `.ci.env` is already staged with a version change:
+
+```
+Checking if branch is in sync with remote...
+Branch 'main' is up-to-date with remote.
+
+ CI/CD configuration detected in this repository
+
+NOTE: .ci.env is staged and will be committed
+  Version change: 0.3.0 -> 0.3.1
+
+ Accept this staged version change? [Y/n]: 
+  Using staged version: 0.3.1
+  Synced .env to version: 0.3.1
+
+ Do you want to add a JIRA task ID to the commit message? [y/N]: y
+ Enter JIRA task ID (e.g., PROJ-123): PROJ-456
+
+[OK] AI suggested commit message:
+git commit -m "[PROJ-456 | 0.3.1 | New Feature] settings.py: added Cognito config"
+```
+
+### Scenario 2: Rejecting Staged Version
+
+When you want to choose a different version:
+
+```
+ Accept this staged version change? [Y/n]: n
+
+Current IMAGE_VERSION:
+  - .env    : 0.3.4
+  - .ci.env : 0.3.1
+
+Image Version Management
+============================
+
+Base version (from .env (higher version)): 0.3.4
+
+Update options:
+[1] Auto-increment PATCH (0.3.4 -> 0.3.5)
+[2] Auto-increment MINOR (0.3.4 -> 0.4.0)
+[3] Auto-increment MAJOR (0.3.4 -> 1.0.0)
+[4] Enter version manually
+
+Choose option: 1
+
+Updating version files to 0.3.5...
+[OK] Updated .env -> IMAGE_VERSION=0.3.5
+[OK] Updated .ci.env -> IMAGE_VERSION=0.3.5
+   [OK] Staged: .ci.env
+
+ Version updated to: 0.3.5
+```
+
+### Commit Message Formats
+
+**With JIRA and Version:**
+```
+[PROJ-123 | 0.3.1 | New Feature] settings.py: added Cognito config
+```
+
+**With Version only:**
+```
+[0.3.1 | New Feature] settings.py: added Cognito config
+```
+
+**Without CI/CD:**
+```
+[New Feature] settings.py: added Cognito config
 ```
 
 ## AI Integration

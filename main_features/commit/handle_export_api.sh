@@ -21,6 +21,17 @@ else
   exit 1
 fi
 
+# Load commit variables from git_export_staged
+VARS_FILE="$SCRIPT_DIR/git_export_staged/.commit_vars"
+JIRA_ID=""
+IMAGE_VERSION=""
+VERSION_FILES_STAGED=""
+
+if [[ -f "$VARS_FILE" ]]; then
+  # shellcheck disable=SC1090
+  source "$VARS_FILE"
+fi
+
 # Load utility functions
 # shellcheck source=utils/api_utils.sh
 source "$SCRIPT_DIR/utils/api_utils.sh"
@@ -63,7 +74,37 @@ RESPONSE=$(send_api_request "$JSON_PAYLOAD" "$API_URL" "$AUTH_HEADER")
 # --- Extract and show response ---
 COMMIT_LINE=$(get_commit_message "$RESPONSE")
 
+# Function to replace placeholders in commit message
+replace_placeholders() {
+  local message="$1"
+  local jira="$2"
+  local version="$3"
+  
+  # Replace VERSION_PLACEHOLDER first
+  if [[ -n "$version" ]]; then
+    message="${message//VERSION_PLACEHOLDER/$version}"
+  else
+    # Remove VERSION_PLACEHOLDER and the pipe separator
+    message=$(echo "$message" | sed -E 's/\s*VERSION_PLACEHOLDER\s*\|\s*//g')
+    message=$(echo "$message" | sed -E 's/\s*\|\s*VERSION_PLACEHOLDER\s*//g')
+  fi
+  
+  # Replace JIRA_ID_PLACEHOLDER
+  if [[ -n "$jira" ]]; then
+    message="${message//JIRA_ID_PLACEHOLDER/$jira}"
+  else
+    # Remove JIRA_ID_PLACEHOLDER and the pipe separator
+    message=$(echo "$message" | sed -E 's/\s*JIRA_ID_PLACEHOLDER\s*\|\s*//g')
+    message=$(echo "$message" | sed -E 's/\s*\|\s*JIRA_ID_PLACEHOLDER\s*//g')
+  fi
+  
+  echo "$message"
+}
+
 if [[ -n "$COMMIT_LINE" ]]; then
+  # Replace placeholders in initial commit message
+  COMMIT_LINE=$(replace_placeholders "$COMMIT_LINE" "$JIRA_ID" "$IMAGE_VERSION")
+  
   # Main interaction loop
   while true; do
     show_commit_options "$COMMIT_LINE"
@@ -106,7 +147,8 @@ if [[ -n "$COMMIT_LINE" ]]; then
         NEW_COMMIT_LINE=$(get_commit_message "$RESPONSE")
         
         if [[ -n "$NEW_COMMIT_LINE" ]]; then
-          COMMIT_LINE="$NEW_COMMIT_LINE"
+          # Replace placeholders in regenerated message
+          COMMIT_LINE=$(replace_placeholders "$NEW_COMMIT_LINE" "$JIRA_ID" "$IMAGE_VERSION")
           show_regeneration_success
         else
           show_api_error "regenerate"
@@ -135,7 +177,8 @@ if [[ -n "$COMMIT_LINE" ]]; then
           NEW_COMMIT_LINE=$(get_commit_message "$RESPONSE")
           
           if [[ -n "$NEW_COMMIT_LINE" ]]; then
-            COMMIT_LINE="$NEW_COMMIT_LINE"
+            # Replace placeholders in chat response
+            COMMIT_LINE=$(replace_placeholders "$NEW_COMMIT_LINE" "$JIRA_ID" "$IMAGE_VERSION")
             show_improvement_success
           else
             show_api_error "chat"
@@ -150,6 +193,12 @@ if [[ -n "$COMMIT_LINE" ]]; then
   done
 
   if [[ -n "$FINAL_COMMIT" ]]; then
+    # Show version files that were staged if any
+    if [[ -n "$VERSION_FILES_STAGED" ]]; then
+      echo ""
+      echo "📝 Version files included in this commit: $VERSION_FILES_STAGED"
+    fi
+    
     execute_commit "$FINAL_COMMIT"
   fi
 else

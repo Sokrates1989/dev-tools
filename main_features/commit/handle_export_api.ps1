@@ -4,19 +4,55 @@
 # Platform: Windows PowerShell 5.1 compatible
 # -----------------------------------------------------------------------------
 
-# Paths.
-$RootDir = Resolve-Path "$PSScriptRoot\..\.." | Select-Object -ExpandProperty Path
-$ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$ParentDir = Join-Path $ScriptDir "git_export_staged"
-$AllInOneFile = Join-Path $ParentDir "all_in_one\ai_message.txt"
+# --- Resolve paths ---
+$scriptPath = $MyInvocation.MyCommand.Path
+$scriptDir = Split-Path -Parent $scriptPath
+$rootDir = Split-Path -Parent (Split-Path -Parent $scriptDir)
+$AllInOneFile = Join-Path $scriptDir "git_export_staged\all_in_one\ai_message.txt"
+
+# Load environment variables
+$envFile = Join-Path $rootDir ".env"
+if (Test-Path $envFile) {
+    Get-Content $envFile | ForEach-Object {
+        if ($_ -match '^\s*([^#][^=]+?)\s*=\s*(.+?)\s*$') {
+            $name = $matches[1]
+            $value = $matches[2]
+            Set-Variable -Name $name -Value $value -Scope Script
+        }
+    }
+}
+else {
+    Write-Host "ERROR: .env file not found at $envFile" -ForegroundColor Red
+    exit 1
+}
+
+# Load commit variables from git_export_staged
+$varsFile = Join-Path $scriptDir "git_export_staged\.commit_vars"
+$jiraId = $null
+$imageVersion = $null
+$versionFilesStaged = $null
+
+if (Test-Path $varsFile) {
+    Get-Content $varsFile | ForEach-Object {
+        if ($_ -match '^\s*JIRA_ID=(.*)$') {
+            $jiraId = $matches[1].Trim()
+        }
+        elseif ($_ -match '^\s*IMAGE_VERSION=(.*)$') {
+            $imageVersion = $matches[1].Trim()
+        }
+        elseif ($_ -match '^\s*VERSION_FILES_STAGED=(.*)$') {
+            $versionFilesStaged = $matches[1].Trim()
+        }
+    }
+}
 
 # Load settings.
-. "$RootDir\global_functions\load_dotenv.ps1"
+. "$rootDir\global_functions\load_dotenv.ps1"
 Load-DotEnv
 
 # Load utility functions
-. "$ScriptDir\utils\api_utils.ps1"
-. "$ScriptDir\utils\ui_utils.ps1"
+. "$scriptDir\utils\api_utils.ps1"
+. "$scriptDir\utils\ui_utils.ps1"
 
 # Extract API settings
 $apiUrl = $env:API_BASE
@@ -57,7 +93,38 @@ Write-Host "Sending prompt to $apiProvider..."
 $response = Send-ApiRequest -Messages $messages -ApiUrl $apiUrl -ApiProvider $apiProvider -ApiKey $apiKey -Deployment $deployment -Version $version -Temperature $temperature -MaxTokens $maxToken
 $suggestedMessage = Get-CommitMessage -Response $response
 
+# Function to replace placeholders
+function Update-CommitPlaceholders {
+    param(
+        [string]$Message,
+        [string]$JiraId,
+        [string]$Version
+    )
+    
+    # Replace VERSION_PLACEHOLDER first
+    if ($Version) {
+        $Message = $Message -replace 'VERSION_PLACEHOLDER', $Version
+    } else {
+        # Remove VERSION_PLACEHOLDER and the pipe separator
+        $Message = $Message -replace '\s*VERSION_PLACEHOLDER\s*\|\s*', ''
+        $Message = $Message -replace '\s*\|\s*VERSION_PLACEHOLDER\s*', ''
+    }
+    
+    # Replace JIRA_ID_PLACEHOLDER
+    if ($JiraId) {
+        $Message = $Message -replace 'JIRA_ID_PLACEHOLDER', $JiraId
+    } else {
+        # Remove JIRA_ID_PLACEHOLDER and the pipe separator
+        $Message = $Message -replace '\s*JIRA_ID_PLACEHOLDER\s*\|\s*', ''
+        $Message = $Message -replace '\s*\|\s*JIRA_ID_PLACEHOLDER\s*', ''
+    }
+    
+    return $Message
+}
+
 if ($suggestedMessage) {
+    # Replace placeholders in initial message
+    $suggestedMessage = Update-CommitPlaceholders -Message $suggestedMessage -JiraId $jiraId -Version $imageVersion
     # Main interaction loop
     do {
         Show-CommitOptions -CommitMessage $suggestedMessage
@@ -96,7 +163,8 @@ if ($suggestedMessage) {
                     return
                 }
                 
-                $suggestedMessage = $newSuggestedMessage
+                # Replace placeholders in regenerated message
+                $suggestedMessage = Update-CommitPlaceholders -Message $newSuggestedMessage -JiraId $jiraId -Version $imageVersion
                 $continueLoop = $true
             }
             { $_ -match "^[Cc]$" } {
@@ -121,7 +189,8 @@ if ($suggestedMessage) {
                         return
                     }
                     
-                    $suggestedMessage = $newSuggestedMessage
+                    # Replace placeholders in chat response
+                    $suggestedMessage = Update-CommitPlaceholders -Message $newSuggestedMessage -JiraId $jiraId -Version $imageVersion
                     $continueLoop = $true
                 }
             }
@@ -132,6 +201,12 @@ if ($suggestedMessage) {
         }
     } while ($continueLoop)
 
+    # Show version files that were staged if any
+    if ($versionFilesStaged) {
+        Write-Host ""
+        Write-Host "Version files included in this commit: $versionFilesStaged" -ForegroundColor Cyan
+    }
+    
     # Execute the commit
     Invoke-CommitExecution -CommitCommand $finalCommitMessage
 } else {

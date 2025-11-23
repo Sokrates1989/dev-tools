@@ -75,11 +75,99 @@ if [[ -f "$COMMIT_MSG_FILE" ]]; then
     cp "$COMMIT_MSG_FILE" "$SCRIPT_DIR/git_export_staged/"
 fi
 
-# Ask for Task ID to append to the AI message
-read -r -p "🔖 Enter related Project Task ID (or press Enter to skip): " TASK_ID
-if [[ -z "$TASK_ID" ]]; then
-  TASK_ID="Please omit the ID-XY from the template this time and just use \"[Categories] Affected files or feature: more details of the change.\""
+# Load version utilities
+source "$SCRIPT_DIR/utils/version_utils.sh"
+
+# Initialize variables for replacements
+JIRA_ID=""
+IMAGE_VERSION=""
+VERSION_FILES_STAGED=""
+
+# Detect CI/CD setup
+HAS_CICD=$(detect_cicd_setup)
+
+if [[ "$HAS_CICD" == "true" ]]; then
+  echo ""
+  echo " CI/CD configuration detected in this repository"
+  
+  # Get current version info
+  get_current_version_info
+  local env_version="$VERSION_ENV"
+  local ci_env_version="$VERSION_CIENV"
+  local base_version="$VERSION_BASE"
+  local version_source="$VERSION_SOURCE"
+  
+  # Check if .ci.env is staged for commit
+  local repo_root
+  repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
+  if [[ -n "$repo_root" ]]; then
+    local ci_env_staged
+    ci_env_staged=$(git diff --cached --name-only | grep -x ".ci.env")
+    
+    if [[ -n "$ci_env_staged" ]]; then
+      echo ""
+      echo "NOTE: .ci.env is staged and will be committed"
+      
+      # Get old and new version from git diff
+      local old_version
+      local new_version
+      old_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^-IMAGE_VERSION=" | sed 's/^-IMAGE_VERSION=//' | tr -d ' ')
+      new_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^+IMAGE_VERSION=" | sed 's/^+IMAGE_VERSION=//' | tr -d ' ')
+      
+      if [[ -n "$old_version" && -n "$new_version" && "$old_version" != "$new_version" ]]; then
+        echo "  Version change: $old_version -> $new_version"
+      elif [[ -n "$new_version" ]]; then
+        echo "  Current staged version: $new_version"
+      fi
+    fi
+  fi
+  
+  # Display current versions
+  echo ""
+  echo "Current IMAGE_VERSION:"
+  echo "  - .env    : ${env_version:-<not set>}"
+  echo "  - .ci.env : ${ci_env_version:-<not set>}"
+  
+  if [[ -n "$base_version" ]]; then
+    echo "  Base version: $base_version (from $version_source)"
+  else
+    echo "  No version found - will default to 0.0.0"
+  fi
+  
+  echo ""
+  read -r -p " Do you want to update IMAGE_VERSION? [y/N]: " update_version
+  if [[ "$update_version" =~ ^[Yy]$ ]]; then
+    NEW_VERSION=$(prompt_version_update "$base_version")
+    
+    if [[ -n "$NEW_VERSION" ]]; then
+      # Update version in files and stage them
+      VERSION_FILES_STAGED=$(update_repo_version "$NEW_VERSION")
+      if [[ $? -eq 0 ]]; then
+        IMAGE_VERSION="$NEW_VERSION"
+        echo ""
+        echo "✅ Version updated to: $IMAGE_VERSION"
+      fi
+    fi
+  fi
 fi
+
+# Ask for JIRA Task ID
+echo ""
+read -r -p "🎫 Do you want to add a JIRA task ID to the commit message? [y/N]: " add_jira
+if [[ "$add_jira" =~ ^[Yy]$ ]]; then
+  JIRA_ID=$(prompt_jira_id)
+fi
+
+# Create file to pass variables to handle_export_api
+VARS_FILE="$SCRIPT_DIR/git_export_staged/.commit_vars"
+{
+  echo "JIRA_ID=$JIRA_ID"
+  echo "IMAGE_VERSION=$IMAGE_VERSION"
+  echo "VERSION_FILES_STAGED=$VERSION_FILES_STAGED"
+} > "$VARS_FILE"
+
+# Set TASK_ID for backwards compatibility
+TASK_ID="JIRA_ID_PLACEHOLDER"
 
 # Concatenate everything into one single file. 
 ALL_IN_ONE_DIR="$SCRIPT_DIR/git_export_staged/all_in_one"

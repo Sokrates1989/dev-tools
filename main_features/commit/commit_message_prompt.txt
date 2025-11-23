@@ -1,8 +1,20 @@
-Write a commit message for the git changes provided in the other uploaded file. 
-Write it all in one line and make it very concise and adhere to the following style: 
+Write a concise, one-line commit message for the git changes provided. Follow this format:
 
-git commit -m "[ID-XY | Categories] Affected files or feature: more details of the change."
+git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Category] Affected files: description"
 
-Categories should be similar or one of these: [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation]. Ideally, it should only be one category, but if the changes are bigger, a max of 2 categories can be used. Please make sure that "Affected files or feature:" is replaced and highlights the affected files or features in up to 5 words and keep the ":" at the end of these affected files or features. 
-As ID-XY, use the passed text. 
-Allow me to directly copy the command by adding bash syntax hightlighting and wrapping the command in backticks.
+INSTRUCTIONS:
+- Use EXACTLY "JIRA_ID_PLACEHOLDER" and "VERSION_PLACEHOLDER" as shown (the script will replace them)
+- Category: Choose ONE from [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation]
+- "Affected files": Replace with actual affected files/features (max 5 words)
+- "description": Concise details of the change
+- Keep the "|" separators and "[]" brackets exactly as shown
+- Wrap the command in bash syntax highlighting with backticks
+
+EXAMPLE OUTPUT:
+```bash
+git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | BugFix] Auth module: fixed token expiration"
+```
+
+The script will automatically replace:
+- JIRA_ID_PLACEHOLDER → actual JIRA ID (e.g., "PROJ-123") or "ID-XY" if none provided
+- VERSION_PLACEHOLDER → actual version (e.g., "v1.2.3") or "vX.Y.Z" if none provided
