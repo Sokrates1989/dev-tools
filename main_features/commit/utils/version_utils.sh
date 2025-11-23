@@ -27,7 +27,54 @@ detect_cicd_setup() {
     fi
 }
 
-# Get current IMAGE_VERSION from .env or .ci.env
+# Detect image-related variables from a file
+detect_image_variables() {
+    local file="$1"
+    local detected_vars=()
+    
+    if [[ ! -f "$file" ]]; then
+        return
+    fi
+    
+    # Priority order for variable names
+    local priority_vars=("IMAGE_VERSION" "IMAGE_TAG" "VERSION" "TAG")
+    local found_priority=""
+    
+    # Check priority variables first
+    for var in "${priority_vars[@]}"; do
+        local line=$(grep "^$var=" "$file" 2>/dev/null | head -n1)
+        if [[ -n "$line" ]]; then
+            local value=$(echo "$line" | cut -d'=' -f2- | tr -d ' "')
+            if [[ -n "$value" && "$value" =~ ^[vV]?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+                found_priority="$var=$value"
+                break
+            fi
+        fi
+    done
+    
+    if [[ -n "$found_priority" ]]; then
+        echo "$found_priority"
+        return
+    fi
+    
+    # Fallback: find any *IMAGE* or *VERSION variables with semver values
+    while IFS= read -r line; do
+        if [[ "$line" =~ ^[A-Z_]*IMAGE[A-Z_]*= ]] || [[ "$line" =~ ^[A-Z_]*VERSION[A-Z_]*= ]]; then
+            local var_name=$(echo "$line" | cut -d'=' -f1)
+            local value=$(echo "$line" | cut -d'=' -f2- | tr -d ' "')
+            if [[ -n "$value" && "$value" =~ ^[vV]?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+                detected_vars+=("$var_name=$value")
+            fi
+        fi
+    done < "$file"
+    
+    # Return the first detected variable
+    if [[ ${#detected_vars[@]} -gt 0 ]]; then
+        echo "${detected_vars[0]}"
+    fi
+}
+
+# Get current image version from .env or .ci.env with flexible variable detection
 get_current_version() {
     local repo_root
     repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -38,22 +85,31 @@ get_current_version() {
     fi
     
     local version=""
+    local variable_name=""
     
     # Check .env first
     if [[ -f "$repo_root/.env" ]]; then
-        version=$(grep '^IMAGE_VERSION=' "$repo_root/.env" 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' "')
+        local detected=$(detect_image_variables "$repo_root/.env")
+        if [[ -n "$detected" ]]; then
+            version=$(echo "$detected" | cut -d'=' -f2-)
+            variable_name=$(echo "$detected" | cut -d'=' -f1)
+        fi
     fi
     
     # Fallback to .ci.env
     if [[ -z "$version" && -f "$repo_root/.ci.env" ]]; then
-        version=$(grep '^IMAGE_VERSION=' "$repo_root/.ci.env" 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' "')
+        local detected=$(detect_image_variables "$repo_root/.ci.env")
+        if [[ -n "$detected" ]]; then
+            version=$(echo "$detected" | cut -d'=' -f2-)
+            variable_name=$(echo "$detected" | cut -d'=' -f1)
+        fi
     fi
     
     echo "$version"
 }
 
-# Get current IMAGE_VERSION info from both .env and .ci.env
-# Sets global variables: VERSION_ENV, VERSION_CIENV, VERSION_BASE, VERSION_SOURCE
+# Get current image version info from both .env and .ci.env with flexible variable detection
+# Sets global variables: VERSION_ENV, VERSION_CIENV, VERSION_BASE, VERSION_SOURCE, VARIABLE_NAME_ENV, VARIABLE_NAME_CIENV, VARIABLE_NAME_BASE
 get_current_version_info() {
     local repo_root
     repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
@@ -62,6 +118,9 @@ get_current_version_info() {
     VERSION_CIENV=""
     VERSION_BASE=""
     VERSION_SOURCE=""
+    VARIABLE_NAME_ENV=""
+    VARIABLE_NAME_CIENV=""
+    VARIABLE_NAME_BASE=""
     
     if [[ -z "$repo_root" ]]; then
         return
@@ -69,12 +128,20 @@ get_current_version_info() {
     
     # Check .env
     if [[ -f "$repo_root/.env" ]]; then
-        VERSION_ENV=$(grep '^IMAGE_VERSION=' "$repo_root/.env" 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' "')
+        local detected=$(detect_image_variables "$repo_root/.env")
+        if [[ -n "$detected" ]]; then
+            VERSION_ENV=$(echo "$detected" | cut -d'=' -f2-)
+            VARIABLE_NAME_ENV=$(echo "$detected" | cut -d'=' -f1)
+        fi
     fi
     
     # Check .ci.env
     if [[ -f "$repo_root/.ci.env" ]]; then
-        VERSION_CIENV=$(grep '^IMAGE_VERSION=' "$repo_root/.ci.env" 2>/dev/null | head -n1 | cut -d'=' -f2- | tr -d ' "')
+        local detected=$(detect_image_variables "$repo_root/.ci.env")
+        if [[ -n "$detected" ]]; then
+            VERSION_CIENV=$(echo "$detected" | cut -d'=' -f2-)
+            VARIABLE_NAME_CIENV=$(echo "$detected" | cut -d'=' -f1)
+        fi
     fi
     
     # Determine base version and source - use the higher semantic version
@@ -105,37 +172,46 @@ get_current_version_info() {
         if [[ $cienv_major -gt $env_major ]]; then
             VERSION_BASE="$VERSION_CIENV"
             VERSION_SOURCE=".ci.env (higher version)"
+            VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
         elif [[ $cienv_major -eq $env_major ]]; then
             if [[ $cienv_minor -gt $env_minor ]]; then
                 VERSION_BASE="$VERSION_CIENV"
                 VERSION_SOURCE=".ci.env (higher version)"
+                VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
             elif [[ $cienv_minor -eq $env_minor ]]; then
                 if [[ $cienv_patch -gt $env_patch ]]; then
                     VERSION_BASE="$VERSION_CIENV"
                     VERSION_SOURCE=".ci.env (higher version)"
+                    VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
                 elif [[ $cienv_patch -eq $env_patch ]]; then
                     # Equal versions - prefer .ci.env as it's what gets committed
                     VERSION_BASE="$VERSION_CIENV"
                     VERSION_SOURCE=".ci.env"
+                    VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
                 else
                     # .env patch is higher
                     VERSION_BASE="$VERSION_ENV"
                     VERSION_SOURCE=".env (higher version)"
+                    VARIABLE_NAME_BASE="$VARIABLE_NAME_ENV"
                 fi
             else
                 VERSION_BASE="$VERSION_ENV"
                 VERSION_SOURCE=".env (higher version)"
+                VARIABLE_NAME_BASE="$VARIABLE_NAME_ENV"
             fi
         else
             VERSION_BASE="$VERSION_ENV"
             VERSION_SOURCE=".env (higher version)"
+            VARIABLE_NAME_BASE="$VARIABLE_NAME_ENV"
         fi
     elif [[ -n "$VERSION_ENV" ]]; then
         VERSION_BASE="$VERSION_ENV"
         VERSION_SOURCE=".env"
+        VARIABLE_NAME_BASE="$VARIABLE_NAME_ENV"
     elif [[ -n "$VERSION_CIENV" ]]; then
         VERSION_BASE="$VERSION_CIENV"
         VERSION_SOURCE=".ci.env"
+        VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
     fi
 }
 
@@ -179,14 +255,30 @@ bump_semver() {
     echo "${prefix}${major}.${minor}.${patch}"
 }
 
-# Update IMAGE_VERSION in a file
+# Update image version in a file using flexible variable detection
 update_version_in_file() {
     local file="$1"
     local new_version="$2"
+    local force_variable="$3"  # Optional: force specific variable name
     
     if [[ ! -f "$file" ]]; then
         echo "⚠️  File not found: $file (skipped)"
         return 1
+    fi
+    
+    # Determine which variable to update
+    local target_variable=""
+    if [[ -n "$force_variable" ]]; then
+        target_variable="$force_variable"
+    else
+        # Auto-detect existing variable
+        local detected=$(detect_image_variables "$file")
+        if [[ -n "$detected" ]]; then
+            target_variable=$(echo "$detected" | cut -d'=' -f1)
+        else
+            # Default fallback
+            target_variable="IMAGE_VERSION"
+        fi
     fi
     
     local tmp_file
@@ -197,8 +289,8 @@ update_version_in_file() {
     
     local replaced=0
     while IFS= read -r line || [[ -n "$line" ]]; do
-        if [[ $replaced -eq 0 && $line == IMAGE_VERSION=* ]]; then
-            echo "IMAGE_VERSION=$new_version" >> "$tmp_file"
+        if [[ $replaced -eq 0 && $line == $target_variable=* ]]; then
+            echo "$target_variable=$new_version" >> "$tmp_file"
             replaced=1
         else
             echo "$line" >> "$tmp_file"
@@ -207,11 +299,11 @@ update_version_in_file() {
     
     # Add if not found
     if [[ $replaced -eq 0 ]]; then
-        echo "IMAGE_VERSION=$new_version" >> "$tmp_file"
+        echo "$target_variable=$new_version" >> "$tmp_file"
     fi
     
     mv "$tmp_file" "$file"
-    echo "✅ Updated $file -> IMAGE_VERSION=$new_version"
+    echo "✅ Updated $file -> $target_variable=$new_version"
     return 0
 }
 

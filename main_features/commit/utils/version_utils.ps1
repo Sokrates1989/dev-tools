@@ -41,12 +41,82 @@ function Test-CiCdSetup {
     }
 }
 
+function Find-ImageVariables {
+    <#
+    .SYNOPSIS
+    Detects image-related variables from a file
+    .PARAMETER FilePath
+    Path to the file to analyze
+    .OUTPUTS
+    Returns hashtable with: VariableName, Value
+    #>
+    param(
+        [string]$FilePath
+    )
+    
+    if (-not (Test-Path $FilePath)) {
+        return $null
+    }
+    
+    try {
+        $content = Get-Content $FilePath -ErrorAction SilentlyContinue
+        if (-not $content) {
+            return $null
+        }
+        
+        # Priority order for variable names
+        $priorityVars = @('IMAGE_VERSION', 'IMAGE_TAG', 'VERSION', 'TAG')
+        
+        # Check priority variables first
+        foreach ($var in $priorityVars) {
+            $line = $content | Where-Object { $_ -match "^$var=" } | Select-Object -First 1
+            if ($line) {
+                $value = ($line -split '=', 2)[1].Trim().Trim('"').Trim("'")
+                if ($value -and $value -match '^[vV]?\d+\.\d+\.\d+') {
+                    return @{
+                        VariableName = $var
+                        Value = $value
+                    }
+                }
+            }
+        }
+        
+        # Fallback: find any *IMAGE* or *VERSION variables with semver values
+        $detectedVars = @()
+        foreach ($line in $content) {
+            if ($line -match '^[A-Z_]*IMAGE[A-Z_]*=' -or $line -match '^[A-Z_]*VERSION[A-Z_]*=') {
+                $parts = $line -split '=', 2
+                if ($parts.Length -eq 2) {
+                    $varName = $parts[0].Trim()
+                    $value = $parts[1].Trim().Trim('"').Trim("'")
+                    if ($value -and $value -match '^[vV]?\d+\.\d+\.\d+') {
+                        $detectedVars += @{
+                            VariableName = $varName
+                            Value = $value
+                        }
+                    }
+                }
+            }
+        }
+        
+        # Return first detected variable
+        if ($detectedVars.Count -gt 0) {
+            return $detectedVars[0]
+        }
+        
+        return $null
+    }
+    catch {
+        return $null
+    }
+}
+
 function Get-CurrentVersion {
     <#
     .SYNOPSIS
-    Gets current IMAGE_VERSION from .env and .ci.env with source info
+    Gets current image version from .env and .ci.env with flexible variable detection
     .OUTPUTS
-    Returns hashtable with: Version, EnvVersion, CiEnvVersion, Source
+    Returns hashtable with: Version, EnvVersion, CiEnvVersion, Source, VariableNameEnv, VariableNameCiEnv, VariableNameBase
     #>
     
     try {
@@ -60,30 +130,33 @@ function Get-CurrentVersion {
         
         $envVersion = $null
         $ciEnvVersion = $null
+        $envVarName = $null
+        $ciEnvVarName = $null
         
         # Check .env
         $envFile = Join-Path $repoRoot ".env"
         if (Test-Path $envFile) {
-            $content = Get-Content $envFile -ErrorAction SilentlyContinue
-            $versionLine = $content | Where-Object { $_ -match '^IMAGE_VERSION=' } | Select-Object -First 1
-            if ($versionLine) {
-                $envVersion = ($versionLine -split '=', 2)[1].Trim().Trim('"')
+            $detected = Find-ImageVariables -FilePath $envFile
+            if ($detected) {
+                $envVersion = $detected.Value
+                $envVarName = $detected.VariableName
             }
         }
         
         # Check .ci.env
         $ciEnvFile = Join-Path $repoRoot ".ci.env"
         if (Test-Path $ciEnvFile) {
-            $content = Get-Content $ciEnvFile -ErrorAction SilentlyContinue
-            $versionLine = $content | Where-Object { $_ -match '^IMAGE_VERSION=' } | Select-Object -First 1
-            if ($versionLine) {
-                $ciEnvVersion = ($versionLine -split '=', 2)[1].Trim().Trim('"')
+            $detected = Find-ImageVariables -FilePath $ciEnvFile
+            if ($detected) {
+                $ciEnvVersion = $detected.Value
+                $ciEnvVarName = $detected.VariableName
             }
         }
         
         # Determine base version and source - use the higher semantic version
         $baseVersion = $null
         $source = $null
+        $baseVarName = $null
         
         if ($envVersion -and $ciEnvVersion) {
             # Both exist - compare and use the higher version
@@ -105,45 +178,54 @@ function Get-CurrentVersion {
             if ($ciEnvMajor -gt $envMajor) {
                 $baseVersion = $ciEnvVersion
                 $source = ".ci.env (higher version)"
+                $baseVarName = $ciEnvVarName
             }
             elseif ($ciEnvMajor -eq $envMajor) {
                 if ($ciEnvMinor -gt $envMinor) {
                     $baseVersion = $ciEnvVersion
                     $source = ".ci.env (higher version)"
+                    $baseVarName = $ciEnvVarName
                 }
                 elseif ($ciEnvMinor -eq $envMinor) {
                     if ($ciEnvPatch -gt $envPatch) {
                         $baseVersion = $ciEnvVersion
                         $source = ".ci.env (higher version)"
+                        $baseVarName = $ciEnvVarName
                     }
                     elseif ($ciEnvPatch -eq $envPatch) {
                         # Equal versions - prefer .ci.env as it's what gets committed
                         $baseVersion = $ciEnvVersion
                         $source = ".ci.env"
+                        $baseVarName = $ciEnvVarName
                     }
                     else {
                         # .env patch is higher
                         $baseVersion = $envVersion
                         $source = ".env (higher version)"
+                        $baseVarName = $envVarName
                     }
                 }
                 else {
                     $baseVersion = $envVersion
                     $source = ".env (higher version)"
+                    $baseVarName = $envVarName
                 }
             }
             else {
                 $baseVersion = $envVersion
                 $source = ".env (higher version)"
+                $baseVarName = $envVarName
             }
         }
         elseif ($envVersion) {
             $baseVersion = $envVersion
             $source = ".env"
+            $baseVarName = $envVarName
         }
         elseif ($ciEnvVersion) {
             $baseVersion = $ciEnvVersion
             $source = ".ci.env"
+            $baseVarName = $ciEnvVarName
         }
         
         return @{
@@ -151,6 +233,9 @@ function Get-CurrentVersion {
             EnvVersion = $envVersion
             CiEnvVersion = $ciEnvVersion
             Source = $source
+            VariableNameEnv = $envVarName
+            VariableNameCiEnv = $ciEnvVarName
+            VariableNameBase = $baseVarName
         }
     }
     catch {
@@ -203,15 +288,18 @@ function Update-SemVer {
 function Update-VersionInFile {
     <#
     .SYNOPSIS
-    Updates IMAGE_VERSION in a file
+    Updates image version in a file using flexible variable detection
     .PARAMETER FilePath
     Path to the file to update
     .PARAMETER NewVersion
     New version to set
+    .PARAMETER ForceVariable
+    Optional: force specific variable name
     #>
     param(
         [string]$FilePath,
-        [string]$NewVersion
+        [string]$NewVersion,
+        [string]$ForceVariable = $null
     )
     
     if (-not (Test-Path $FilePath)) {
@@ -220,13 +308,30 @@ function Update-VersionInFile {
     }
     
     try {
+        # Determine which variable to update
+        $targetVariable = $null
+        if ($ForceVariable) {
+            $targetVariable = $ForceVariable
+        }
+        else {
+            # Auto-detect existing variable
+            $detected = Find-ImageVariables -FilePath $FilePath
+            if ($detected) {
+                $targetVariable = $detected.VariableName
+            }
+            else {
+                # Default fallback
+                $targetVariable = "IMAGE_VERSION"
+            }
+        }
+        
         $content = Get-Content $FilePath -ErrorAction Stop
         $updated = $false
         $newContent = @()
         
         foreach ($line in $content) {
-            if (-not $updated -and $line -match '^IMAGE_VERSION=') {
-                $newContent += "IMAGE_VERSION=$NewVersion"
+            if (-not $updated -and $line -match "^$targetVariable=") {
+                $newContent += "$targetVariable=$NewVersion"
                 $updated = $true
             }
             else {
@@ -236,12 +341,12 @@ function Update-VersionInFile {
         
         # Add if not found
         if (-not $updated) {
-            $newContent += "IMAGE_VERSION=$NewVersion"
+            $newContent += "$targetVariable=$NewVersion"
         }
         
         # Write content with proper line endings
         $newContent | Set-Content -Path $FilePath -Encoding UTF8
-        Write-Host "[OK] Updated $FilePath -> IMAGE_VERSION=$NewVersion" -ForegroundColor Green
+        Write-Host "[OK] Updated $FilePath -> $targetVariable=$NewVersion" -ForegroundColor Green
         return $true
     }
     catch {
@@ -265,10 +370,10 @@ function Invoke-VersionUpdatePrompt {
     Write-Host "Image Version Management" -ForegroundColor Cyan
     Write-Host "============================" -ForegroundColor Cyan
     Write-Host ""
-    Write-Host "Current IMAGE_VERSION values:" -ForegroundColor Cyan
+    Write-Host "Current image version values:" -ForegroundColor Cyan
     
-    $envDisplay = if ($VersionInfo.EnvVersion) { $VersionInfo.EnvVersion } else { "<not set>" }
-    $ciEnvDisplay = if ($VersionInfo.CiEnvVersion) { $VersionInfo.CiEnvVersion } else { "<not set>" }
+    $envDisplay = if ($VersionInfo.EnvVersion) { "$($VersionInfo.VariableNameEnv)=$($VersionInfo.EnvVersion)" } else { "<not set>" }
+    $ciEnvDisplay = if ($VersionInfo.CiEnvVersion) { "$($VersionInfo.VariableNameCiEnv)=$($VersionInfo.CiEnvVersion)" } else { "<not set>" }
     
     Write-Host "  - .env    : $envDisplay" -ForegroundColor Gray
     Write-Host "  - .ci.env : $ciEnvDisplay" -ForegroundColor Gray
@@ -355,10 +460,14 @@ function Update-RepoVersion {
         Write-Host ""
         Write-Host "Updating version files to $NewVersion..." -ForegroundColor Cyan
         
+        # Get current version info to determine variable names
+        $versionInfo = Get-CurrentVersion
+        
         # Always update .env to keep in sync (even if gitignored)
         $envFile = Join-Path $repoRoot ".env"
         if (Test-Path $envFile) {
-            if (Update-VersionInFile -FilePath $envFile -NewVersion $NewVersion) {
+            $forceVar = if ($versionInfo.VariableNameEnv) { $versionInfo.VariableNameEnv } else { $null }
+            if (Update-VersionInFile -FilePath $envFile -NewVersion $NewVersion -ForceVariable $forceVar) {
                 $updatedFiles += ".env"
                 Write-Host "   [OK] Updated .env (local only, not committed)" -ForegroundColor Gray
             }
@@ -367,7 +476,8 @@ function Update-RepoVersion {
         # Always update .ci.env (this will be committed)
         $ciEnvFile = Join-Path $repoRoot ".ci.env"
         if (Test-Path $ciEnvFile) {
-            if (Update-VersionInFile -FilePath $ciEnvFile -NewVersion $NewVersion) {
+            $forceVar = if ($versionInfo.VariableNameCiEnv) { $versionInfo.VariableNameCiEnv } else { $null }
+            if (Update-VersionInFile -FilePath $ciEnvFile -NewVersion $NewVersion -ForceVariable $forceVar) {
                 $updatedFiles += ".ci.env"
                 $stagedFiles += ".ci.env"
             }
