@@ -1,17 +1,26 @@
 Write a concise and meaningful **merge commit message only** based on the source and target branch names and the purpose of the merge. DO NOT include git commands or code blocks.
 
-Follow this format strictly, using one line only:
+CRITICAL: Follow this EXACT format on a single line:
 
-[MERGE | sourceBranch -> targetBranch] Merged feature: short summary of the change.
+[MERGE | sourceBranch -> targetBranch] Category: short summary of the change.
 
-Replace "Merged feature:" with one of these where applicable:
-- Merged feature:
-- Merged hotfix:
-- Merged cleanup:
-- Merged update:
-- Merged refactoring:
-- Merged integration:
+RULES:
+1. The opening bracket MUST be: [MERGE | 
+2. Use the EXACT branch names for sourceBranch and targetBranch
+3. After the closing bracket ], use one of these categories:
+   - Merged feature:
+   - Merged hotfix:
+   - Merged cleanup:
+   - Merged update:
+   - Merged refactoring:
+   - Merged integration:
+4. Keep the summary under 18 words
+5. Output ONLY the message line (no code block, no git command, no commentary)
 
-Keep the summary under 18 words. Replace sourceBranch and targetBranch with the real branch names.
+CORRECT EXAMPLE:
+[MERGE | backup -> dev] Merged feature: async background restore API
 
-⚠️ Respond ONLY with the final **message line** (no code block, no git command, no commentary).
+WRONG EXAMPLES (DO NOT USE):
+[Merged feature: backup -> dev] ...
+[backup -> dev] Merged feature: ...
+Merged feature: [MERGE | backup -> dev] ...
