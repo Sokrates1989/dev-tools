@@ -76,11 +76,24 @@ if ($LASTEXITCODE -ne 0) {
 Write-Host "Remote branches fetched successfully." -ForegroundColor Green
 
 # --- Step 2: Get all remote branches ---
+# List all remote branches from "origin" and filter out symbolic refs like "origin/HEAD -> origin/main".
+$remoteBranches = git branch -r --format="%(refname:short)" |
+    Where-Object { $_ -like 'origin/*' -and $_ -notmatch '->' } |
+    Sort-Object
+
+if (-not $remoteBranches -or $remoteBranches.Count -eq 0) {
+    Write-Host "Step 2: Found 0 remote branches on 'origin'." -ForegroundColor Yellow
+    Write-Host "Nothing to track. Exiting." -ForegroundColor Yellow
+    exit 0
+}
+
 Write-Host "Step 2: Found $($remoteBranches.Count) remote branches:" -ForegroundColor Cyan
 $remoteBranches | ForEach-Object { Write-Host "  $_" -ForegroundColor Gray }
 
 # --- Step 3: Get all local branches ---
 Write-Host "Step 3: Checking which remote branches are already tracked..." -ForegroundColor Cyan
+
+$localBranches = git branch --format="%(refname:short)" | Sort-Object
 
 $untrackedBranches = @()
 foreach ($remoteBranch in $remoteBranches) {
