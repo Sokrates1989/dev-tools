@@ -151,11 +151,13 @@ if [[ "$HAS_CICD" == "true" ]]; then
   fi
 fi
 
-# Ask for JIRA Task ID
+# Ask for JIRA Task ID (single-step input)
 echo ""
-read -r -p "🎫 Do you want to add a JIRA task ID to the commit message? [y/N]: " add_jira
-if [[ "$add_jira" =~ ^[Yy]$ ]]; then
-  JIRA_ID=$(prompt_jira_id)
+read -r -p "🎫 Enter JIRA task ID (e.g. FA-123, or press Enter for none): " jira_input
+if [[ -z "$jira_input" || "$jira_input" =~ ^[Nn]$ ]]; then
+  JIRA_ID=""
+else
+  JIRA_ID="$jira_input"
 fi
 
 # Create file to pass variables to handle_export_api

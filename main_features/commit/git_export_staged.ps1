@@ -200,11 +200,14 @@ if ($hasCiCd) {
     }
 }
 
-# Ask for JIRA Task ID
+# Ask for JIRA Task ID (single-step input)
 Write-Host ""
-$addJira = Read-Host " Do you want to add a JIRA task ID to the commit message? [y/N]"
-if ($addJira -match '^[Yy]$') {
-    $jiraId = Invoke-JiraIdPrompt
+$jiraInput = Read-Host " Enter JIRA task ID (e.g. FA-123, or press Enter for none)"
+if (-not $jiraInput -or $jiraInput -match '^[Nn]$') {
+    $jiraId = $null
+}
+else {
+    $jiraId = $jiraInput
 }
 
 # Create file to pass variables to handle_export_api
