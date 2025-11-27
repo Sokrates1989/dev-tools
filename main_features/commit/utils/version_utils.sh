@@ -260,6 +260,7 @@ update_version_in_file() {
     local file="$1"
     local new_version="$2"
     local force_variable="$3"  # Optional: force specific variable name
+    local add_if_missing="${4:-false}"  # Optional: whether to add variable if not found (default: false)
     
     if [[ ! -f "$file" ]]; then
         echo "⚠️  File not found: $file (skipped)"
@@ -297,13 +298,21 @@ update_version_in_file() {
         fi
     done < "$file"
     
-    # Add if not found
+    # Add if not found (only if add_if_missing is true)
     if [[ $replaced -eq 0 ]]; then
-        echo "$target_variable=$new_version" >> "$tmp_file"
+        if [[ "$add_if_missing" == "true" ]]; then
+            echo "$target_variable=$new_version" >> "$tmp_file"
+            echo "✅ Added $file -> $target_variable=$new_version"
+        else
+            rm -f "$tmp_file"
+            echo "⚠️  Variable $target_variable not found in $file (skipped - not adding)"
+            return 1
+        fi
+    else
+        echo "✅ Updated $file -> $target_variable=$new_version"
     fi
     
     mv "$tmp_file" "$file"
-    echo "✅ Updated $file -> $target_variable=$new_version"
     return 0
 }
 
@@ -378,34 +387,56 @@ update_repo_version() {
         return 1
     fi
     
+    # Get current version info to determine variable names
+    get_current_version_info
+    local env_var_name="$VARIABLE_NAME_ENV"
+    local ci_env_var_name="$VARIABLE_NAME_CIENV"
+    
     local updated_files=()
+    local staged_files=()
     
-    # Update .env if it exists
+    echo ""
+    echo "📝 Updating version files to $new_version..."
+    
+    # Update .env if it exists (local only, not staged)
     if [[ -f "$repo_root/.env" ]]; then
-        if update_version_in_file "$repo_root/.env" "$new_version"; then
+        # Only update if variable already exists in .env (don't add it)
+        local force_var="$env_var_name"
+        if update_version_in_file "$repo_root/.env" "$new_version" "$force_var" "false"; then
             updated_files+=(".env")
+            echo "   [OK] Updated .env (local only, not committed)"
         fi
     fi
     
-    # Update .ci.env if it exists
+    # Update .ci.env if it exists (will be committed)
     if [[ -f "$repo_root/.ci.env" ]]; then
-        if update_version_in_file "$repo_root/.ci.env" "$new_version"; then
+        # Add variable if it doesn't exist in .ci.env
+        local force_var="$ci_env_var_name"
+        [[ -z "$force_var" ]] && force_var="IMAGE_VERSION"
+        if update_version_in_file "$repo_root/.ci.env" "$new_version" "$force_var" "true"; then
             updated_files+=(".ci.env")
+            staged_files+=(".ci.env")
         fi
     fi
     
-    # Stage updated files
-    if [[ ${#updated_files[@]} -gt 0 ]]; then
+    # Stage .ci.env for commit (skip .env as it's usually gitignored)
+    if [[ ${#staged_files[@]} -gt 0 ]]; then
         echo ""
         echo "📝 Staging version files for commit..."
-        for file in "${updated_files[@]}"; do
+        for file in "${staged_files[@]}"; do
             git add "$repo_root/$file"
             echo "   ✓ Staged: $file"
         done
-        echo "VERSION_FILES_STAGED=${updated_files[*]}"
+        echo "VERSION_FILES_STAGED=${staged_files[*]}"
         return 0
     else
-        echo "⚠️  No version files were updated"
+        if [[ ${#updated_files[@]} -gt 0 ]]; then
+            echo ""
+            echo "⚠️  Files updated but none staged (check if .ci.env exists)"
+        else
+            echo ""
+            echo "⚠️  No version files were updated"
+        fi
         return 1
     fi
 }

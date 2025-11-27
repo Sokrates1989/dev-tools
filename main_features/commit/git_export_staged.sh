@@ -92,27 +92,29 @@ if [[ "$HAS_CICD" == "true" ]]; then
   
   # Get current version info
   get_current_version_info
-  local env_version="$VERSION_ENV"
-  local ci_env_version="$VERSION_CIENV"
-  local base_version="$VERSION_BASE"
-  local version_source="$VERSION_SOURCE"
+  env_version="$VERSION_ENV"
+  ci_env_version="$VERSION_CIENV"
+  base_version="$VERSION_BASE"
+  version_source="$VERSION_SOURCE"
+  env_var_name="$VARIABLE_NAME_ENV"
+  ci_env_var_name="$VARIABLE_NAME_CIENV"
   
   # Check if .ci.env is staged for commit
-  local repo_root
   repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
   if [[ -n "$repo_root" ]]; then
-    local ci_env_staged
     ci_env_staged=$(git diff --cached --name-only | grep -x ".ci.env")
     
     if [[ -n "$ci_env_staged" ]]; then
       echo ""
       echo "NOTE: .ci.env is staged and will be committed"
       
-      # Get old and new version from git diff
-      local old_version
-      local new_version
-      old_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^-IMAGE_VERSION=" | sed 's/^-IMAGE_VERSION=//' | tr -d ' ')
-      new_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^+IMAGE_VERSION=" | sed 's/^+IMAGE_VERSION=//' | tr -d ' ')
+      # Get old and new version from git diff using detected variable name
+      old_version=""
+      new_version=""
+      if [[ -n "$ci_env_var_name" ]]; then
+        old_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^-${ci_env_var_name}=" | sed "s/^-${ci_env_var_name}=//" | tr -d ' ')
+        new_version=$(git diff --cached "$repo_root/.ci.env" 2>/dev/null | grep "^+${ci_env_var_name}=" | sed "s/^+${ci_env_var_name}=//" | tr -d ' ')
+      fi
       
       if [[ -n "$old_version" && -n "$new_version" && "$old_version" != "$new_version" ]]; then
         echo "  Version change: $old_version -> $new_version"
@@ -125,8 +127,17 @@ if [[ "$HAS_CICD" == "true" ]]; then
   # Display current versions
   echo ""
   echo "Current IMAGE_VERSION:"
-  echo "  - .env    : ${env_version:-<not set>}"
-  echo "  - .ci.env : ${ci_env_version:-<not set>}"
+  if [[ -n "$env_var_name" && -n "$env_version" ]]; then
+    echo "  - .env    : ${env_var_name}=${env_version}"
+  else
+    echo "  - .env    : <not set>"
+  fi
+  
+  if [[ -n "$ci_env_var_name" && -n "$ci_env_version" ]]; then
+    echo "  - .ci.env : ${ci_env_var_name}=${ci_env_version}"
+  else
+    echo "  - .ci.env : <not set>"
+  fi
   
   if [[ -n "$base_version" ]]; then
     echo "  Base version: $base_version (from $version_source)"

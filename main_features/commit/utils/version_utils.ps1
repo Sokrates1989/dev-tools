@@ -299,7 +299,8 @@ function Update-VersionInFile {
     param(
         [string]$FilePath,
         [string]$NewVersion,
-        [string]$ForceVariable = $null
+        [string]$ForceVariable = $null,
+        [bool]$AddIfMissing = $true
     )
     
     if (-not (Test-Path $FilePath)) {
@@ -339,8 +340,12 @@ function Update-VersionInFile {
             }
         }
         
-        # Add if not found
+        # Add if not found (only when allowed)
         if (-not $updated) {
+            if (-not $AddIfMissing) {
+                Write-Host "WARNING: Variable $targetVariable not found in $FilePath (skipped - not adding)" -ForegroundColor Yellow
+                return $false
+            }
             $newContent += "$targetVariable=$NewVersion"
         }
         
@@ -467,7 +472,8 @@ function Update-RepoVersion {
         $envFile = Join-Path $repoRoot ".env"
         if (Test-Path $envFile) {
             $forceVar = if ($versionInfo.VariableNameEnv) { $versionInfo.VariableNameEnv } else { $null }
-            if (Update-VersionInFile -FilePath $envFile -NewVersion $NewVersion -ForceVariable $forceVar) {
+            # Only update .env if the variable already exists; do NOT add it when missing
+            if (Update-VersionInFile -FilePath $envFile -NewVersion $NewVersion -ForceVariable $forceVar -AddIfMissing:$false) {
                 $updatedFiles += ".env"
                 Write-Host "   [OK] Updated .env (local only, not committed)" -ForegroundColor Gray
             }
@@ -477,7 +483,8 @@ function Update-RepoVersion {
         $ciEnvFile = Join-Path $repoRoot ".ci.env"
         if (Test-Path $ciEnvFile) {
             $forceVar = if ($versionInfo.VariableNameCiEnv) { $versionInfo.VariableNameCiEnv } else { $null }
-            if (Update-VersionInFile -FilePath $ciEnvFile -NewVersion $NewVersion -ForceVariable $forceVar) {
+            # For .ci.env we allow creating the variable if it's missing
+            if (Update-VersionInFile -FilePath $ciEnvFile -NewVersion $NewVersion -ForceVariable $forceVar -AddIfMissing:$true) {
                 $updatedFiles += ".ci.env"
                 $stagedFiles += ".ci.env"
             }
