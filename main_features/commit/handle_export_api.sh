@@ -84,18 +84,18 @@ replace_placeholders() {
   if [[ -n "$version" ]]; then
     message="${message//VERSION_PLACEHOLDER/$version}"
   else
-    # Remove VERSION_PLACEHOLDER and the pipe separator
-    message=$(echo "$message" | sed -E 's/\s*VERSION_PLACEHOLDER\s*\|\s*//g')
-    message=$(echo "$message" | sed -E 's/\s*\|\s*VERSION_PLACEHOLDER\s*//g')
+    # Remove VERSION_PLACEHOLDER and the pipe separator (portable POSIX whitespace classes)
+    message=$(echo "$message" | sed -E 's/[[:space:]]*VERSION_PLACEHOLDER[[:space:]]*\|[[:space:]]*//g')
+    message=$(echo "$message" | sed -E 's/[[:space:]]*\|[[:space:]]*VERSION_PLACEHOLDER[[:space:]]*//g')
   fi
   
   # Replace JIRA_ID_PLACEHOLDER
   if [[ -n "$jira" ]]; then
     message="${message//JIRA_ID_PLACEHOLDER/$jira}"
   else
-    # Remove JIRA_ID_PLACEHOLDER and the pipe separator
-    message=$(echo "$message" | sed -E 's/\s*JIRA_ID_PLACEHOLDER\s*\|\s*//g')
-    message=$(echo "$message" | sed -E 's/\s*\|\s*JIRA_ID_PLACEHOLDER\s*//g')
+    # Remove JIRA_ID_PLACEHOLDER and the pipe separator (portable POSIX whitespace classes)
+    message=$(echo "$message" | sed -E 's/[[:space:]]*JIRA_ID_PLACEHOLDER[[:space:]]*\|[[:space:]]*//g')
+    message=$(echo "$message" | sed -E 's/[[:space:]]*\|[[:space:]]*JIRA_ID_PLACEHOLDER[[:space:]]*//g')
   fi
   
   echo "$message"
