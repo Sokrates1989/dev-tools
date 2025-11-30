@@ -320,25 +320,25 @@ update_version_in_file() {
 prompt_version_update() {
     local current_version="$1"
     
-    echo ""
-    echo "📦 Image Version Management"
-    echo "============================"
+    echo "" >&2
+    echo "📦 Image Version Management" >&2
+    echo "============================" >&2
     
     if [[ -n "$current_version" ]]; then
-        echo "Current version: $current_version"
+        echo "Current version: $current_version" >&2
     else
-        echo "No current version found"
+        echo "No current version found" >&2
         current_version="0.0.0"
     fi
     
-    echo ""
-    echo "Update options:"
-    echo "[1] Auto-increment PATCH (${current_version} → $(bump_semver "$current_version" "patch"))"
-    echo "[2] Auto-increment MINOR (${current_version} → $(bump_semver "$current_version" "minor"))"
-    echo "[3] Auto-increment MAJOR (${current_version} → $(bump_semver "$current_version" "major"))"
-    echo "[4] Enter version manually"
-    echo "[N] No update (skip)"
-    echo ""
+    echo "" >&2
+    echo "Update options:" >&2
+    echo "[1] Auto-increment PATCH (${current_version} → $(bump_semver "$current_version" "patch"))" >&2
+    echo "[2] Auto-increment MINOR (${current_version} → $(bump_semver "$current_version" "minor"))" >&2
+    echo "[3] Auto-increment MAJOR (${current_version} → $(bump_semver "$current_version" "major"))" >&2
+    echo "[4] Enter version manually" >&2
+    echo "[N] No update (skip)" >&2
+    echo "" >&2
     
     read -r -p "Choose option: " version_choice
     
@@ -358,17 +358,17 @@ prompt_version_update() {
             new_version="$manual_version"
             ;;
         [Nn])
-            echo "ℹ️  Version update skipped"
+            echo "ℹ️  Version update skipped" >&2
             return 1
             ;;
         *)
-            echo "Invalid option. Version update skipped."
+            echo "Invalid option. Version update skipped." >&2
             return 1
             ;;
     esac
     
     if [[ -z "$new_version" ]]; then
-        echo "⚠️  Invalid version. Skipping update."
+        echo "⚠️  Invalid version. Skipping update." >&2
         return 1
     fi
     
