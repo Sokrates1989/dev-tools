@@ -26,11 +26,13 @@ edit_commit_message() {
   local commit_line="$1"
   
   if [[ -n "$BASH_VERSION" && "${BASH_VERSINFO[0]}" -ge 4 ]]; then
-    read -e -i "$commit_line" -p "📝 Press Enter to accept or edit the command: " final_commit
+    # Prompt goes to stderr so it is not captured in command substitution
+    read -e -i "$commit_line" -p "📝 Press Enter to accept or edit the command: " final_commit >&2
+    # Only the final command is printed to stdout
     echo "$final_commit"
   elif command -v zsh >/dev/null 2>&1; then
     # macOS specific handling - manual file edit approach
-    echo ""
+    echo "" >&2
     
     # Extract just the message content
     COMMIT_MSG=$(echo "$commit_line" | sed -n 's/git commit -m "\(.*\)"/\1/p')
@@ -41,29 +43,29 @@ edit_commit_message() {
     mkdir -p "$TEMP_DIR"
     echo "$COMMIT_MSG" > "$TEMP_FILE"
     
-    echo "📝 Commit message saved to: $TEMP_FILE"
-    echo ""
-    echo "Please edit the commit message in your preferred editor:"
-    echo "  ➤ Open the file: $TEMP_FILE"
-    echo "  ➤ Edit the commit message"
-    echo "  ➤ Save the file"
-    echo "  ➤ Close the editor"
-    echo ""
+    echo "📝 Commit message saved to: $TEMP_FILE" >&2
+    echo "" >&2
+    echo "Please edit the commit message in your preferred editor:" >&2
+    echo "  ➤ Open the file: $TEMP_FILE" >&2
+    echo "  ➤ Edit the commit message" >&2
+    echo "  ➤ Save the file" >&2
+    echo "  ➤ Close the editor" >&2
+    echo "" >&2
     
     # Try to open the file with default editor
     if command -v open >/dev/null 2>&1; then
-      echo "🔧 Opening file with default editor..."
+      echo "🔧 Opening file with default editor..." >&2
       open "$TEMP_FILE"
     else
-      echo "📂 Please open this file manually: $TEMP_FILE"
+      echo "📂 Please open this file manually: $TEMP_FILE" >&2
     fi
     
-    echo ""
-    read -p "🔁 Press [Enter] once you've edited the file and saved it..." _
+    echo "" >&2
+    read -p "🔁 Press [Enter] once you've edited the file and saved it..." _ >&2
     
     # Check if file still exists
     if [[ ! -f "$TEMP_FILE" ]]; then
-      echo "❌ File was deleted. Aborting commit."
+      echo "❌ File was deleted. Aborting commit." >&2
       return 1
     fi
     
@@ -72,21 +74,22 @@ edit_commit_message() {
     rm "$TEMP_FILE"
     
     if [[ -z "$EDITED_MSG" ]]; then
-      echo "⚠️  Empty commit message. Aborting."
+      echo "⚠️  Empty commit message. Aborting." >&2
       return 1
     fi
     
     # Reconstruct the full git command
     echo "git commit -m \"$EDITED_MSG\""
   else
-    echo ""
-    echo "📝 You can copy/paste and edit the following:"
-    echo "$commit_line"
+    echo "" >&2
+    echo "📝 You can copy/paste and edit the following:" >&2
+    echo "$commit_line" >&2
     if command -v pbcopy >/dev/null 2>&1; then
       echo "$commit_line" | pbcopy
-      echo "📋 Commit command copied to clipboard!"
+      echo "📋 Commit command copied to clipboard!" >&2
     fi
-    read -r -p "Enter your edited commit command: " final_commit
+    read -r -p "Enter your edited commit command: " final_commit >&2
+    # Only the final edited command is printed to stdout
     echo "$final_commit"
   fi
 }
