@@ -75,8 +75,9 @@ if [[ -f "$COMMIT_MSG_FILE" ]]; then
     cp "$COMMIT_MSG_FILE" "$SCRIPT_DIR/git_export_staged/"
 fi
 
-# Load version utilities
+# Load utilities
 source "$SCRIPT_DIR/utils/version_utils.sh"
+source "$SCRIPT_DIR/utils/file_content_utils.sh"
 
 # Initialize variables for replacements
 JIRA_ID=""
@@ -182,7 +183,7 @@ VARS_FILE="$SCRIPT_DIR/git_export_staged/.commit_vars"
 # Set TASK_ID for backwards compatibility
 TASK_ID="JIRA_ID_PLACEHOLDER"
 
-# Concatenate everything into one single file. 
+# Concatenate everything into one single file with smart content handling
 ALL_IN_ONE_DIR="$SCRIPT_DIR/git_export_staged/all_in_one"
 ALL_IN_ONE_AI_MESSAGE_FILE="$ALL_IN_ONE_DIR/ai_message.txt"
 mkdir -p "$ALL_IN_ONE_DIR"
@@ -195,16 +196,23 @@ rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
         echo "(no commit_message_prompt.txt found)"
     fi
     echo ""
-    echo "===== 🔍 STAGED DIFF ====="
-    cat "$DIFF_FILE"
+    
+    # Generate files summary first
+    echo "===== 📋 FILES SUMMARY ====="
+    generate_files_summary "$FILES"
     echo ""
+    
+    echo "===== 🔍 STAGED DIFF ====="
+    get_smart_diff_content "$DIFF_FILE"
+    echo ""
+    
     echo "===== 📁 STAGED FILE CONTENTS ====="
+    echo "(Binary and large files show metadata only)"
+    echo ""
     for file in $FILES; do
-        if [[ -f "$file" ]]; then
-            echo "--- $(basename "$file") ---"
-            cat "$file"
-            echo ""
-        fi
+        echo "--- $(basename "$file") ---"
+        get_smart_file_content "$file"
+        echo ""
     done
     echo ""
     echo "$TASK_ID"

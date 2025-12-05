@@ -35,6 +35,7 @@ get_commit_message() {
 }
 
 # Function to build JSON payload
+# Uses stdin for messages_json to avoid "Argument list too long" errors
 build_json_payload() {
   local messages_json="$1"
   local api_provider="$2"
@@ -43,23 +44,23 @@ build_json_payload() {
   local max_tokens="$5"
   
   if [[ "$api_provider" == "openai" ]]; then
-    jq -n \
+    printf '%s' "$messages_json" | jq \
       --arg model "$deployment" \
-      --argjson messages "$messages_json" \
       --arg temp "$temperature" \
       --argjson max_tokens "$max_tokens" \
-      '{
+      '. as $messages |
+      {
         model: $model,
         messages: $messages,
         temperature: ($temp | tonumber),
         max_tokens: $max_tokens
       }'
   else
-    jq -n \
-      --argjson messages "$messages_json" \
+    printf '%s' "$messages_json" | jq \
       --arg temp "$temperature" \
       --argjson max_tokens "$max_tokens" \
-      '{
+      '. as $messages |
+      {
         messages: $messages,
         temperature: ($temp | tonumber),
         max_tokens: $max_tokens
@@ -92,6 +93,7 @@ validate_api_config() {
 }
 
 # Function to build conversation messages for different scenarios
+# Uses stdin for user_content to avoid "Argument list too long" errors with large diffs
 build_conversation_messages() {
   local user_content="$1"
   local system_prompt="${2:-You are a helpful expert developer with decades of experience in writing clean, concise and context-aware Git commit messages.}"
@@ -100,32 +102,33 @@ build_conversation_messages() {
   
   local messages_json
   if [[ -n "$previous_message" && -n "$additional_prompt" ]]; then
-    messages_json=$(jq -n \
-      --arg content "$user_content" \
+    # Use printf + pipe to pass large content via stdin instead of command-line args
+    messages_json=$(printf '%s' "$user_content" | jq -Rs \
       --arg system "$system_prompt" \
       --arg prev_msg "$previous_message" \
       --arg add_prompt "$additional_prompt" \
-      '[
+      '. as $content |
+      [
         { role: "system", content: $system },
         { role: "user", content: $content },
         { role: "assistant", content: $prev_msg },
         { role: "user", content: $add_prompt }
       ]')
   elif [[ -n "$previous_message" ]]; then
-    messages_json=$(jq -n \
-      --arg content "$user_content" \
+    messages_json=$(printf '%s' "$user_content" | jq -Rs \
       --arg system "$system_prompt" \
       --arg prev_msg "$previous_message" \
-      '[
+      '. as $content |
+      [
         { role: "system", content: $system },
         { role: "user", content: $content },
         { role: "assistant", content: $prev_msg }
       ]')
   else
-    messages_json=$(jq -n \
-      --arg content "$user_content" \
+    messages_json=$(printf '%s' "$user_content" | jq -Rs \
       --arg system "$system_prompt" \
-      '[
+      '. as $content |
+      [
         { role: "system", content: $system },
         { role: "user", content: $content }
       ]')

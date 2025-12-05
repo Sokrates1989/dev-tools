@@ -56,8 +56,9 @@ if (Test-Path $CommitMsgFile) {
     Copy-Item $CommitMsgFile -Destination $ExportDir
 }
 
-# Load version utilities
+# Load utilities
 . (Join-Path $ScriptDir "utils\version_utils.ps1")
+. (Join-Path $ScriptDir "utils\file_content_utils.ps1")
 
 # Initialize variables for replacements
 $jiraId = $null
@@ -241,18 +242,28 @@ if (Test-Path $CommitMsgFile) {
 } else {
     Add-Content $AiMessageFile "(no commit_message_prompt.txt found)"
 }
+Add-Content $AiMessageFile ""
+
+# Generate files summary first
+Add-Content $AiMessageFile "===== FILES SUMMARY ====="
+$filesSummary = Get-FilesSummary -Files $StagedFiles
+Add-Content $AiMessageFile $filesSummary
+Add-Content $AiMessageFile ""
+
 Add-Content $AiMessageFile "===== STAGED DIFF ====="
-Get-Content $DiffFile | Add-Content $AiMessageFile
+$smartDiff = Get-SmartDiffContent -DiffFile $DiffFile
+Add-Content $AiMessageFile $smartDiff
+Add-Content $AiMessageFile ""
 
 Add-Content $AiMessageFile "===== STAGED FILE CONTENTS ====="
+Add-Content $AiMessageFile "(Binary and large files show metadata only)"
+Add-Content $AiMessageFile ""
 foreach ($file in $StagedFiles) {
     $basename = Split-Path $file -Leaf
-    $flatPath = Join-Path $ChangedFilesDir $basename
-    if (Test-Path $flatPath) {
-        Add-Content $AiMessageFile "--- $basename ---"
-        Get-Content $flatPath | Add-Content $AiMessageFile
-        Add-Content $AiMessageFile ""
-    }
+    Add-Content $AiMessageFile "--- $basename ---"
+    $smartContent = Get-SmartFileContent -FilePath $file
+    Add-Content $AiMessageFile $smartContent
+    Add-Content $AiMessageFile ""
 }
 
 Add-Content $AiMessageFile $TaskID

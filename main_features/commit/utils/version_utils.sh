@@ -302,14 +302,14 @@ update_version_in_file() {
     if [[ $replaced -eq 0 ]]; then
         if [[ "$add_if_missing" == "true" ]]; then
             echo "$target_variable=$new_version" >> "$tmp_file"
-            echo "✅ Added $file -> $target_variable=$new_version"
+            echo "✅ Added $file -> $target_variable=$new_version" >&2
         else
             rm -f "$tmp_file"
-            echo "⚠️  Variable $target_variable not found in $file (skipped - not adding)"
+            echo "⚠️  Variable $target_variable not found in $file (skipped - not adding)" >&2
             return 1
         fi
     else
-        echo "✅ Updated $file -> $target_variable=$new_version"
+        echo "✅ Updated $file -> $target_variable=$new_version" >&2
     fi
     
     mv "$tmp_file" "$file"
@@ -395,8 +395,8 @@ update_repo_version() {
     local updated_files=()
     local staged_files=()
     
-    echo ""
-    echo "📝 Updating version files to $new_version..."
+    echo "" >&2
+    echo "📝 Updating version files to $new_version..." >&2
     
     # Update .env if it exists (local only, not staged)
     if [[ -f "$repo_root/.env" ]]; then
@@ -404,7 +404,7 @@ update_repo_version() {
         local force_var="$env_var_name"
         if update_version_in_file "$repo_root/.env" "$new_version" "$force_var" "false"; then
             updated_files+=(".env")
-            echo "   [OK] Updated .env (local only, not committed)"
+            echo "   [OK] Updated .env (local only, not committed)" >&2
         fi
     fi
     
@@ -421,21 +421,22 @@ update_repo_version() {
     
     # Stage .ci.env for commit (skip .env as it's usually gitignored)
     if [[ ${#staged_files[@]} -gt 0 ]]; then
-        echo ""
-        echo "📝 Staging version files for commit..."
+        echo "" >&2
+        echo "📝 Staging version files for commit..." >&2
         for file in "${staged_files[@]}"; do
             git add "$repo_root/$file"
-            echo "   ✓ Staged: $file"
+            echo "   ✓ Staged: $file" >&2
         done
-        echo "VERSION_FILES_STAGED=${staged_files[*]}"
+        # Only this line goes to stdout (for capture)
+        echo "${staged_files[*]}"
         return 0
     else
         if [[ ${#updated_files[@]} -gt 0 ]]; then
-            echo ""
-            echo "⚠️  Files updated but none staged (check if .ci.env exists)"
+            echo "" >&2
+            echo "⚠️  Files updated but none staged (check if .ci.env exists)" >&2
         else
-            echo ""
-            echo "⚠️  No version files were updated"
+            echo "" >&2
+            echo "⚠️  No version files were updated" >&2
         fi
         return 1
     fi
