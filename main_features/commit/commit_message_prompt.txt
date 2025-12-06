@@ -5,7 +5,7 @@ git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Category] Area or fe
 INSTRUCTIONS:
 - Use EXACTLY "JIRA_ID_PLACEHOLDER" and "VERSION_PLACEHOLDER" as shown (the script will replace them)
 - Category: Choose ONE from [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation|Tests|Performance|Security|Build|CI|Tooling|Infra|Style] to describe the overall nature of all staged changes.
-  - Only use the Documentation category if the changes are purely documentation/text.
+  - Use the Documentation category when the changes are focused on docs/README/usage text and their related assets (screenshots, diagrams, images used in docs), and there are no changes to runtime behavior or tooling.
   - If there are significant changes to scripts, build/deployment configuration, or setup tooling (e.g. .sh/.ps1 scripts, Docker, CI/CD), prefer Setup, Env, or Git as appropriate, even if documentation was also updated.
   - If there are code changes (new features or bug fixes) together with docs, prefer Functionality, New Feature, or BugFix rather than Documentation.
 - "Area or feature":
