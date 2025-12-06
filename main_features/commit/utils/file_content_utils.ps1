@@ -84,11 +84,17 @@ function Get-FileSize {
     #>
     param([string]$FilePath)
     
-    if (-not (Test-Path $FilePath)) {
+    try {
+        if (-not (Test-Path -LiteralPath $FilePath)) {
+            return 0
+        }
+        
+        $item = Get-Item -LiteralPath $FilePath -ErrorAction Stop
+        return $item.Length
+    }
+    catch {
         return 0
     }
-    
-    return (Get-Item $FilePath).Length
 }
 
 function Format-FileSize {
