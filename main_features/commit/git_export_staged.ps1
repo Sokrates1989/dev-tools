@@ -219,13 +219,8 @@ IMAGE_VERSION=$imageVersion
 VERSION_FILES_STAGED=$versionFilesStaged
 "@ | Out-File -FilePath $varsFile -Encoding UTF8
 
-# Set TaskID for backwards compatibility
-$TaskID = "JIRA_ID_PLACEHOLDER"
-
-# Prompt for Project Task ID.
-if (-not $TaskID) {
-    $TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Please ignore any template that starts with [ID-XY | ...]. Instead, format the message like this: [Categories] Affected files or feature: more details of the change. Do not include any dummy or placeholder task ID.'
-}
+# Style instruction for AI (high priority)
+$TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Summarize ALL staged changes in a single one-line git commit command. Use the format from the COMMIT MESSAGE PROMPT. Use a short feature or area name instead of listing individual filenames (e.g. "Docker Swarm prep" instead of "README.md, build-image/README.md, docs/ARCHITECTURE.md, docs/DOCKER_DEPLOYMENT.md, docs/QUICK_START.md"). If there is no clear single area, omit the area label and start directly with the description. Never invent or output dummy task IDs; always leave JIRA_ID_PLACEHOLDER exactly as shown. Choose the Category so it reflects the overall nature of all staged changes; do not use the Documentation category when there are significant script, setup, build, deployment, or code changes. Use Documentation only for pure documentation changes; prefer Setup, Env, or Git for setup/tooling changes and Functionality, New Feature, or BugFix for behavior changes.'
 
 # Compose the AI message prompt file.
 Remove-Item -Force $AiMessageFile -ErrorAction SilentlyContinue

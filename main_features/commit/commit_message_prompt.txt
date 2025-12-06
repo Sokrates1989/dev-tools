@@ -1,18 +1,24 @@
 Write a concise, one-line commit message for the git changes provided. Follow this format:
 
-git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Category] Affected files: description"
+git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Category] Area or feature: description of all changes"
 
 INSTRUCTIONS:
 - Use EXACTLY "JIRA_ID_PLACEHOLDER" and "VERSION_PLACEHOLDER" as shown (the script will replace them)
-- Category: Choose ONE from [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation]
-- "Affected files": Replace with actual affected files/features (max 5 words)
-- "description": Concise details of the change
+- Category: Choose ONE from [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation|Tests|Performance|Security|Build|CI|Tooling|Infra|Style] to describe the overall nature of all staged changes.
+  - Only use the Documentation category if the changes are purely documentation/text.
+  - If there are significant changes to scripts, build/deployment configuration, or setup tooling (e.g. .sh/.ps1 scripts, Docker, CI/CD), prefer Setup, Env, or Git as appropriate, even if documentation was also updated.
+  - If there are code changes (new features or bug fixes) together with docs, prefer Functionality, New Feature, or BugFix rather than Documentation.
+- "Area or feature":
+  - Use a short scope/feature name that covers all important changes (max 5 words), e.g. "Docker Swarm prep", "Docs & quick-start scripts"
+  - Never list individual filenames or long comma-separated file lists.
+  - If there is no clear single area/feature that covers all changes, omit "Area or feature:" entirely and start directly with the description.
+- "description": Concise summary of all staged changes in this commit (not just a subset)
 - Keep the "|" separators and "[]" brackets exactly as shown
 - Wrap the command in bash syntax highlighting with backticks
 
 EXAMPLE OUTPUT:
 ```bash
-git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | BugFix] Auth module: fixed token expiration"
+git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Documentation] Docker Swarm prep: updated docs and quick-start scripts"
 ```
 
 The script will automatically replace:
