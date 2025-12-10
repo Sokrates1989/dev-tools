@@ -152,6 +152,19 @@ function Get-CurrentVersion {
                 $ciEnvVarName = $detected.VariableName
             }
         }
+
+        # Check root VERSION file (plain semver string, no key)
+        $versionFilePath = Join-Path $repoRoot "VERSION"
+        $versionFileVersion = $null
+        if (Test-Path $versionFilePath -PathType Leaf) {
+            $raw = (Get-Content $versionFilePath -ErrorAction SilentlyContinue) -join ''
+            if ($raw) {
+                $trimmed = $raw.Trim()
+                if ($trimmed -and $trimmed -match '^[vV]?\d+\.\d+\.\d+') {
+                    $versionFileVersion = $trimmed
+                }
+            }
+        }
         
         # Determine base version and source - use the higher semantic version
         $baseVersion = $null
@@ -226,6 +239,11 @@ function Get-CurrentVersion {
             $baseVersion = $ciEnvVersion
             $source = ".ci.env"
             $baseVarName = $ciEnvVarName
+        }
+        elseif ($versionFileVersion) {
+            $baseVersion = $versionFileVersion
+            $source = "VERSION file"
+            $baseVarName = "VERSION"
         }
         
         return @{
@@ -457,7 +475,7 @@ function Update-RepoVersion {
         }
         
         # Normalize path separators for Windows
-        $repoRoot = $repoRoot -replace '/', '\'
+        $repoRoot = $repoRoot -replace '/', '\\'
         
         $updatedFiles = @()
         $stagedFiles = @()
@@ -489,8 +507,20 @@ function Update-RepoVersion {
                 $stagedFiles += ".ci.env"
             }
         }
+
+        # If a root VERSION file exists, keep it in sync with the selected version
+        $versionFile = Join-Path $repoRoot "VERSION"
+        if (Test-Path $versionFile -PathType Leaf) {
+            if ($NewVersion) {
+                # Write plain version string (no key) and stage it
+                $NewVersion | Set-Content -Path $versionFile -Encoding UTF8
+                $updatedFiles += "VERSION"
+                $stagedFiles += "VERSION"
+                Write-Host "   [OK] Updated VERSION file" -ForegroundColor Gray
+            }
+        }
         
-        # Stage .ci.env for commit (skip .env as it's usually gitignored)
+        # Stage committed version files (skip .env as it's usually gitignored)
         if ($stagedFiles.Count -gt 0) {
             Write-Host ""
             Write-Host "Staging version files for commit..." -ForegroundColor Cyan
@@ -503,7 +533,7 @@ function Update-RepoVersion {
         else {
             if ($updatedFiles.Count -gt 0) {
                 Write-Host ""
-                Write-Host "WARNING: Files updated but none staged (check if .ci.env exists)" -ForegroundColor Yellow
+                Write-Host "WARNING: Files updated but none staged (check if .ci.env exists or VERSION file)" -ForegroundColor Yellow
             }
             else {
                 Write-Host ""

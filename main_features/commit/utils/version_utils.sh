@@ -143,6 +143,16 @@ get_current_version_info() {
             VARIABLE_NAME_CIENV=$(echo "$detected" | cut -d'=' -f1)
         fi
     fi
+
+    # Check root VERSION file (plain semver string, no key)
+    VERSION_FILE=""
+    if [[ -f "$repo_root/VERSION" ]]; then
+        local vf
+        vf=$(tr -d ' \t\r\n' < "$repo_root/VERSION")
+        if [[ -n "$vf" && "$vf" =~ ^[vV]?[0-9]+\.[0-9]+\.[0-9]+ ]]; then
+            VERSION_FILE="$vf"
+        fi
+    fi
     
     # Determine base version and source - use the higher semantic version
     if [[ -n "$VERSION_ENV" && -n "$VERSION_CIENV" ]]; then
@@ -212,6 +222,10 @@ get_current_version_info() {
         VERSION_BASE="$VERSION_CIENV"
         VERSION_SOURCE=".ci.env"
         VARIABLE_NAME_BASE="$VARIABLE_NAME_CIENV"
+    elif [[ -n "$VERSION_FILE" ]]; then
+        VERSION_BASE="$VERSION_FILE"
+        VERSION_SOURCE="VERSION file"
+        VARIABLE_NAME_BASE="VERSION"
     fi
 }
 
@@ -381,23 +395,23 @@ update_repo_version() {
     local new_version="$1"
     local repo_root
     repo_root=$(git rev-parse --show-toplevel 2>/dev/null)
-    
+
     if [[ -z "$repo_root" ]]; then
         echo "❌ Not in a git repository"
         return 1
     fi
-    
+
     # Get current version info to determine variable names
     get_current_version_info
     local env_var_name="$VARIABLE_NAME_ENV"
     local ci_env_var_name="$VARIABLE_NAME_CIENV"
-    
+
     local updated_files=()
     local staged_files=()
-    
+
     echo "" >&2
     echo "📝 Updating version files to $new_version..." >&2
-    
+
     # Update .env if it exists (local only, not staged)
     if [[ -f "$repo_root/.env" ]]; then
         # Only update if variable already exists in .env (don't add it)
@@ -407,7 +421,7 @@ update_repo_version() {
             echo "   [OK] Updated .env (local only, not committed)" >&2
         fi
     fi
-    
+
     # Update .ci.env if it exists (will be committed)
     if [[ -f "$repo_root/.ci.env" ]]; then
         # Add variable if it doesn't exist in .ci.env
@@ -418,8 +432,19 @@ update_repo_version() {
             staged_files+=(".ci.env")
         fi
     fi
-    
-    # Stage .ci.env for commit (skip .env as it's usually gitignored)
+
+    # If a root VERSION file exists, keep it in sync with the selected version
+    if [[ -f "$repo_root/VERSION" ]]; then
+        # Only touch VERSION when we actually have a semantic version to write
+        if [[ -n "$new_version" ]]; then
+            echo -n "$new_version" > "$repo_root/VERSION"
+            updated_files+=("VERSION")
+            staged_files+=("VERSION")
+            echo "   [OK] Updated VERSION file" >&2
+        fi
+    fi
+
+    # Stage committed version files (skip .env as it's usually gitignored)
     if [[ ${#staged_files[@]} -gt 0 ]]; then
         echo "" >&2
         echo "📝 Staging version files for commit..." >&2
@@ -433,7 +458,7 @@ update_repo_version() {
     else
         if [[ ${#updated_files[@]} -gt 0 ]]; then
             echo "" >&2
-            echo "⚠️  Files updated but none staged (check if .ci.env exists)" >&2
+            echo "⚠️  Files updated but none staged (check if .ci.env exists or VERSION file)" >&2
         else
             echo "" >&2
             echo "⚠️  No version files were updated" >&2
