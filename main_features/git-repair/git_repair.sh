@@ -752,6 +752,7 @@ if [[ "${BASH_SOURCE[0]}" == "${0}" ]]; then
     
     # Check for corruption
     echo "🔍 Checking for repository corruption..."
+    echo "   Running an integrity scan (git fsck --full and pack checks). This can take up to a few minutes on large or heavily corrupted repositories..."
     echo ""
     
     if detect_git_corruption; then

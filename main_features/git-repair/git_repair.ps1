@@ -735,7 +735,8 @@ if ($MyInvocation.InvocationName -ne '.') {
         exit 1
     }
     
-    Write-Host "Checking for repository corruption..."
+    Write-Host "Checking for repository corruption..." -ForegroundColor Cyan
+    Write-Host "   Running an integrity scan (git fsck --full and pack checks). This can take up to a few minutes on large or heavily corrupted repositories..." -ForegroundColor Yellow
     Write-Host ""
     
     if (Test-GitCorruption) {
