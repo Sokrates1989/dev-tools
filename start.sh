@@ -54,6 +54,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
             exit 0
             ;;
+        --repair|--fix|-f)
+            bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -84,6 +88,9 @@ if [[ $# -gt 0 ]]; then
             echo "🧹 Cleanup & Reset:"
             echo "  --remove-gitignored | -i | --rg → Remove Gitignored Files"
             echo "  --reset  | -x | --re   → Reset Local Git Changes"
+            echo ""
+            echo "🔧 Repair & Maintenance:"
+            echo "  --repair | --fix | -f  → Repair Corrupted Git Repository"
             exit 1
             ;;
     esac
@@ -122,6 +129,9 @@ echo "🧹 Cleanup & Reset (11-12):"
 echo "11) 🧹 Remove Gitignored Files           [--remove-gitignored | -i | --rg]"
 echo "12) 🧹 Reset Local Git Changes          [--reset  | -x | --re]"
 echo ""
+echo "🔧 Repair & Maintenance (13):"
+echo "13) 🔧 Repair Corrupted Git Repository  [--repair | --fix | -f]"
+echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
 fi
@@ -131,7 +141,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-12, u, q, or option name]: " choice
+read -p "Enter your choice [1-13, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -173,6 +183,9 @@ case "$choice_lower" in
   12|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert"|"re"|"--re")
     bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
+  13|"repair"|"--repair"|"fix"|"--fix"|"-f"|"f")
+    bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
+    ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
       # Auto update and restart script.
@@ -188,6 +201,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-12, u, q, or option names like 'commit', '--merge', '-l', 'stash', etc."
+    echo "Valid options: 1-13, u, q, or option names like 'commit', '--merge', '-l', 'stash', 'repair', etc."
     ;;
 esac

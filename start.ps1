@@ -25,7 +25,10 @@ param (
     [switch]$n,  # create-branch
     [switch]$create_branch,  # create-branch
     [switch]$st,  # stash
-    [switch]$stash  # stash
+    [switch]$stash,  # stash
+    [switch]$f,  # repair
+    [switch]$fix,  # repair
+    [switch]$repair  # repair
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -95,8 +98,10 @@ if ($st -or $stash) {
     & "$RootDir\main_features\stash\stash_manager.ps1"
     return
 }
-
-
+if ($f -or $fix -or $repair) {
+    & "$RootDir\main_features\git-repair\git_repair.ps1"
+    return
+}
 
 # Git update check (optional)
 & "$RootDir\global_functions\check_for_updates.ps1"
@@ -127,13 +132,16 @@ Write-Host ""
 Write-Host "Cleanup & Reset (11-12):"
 Write-Host "11) Remove Gitignored Files"
 Write-Host "12) Reset Local Git Changes"
+Write-Host ""
+Write-Host "Repair & Maintenance (13):"
+Write-Host "13) Repair Corrupted Git Repository  [--repair | --fix | -f]"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-12, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-13, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -151,6 +159,7 @@ switch ($choiceLower) {
     { $_ -match "^(10|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
     { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
     { $_ -match "^(12|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
+    { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -162,6 +171,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-12, u, q, or option names like 'commit', '--log', '-r', 'stash', etc."
+        Write-Host "Valid options: 1-13, u, q, or option names like 'commit', '--log', '-r', 'stash', 'repair', etc."
     }
 }

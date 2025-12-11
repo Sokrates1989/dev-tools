@@ -75,6 +75,45 @@ function Test-CommitMessageFormat {
     return $true
 }
 
+# Function to check if output indicates git corruption
+function Test-GitCorruptionOutput {
+    param([string]$Output)
+    
+    return $Output -match "(far too short to be a packfile|invalid object|Error building trees|broken link|missing blob|missing tree|fatal: unable to read tree)"
+}
+
+# Function to offer git repair
+function Invoke-GitRepairOffer {
+    Write-Host ""
+    Write-Host "Git repository corruption detected!" -ForegroundColor Red
+    Write-Host ""
+    Write-Host "This error typically occurs when pack files in your .git directory are corrupted."
+    Write-Host ""
+    
+    # Check if dev-tools repair is available
+    $scriptDir = Split-Path -Parent $MyInvocation.ScriptName
+    $repairScript = Join-Path (Split-Path -Parent (Split-Path -Parent $scriptDir)) "git-repair\git_repair.ps1"
+    
+    if (Test-Path $repairScript) {
+        $repairConfirm = Read-Host "Would you like to attempt automatic repair? [Y/n]"
+        if ($repairConfirm -notmatch "^[Nn]$") {
+            Write-Host ""
+            . $repairScript
+            return Repair-GitRepo "."
+        }
+    } else {
+        Write-Host "To repair this repository, you can run:"
+        Write-Host "  dev-tools --repair"
+        Write-Host ""
+        Write-Host "Or manually:"
+        Write-Host "  1. Backup your uncommitted changes"
+        Write-Host "  2. Remove corrupted pack files from .git\objects\pack\"
+        Write-Host "  3. Run: git fetch --all"
+        Write-Host "  4. Run: git gc --prune=now"
+    }
+    return $false
+}
+
 # Function to handle commit execution
 function Invoke-CommitExecution {
     param(
@@ -89,19 +128,92 @@ function Invoke-CommitExecution {
     # Auto commit?
     $confirm = Read-Host "Do you want to run this commit command now? [y/N]"
     if ($confirm -match "^[Yy]$") {
-        Invoke-Expression $CommitCommand
-        Write-Host "Commit executed."
+        # Capture output and exit code
+        $commitOutput = Invoke-Expression "$CommitCommand 2>&1" | Out-String
+        $commitExitCode = $LASTEXITCODE
+        
+        # Display the output
+        Write-Host $commitOutput
+        
+        # Check if commit failed
+        if ($commitExitCode -ne 0) {
+            Write-Host ""
+            Write-Host "Commit failed (exit code: $commitExitCode)" -ForegroundColor Red
+            
+            # Check if it's a corruption error
+            if (Test-GitCorruptionOutput $commitOutput) {
+                $repairResult = Invoke-GitRepairOffer
+                if ($repairResult) {
+                    Write-Host ""
+                    Write-Host "Staging all changes before retrying the commit (git add -A)..." -ForegroundColor Cyan
+                    git add -A 2>$null | Out-Null
+                    if ($LASTEXITCODE -ne 0) {
+                        Write-Host "Warning: 'git add -A' reported errors. Please check 'git status' before retrying." -ForegroundColor Yellow
+                    }
+                    Write-Host ""
+
+                    # Check for any remaining repaired/broken repos next to this repo
+                    $currentPath = Get-Location
+                    $parentDir = Split-Path -Parent $currentPath
+                    $repoName = Split-Path -Leaf $currentPath
+
+                    $leftoverDirs = @()
+                    $leftoverDirs += Get-ChildItem -Path $parentDir -Directory -Filter "$repoName-broken-*" -ErrorAction SilentlyContinue
+                    $leftoverDirs += Get-ChildItem -Path $parentDir -Directory -Filter "$repoName-repaired-*" -ErrorAction SilentlyContinue
+
+                    if ($leftoverDirs.Count -gt 0) {
+                        Write-Host "The following repaired/broken repositories are still present:" 
+                        foreach ($d in $leftoverDirs) {
+                            Write-Host "  - $($d.FullName)"
+                        }
+                        Write-Host ""
+                        Write-Host "You can remove them manually later with:" 
+                        foreach ($d in $leftoverDirs) {
+                            Write-Host "  Remove-Item -Recurse -Force `"$($d.FullName)`"" -ForegroundColor Cyan
+                        }
+                        Write-Host ""
+                        $cleanupConfirm = Read-Host "Type 'remove' to delete ALL of these repair/broken directories now. Otherwise press Enter to keep them"
+                        if ($cleanupConfirm -eq "remove") {
+                            Write-Host "Removing repair/broken directories..." -ForegroundColor Cyan
+                            foreach ($d in $leftoverDirs) {
+                                Remove-Item -Path $d.FullName -Recurse -Force -ErrorAction SilentlyContinue
+                            }
+                            Write-Host "Cleanup completed." -ForegroundColor Green
+                        }
+                        Write-Host ""
+                    }
+
+                    $retryConfirm = Read-Host "Retry the commit now? [Y/n]"
+                    if ($retryConfirm -notmatch "^[Nn]$") {
+                        Invoke-CommitExecution $CommitCommand
+                    }
+                }
+            } else {
+                Write-Host "Please check the error message above and resolve the issue."
+            }
+            return
+        }
+        
+        Write-Host "Commit executed." -ForegroundColor Green
         Write-Host ""
 
         # Auto push?
         $pushConfirm = Read-Host "Do you want to push the commit to the remote now? [y/N]"
         if ($pushConfirm -match "^[Yy]$") {
             Write-Host "Pushing changes to remote..."
-            git push
-            if ($LASTEXITCODE -eq 0) {
-                Write-Host "Push successful."
+            $pushOutput = git push 2>&1 | Out-String
+            $pushExitCode = $LASTEXITCODE
+            Write-Host $pushOutput
+            
+            if ($pushExitCode -eq 0) {
+                Write-Host "Push successful." -ForegroundColor Green
             } else {
-                Write-Host "Push failed. Please check your Git configuration or network."
+                Write-Host "Push failed. Please check your Git configuration or network." -ForegroundColor Red
+                
+                # Check for corruption in push output too
+                if (Test-GitCorruptionOutput $pushOutput) {
+                    Invoke-GitRepairOffer
+                }
             }
         } else {
             Write-Host "Push skipped. You can run 'git push' later manually."

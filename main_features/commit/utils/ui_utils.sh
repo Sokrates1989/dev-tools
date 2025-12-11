@@ -114,6 +114,49 @@ validate_commit_message() {
   return 0
 }
 
+# Function to check if output indicates git corruption
+check_for_git_corruption() {
+  local output="$1"
+  if echo "$output" | grep -qE "(far too short to be a packfile|invalid object|Error building trees|broken link|missing blob|missing tree|fatal: unable to read tree)"; then
+    return 0  # Corruption detected
+  fi
+  return 1  # No corruption
+}
+
+# Function to offer git repair
+offer_git_repair() {
+  echo ""
+  echo "⚠️  Git repository corruption detected!"
+  echo ""
+  echo "This error typically occurs when pack files in your .git directory are corrupted."
+  echo ""
+  
+  # Check if dev-tools repair is available
+  local script_dir
+  script_dir="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+  local repair_script="$script_dir/../../git-repair/git_repair.sh"
+  
+  if [[ -f "$repair_script" ]]; then
+    read -r -p "🔧 Would you like to attempt automatic repair? [Y/n]: " repair_confirm
+    if [[ ! "$repair_confirm" =~ ^[Nn]$ ]]; then
+      echo ""
+      source "$repair_script"
+      repair_git_repo "."
+      return $?
+    fi
+  else
+    echo "To repair this repository, you can run:"
+    echo "  dev-tools --repair"
+    echo ""
+    echo "Or manually:"
+    echo "  1. Backup your uncommitted changes"
+    echo "  2. Remove corrupted pack files from .git/objects/pack/"
+    echo "  3. Run: git fetch --all"
+    echo "  4. Run: git gc --prune=now"
+  fi
+  return 1
+}
+
 # Function to handle commit execution
 execute_commit() {
   local commit_command="$1"
@@ -123,7 +166,78 @@ execute_commit() {
   echo "$commit_command"
   read -r -p "👉 Do you want to run this commit command now? [y/N]: " confirm
   if [[ "$confirm" =~ ^[Yy]$ ]]; then
-    eval "$commit_command"
+    # Capture both stdout and stderr, and the exit code
+    local commit_output
+    local commit_exit_code
+    commit_output=$(eval "$commit_command" 2>&1)
+    commit_exit_code=$?
+    
+    # Display the output
+    echo "$commit_output"
+    
+    # Check if commit failed
+    if [[ $commit_exit_code -ne 0 ]]; then
+      echo ""
+      echo "❌ Commit failed (exit code: $commit_exit_code)"
+      
+      # Check if it's a corruption error
+      if check_for_git_corruption "$commit_output"; then
+        offer_git_repair
+        local repair_result=$?
+        if [[ $repair_result -eq 0 ]]; then
+          echo ""
+          echo "📦 Staging all changes before retrying the commit (git add -A)..."
+          if ! git add -A; then
+            echo "⚠️  'git add -A' reported errors. Please check 'git status' before retrying."
+          fi
+          echo ""
+
+          # Check for any remaining repaired/broken repos next to this repo
+          local repo_dir parent_dir repo_name
+          repo_dir="$(pwd)"
+          parent_dir="$(cd .. && pwd)"
+          repo_name="$(basename "$repo_dir")"
+          local leftover_dirs=()
+
+          for d in "$parent_dir"/"${repo_name}"-broken-* "$parent_dir"/"${repo_name}"-repaired-*; do
+            if [[ -d "$d" ]]; then
+              leftover_dirs+=("$d")
+            fi
+          done
+
+          if [[ ${#leftover_dirs[@]} -gt 0 ]]; then
+            echo "The following repaired/broken repositories are still present:" 
+            for d in "${leftover_dirs[@]}"; do
+              echo "  - $d"
+            done
+            echo ""
+            echo "You can remove them manually later with:" 
+            for d in "${leftover_dirs[@]}"; do
+              echo "  rm -rf \"$d\""
+            done
+            echo ""
+            read -r -p "Type 'remove' to delete ALL of these repair/broken directories now. Otherwise press Enter to keep them: " cleanup_confirm
+            if [[ "$cleanup_confirm" == "remove" ]]; then
+              echo "Removing repair/broken directories..."
+              for d in "${leftover_dirs[@]}"; do
+                rm -rf "$d"
+              done
+              echo "✅ Cleanup completed."
+            fi
+            echo ""
+          fi
+
+          read -r -p "🔄 Retry the commit now? [Y/n]: " retry_confirm
+          if [[ ! "$retry_confirm" =~ ^[Nn]$ ]]; then
+            execute_commit "$commit_command"
+          fi
+        fi
+      else
+        echo "Please check the error message above and resolve the issue."
+      fi
+      return 1
+    fi
+    
     echo "✅ Commit executed."
 
     # Ask user to push commits immediately to the remote.
@@ -131,11 +245,20 @@ execute_commit() {
     read -r -p "🚀 Do you want to push the commit to the remote now? [y/N]: " push_confirm
     if [[ "$push_confirm" =~ ^[Yy]$ ]]; then
       echo "📡 Pushing changes to remote..."
-      git push
-      if [[ $? -eq 0 ]]; then
+      local push_output
+      push_output=$(git push 2>&1)
+      local push_exit_code=$?
+      echo "$push_output"
+      
+      if [[ $push_exit_code -eq 0 ]]; then
         echo "✅ Push successful!"
       else
         echo "❌ Push failed. Please check your Git configuration or network."
+        
+        # Check for corruption in push output too
+        if check_for_git_corruption "$push_output"; then
+          offer_git_repair
+        fi
       fi
     else
       echo "ℹ️ Push skipped. You can run 'git push' later manually."
