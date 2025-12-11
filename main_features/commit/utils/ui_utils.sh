@@ -193,6 +193,7 @@ execute_commit() {
           echo ""
 
           # Check for any remaining repaired/broken repos next to this repo
+          # and any git-repair backup directories in /tmp
           local repo_dir parent_dir repo_name
           repo_dir="$(pwd)"
           parent_dir="$(cd .. && pwd)"
@@ -200,6 +201,12 @@ execute_commit() {
           local leftover_dirs=()
 
           for d in "$parent_dir"/"${repo_name}"-broken-* "$parent_dir"/"${repo_name}"-repaired-*; do
+            if [[ -d "$d" ]]; then
+              leftover_dirs+=("$d")
+            fi
+          done
+
+          for d in /tmp/git-repair-backup-*; do
             if [[ -d "$d" ]]; then
               leftover_dirs+=("$d")
             fi

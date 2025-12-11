@@ -161,6 +161,11 @@ function Invoke-CommitExecution {
                     $leftoverDirs += Get-ChildItem -Path $parentDir -Directory -Filter "$repoName-broken-*" -ErrorAction SilentlyContinue
                     $leftoverDirs += Get-ChildItem -Path $parentDir -Directory -Filter "$repoName-repaired-*" -ErrorAction SilentlyContinue
 
+                    # Also include git repair backup directories from temp
+                    if ($env:TEMP) {
+                        $leftoverDirs += Get-ChildItem -Path $env:TEMP -Directory -Filter "git-repair-backup-*" -ErrorAction SilentlyContinue
+                    }
+
                     if ($leftoverDirs.Count -gt 0) {
                         Write-Host "The following repaired/broken repositories are still present:" 
                         foreach ($d in $leftoverDirs) {

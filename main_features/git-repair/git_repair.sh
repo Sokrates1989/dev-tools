@@ -511,6 +511,7 @@ repair_git_repo() {
     
     # Step 8: Verify repair
     echo -e "${BLUE}📋 Step 8: Verifying repair...${NC}"
+    echo "   Running a deep integrity check (git fsck --full). This can take up to a few minutes on large or heavily corrupted repositories..."
     local still_corrupted=0
 
     if detect_git_corruption; then

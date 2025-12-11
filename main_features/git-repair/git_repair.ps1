@@ -472,6 +472,7 @@ function Repair-GitRepo {
     
     # Step 8: Verify repair
     Write-Host "Step 8: Verifying repair..." -ForegroundColor Cyan
+    Write-Host "   Running a deep integrity check (git fsck --full). This can take up to a few minutes on large or heavily corrupted repositories..." -ForegroundColor Yellow
     $stillCorrupted = $false
     if (Test-GitCorruption) {
         $stillCorrupted = $true
