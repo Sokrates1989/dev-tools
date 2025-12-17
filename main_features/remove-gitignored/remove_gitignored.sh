@@ -41,6 +41,12 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
+echo "🔍 Checking if branch is in sync with remote..."
+if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
+    echo "❌ Sync check failed. Please resolve sync issues before proceeding."
+    exit 1
+fi
+
 # --- Check if .gitignore exists ---
 if [[ ! -f ".gitignore" ]]; then
     echo "⚠️  No .gitignore file found in the current directory."

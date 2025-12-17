@@ -37,6 +37,39 @@ if ! git rev-parse --git-dir > /dev/null 2>&1; then
     exit 1
 fi
 
+BRANCH_TO_CHECK="${1:-}"
+if [[ -n "$BRANCH_TO_CHECK" ]]; then
+    ORIGINAL_BRANCH=$(git branch --show-current)
+    if [[ -z "$ORIGINAL_BRANCH" ]]; then
+        echo "❌ Could not detect current Git branch."
+        exit 1
+    fi
+
+    if [[ "$BRANCH_TO_CHECK" != "$ORIGINAL_BRANCH" ]]; then
+        if ! git diff --quiet || ! git diff --cached --quiet; then
+            echo "❌ You have uncommitted changes. Please commit or stash them before checking another branch."
+            exit 1
+        fi
+
+        echo "🔄 Switching to branch '$BRANCH_TO_CHECK' for sync check..."
+        if ! git checkout "$BRANCH_TO_CHECK" > /dev/null 2>&1; then
+            echo "❌ Failed to checkout branch '$BRANCH_TO_CHECK'."
+            exit 1
+        fi
+
+        bash "$SCRIPT_PATH"
+        RESULT=$?
+
+        echo "🔄 Switching back to original branch '$ORIGINAL_BRANCH'..."
+        if ! git checkout "$ORIGINAL_BRANCH" > /dev/null 2>&1; then
+            echo "❌ Failed to switch back to original branch '$ORIGINAL_BRANCH'."
+            exit 1
+        fi
+
+        exit $RESULT
+    fi
+fi
+
 # --- Get current branch ---
 CURRENT_BRANCH=$(git branch --show-current)
 if [[ -z "$CURRENT_BRANCH" ]]; then

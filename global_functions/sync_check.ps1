@@ -4,11 +4,47 @@
 # Platform: Windows PowerShell 5.1 compatible
 # -----------------------------------------------------------------------------
 
+param(
+    [string]$BranchToCheck
+)
+
 # --- Get current branch ---
 $CurrentBranch = git branch --show-current
 if (-not $CurrentBranch) {
     Write-Host "Could not detect current Git branch." -ForegroundColor Red
     exit 1
+}
+
+if ($BranchToCheck -and $BranchToCheck -ne $CurrentBranch) {
+    # Ensure working tree is clean before switching
+    git diff --quiet 2>$null
+    $hasWorkingChanges = ($LASTEXITCODE -ne 0)
+    git diff --cached --quiet 2>$null
+    $hasStagedChanges = ($LASTEXITCODE -ne 0)
+
+    if ($hasWorkingChanges -or $hasStagedChanges) {
+        Write-Host "You have uncommitted changes. Please commit or stash them before checking another branch." -ForegroundColor Red
+        exit 1
+    }
+
+    Write-Host "Switching to branch '$BranchToCheck' for sync check..." -ForegroundColor Cyan
+    git checkout $BranchToCheck | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to checkout branch '$BranchToCheck'." -ForegroundColor Red
+        exit 1
+    }
+
+    & powershell -NoProfile -ExecutionPolicy Bypass -File $PSCommandPath
+    $result = $LASTEXITCODE
+
+    Write-Host "Switching back to original branch '$CurrentBranch'..." -ForegroundColor Cyan
+    git checkout $CurrentBranch | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "Failed to switch back to original branch '$CurrentBranch'." -ForegroundColor Red
+        exit 1
+    }
+
+    exit $result
 }
 
 # --- Check if current branch has a remote tracking branch ---

@@ -34,6 +34,13 @@ try {
     exit 1
 }
 
+Write-Host "Checking if branch is in sync with remote..." -ForegroundColor Cyan
+$syncResult = & "$RootDir\global_functions\sync_check.ps1"
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "[ERROR] Sync check failed. Please resolve sync issues before proceeding." -ForegroundColor Red
+    exit 1
+}
+
 # --- Check if .gitignore exists ---
 if (-not (Test-Path ".gitignore")) {
     Write-Host "[WARNING] No .gitignore file found in the current directory."

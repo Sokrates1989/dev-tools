@@ -66,6 +66,89 @@ select TARGET_BRANCH in $AVAILABLE_BRANCHES; do
   echo "❌ Invalid selection. Try again."
 done
 
+echo ""
+echo "🔍 Checking if target branch '$TARGET_BRANCH' is in sync with remote..."
+
+echo "📥 Fetching latest remote information for '$TARGET_BRANCH'..."
+FETCH_TARGET_OUTPUT=$(git fetch origin "$TARGET_BRANCH" 2>&1)
+FETCH_TARGET_EXIT_CODE=$?
+if [[ $FETCH_TARGET_EXIT_CODE -ne 0 ]]; then
+  if echo "$FETCH_TARGET_OUTPUT" | grep -qi "couldn't find remote ref"; then
+    echo "⚠️  Target branch '$TARGET_BRANCH' has no remote tracking branch. Skipping remote sync check."
+  else
+    echo "❌ Failed to fetch remote information for branch '$TARGET_BRANCH'."
+    echo "$FETCH_TARGET_OUTPUT"
+    exit 1
+  fi
+else
+  if ! git rev-parse --verify "origin/$TARGET_BRANCH" > /dev/null 2>&1; then
+    echo "⚠️  Target branch '$TARGET_BRANCH' has no remote tracking branch. Skipping remote sync check."
+  else
+
+  TARGET_LOCAL_AHEAD=$(git rev-list --count "origin/$TARGET_BRANCH..$TARGET_BRANCH" 2>/dev/null || echo "0")
+  TARGET_REMOTE_AHEAD=$(git rev-list --count "$TARGET_BRANCH..origin/$TARGET_BRANCH" 2>/dev/null || echo "0")
+
+  if [[ "$TARGET_REMOTE_AHEAD" -gt 0 ]]; then
+    echo ""
+
+    if [[ "$TARGET_LOCAL_AHEAD" -eq 0 ]]; then
+      echo "⚠️  Target branch '$TARGET_BRANCH' is behind remote by $TARGET_REMOTE_AHEAD commit(s)."
+      read -r -p "👉 Switch to '$TARGET_BRANCH' and pull updates now? [Y/n]: " confirm_update
+      if [[ "$confirm_update" == "n" || "$confirm_update" == "N" ]]; then
+        echo "❌ Aborting merge."
+        exit 1
+      fi
+
+      echo "🔄 Switching to '$TARGET_BRANCH'..."
+      if ! git checkout "$TARGET_BRANCH"; then
+        echo "❌ Failed to checkout '$TARGET_BRANCH'."
+        exit 1
+      fi
+
+      echo "📥 Pulling remote changes..."
+      git pull --ff-only origin "$TARGET_BRANCH"
+      PULL_EXIT_CODE=$?
+
+      echo "🔄 Switching back to '$CURRENT_BRANCH'..."
+      if ! git checkout "$CURRENT_BRANCH"; then
+        echo "❌ Failed to switch back to '$CURRENT_BRANCH'."
+        exit 1
+      fi
+
+      if [[ $PULL_EXIT_CODE -ne 0 ]]; then
+        echo "❌ Failed to update '$TARGET_BRANCH'."
+        exit 1
+      fi
+
+      echo "✅ Target branch updated."
+    else
+      echo "⚠️  Target branch '$TARGET_BRANCH' has diverged from remote (local: +$TARGET_LOCAL_AHEAD, remote: +$TARGET_REMOTE_AHEAD)."
+      read -r -p "👉 Switch to '$TARGET_BRANCH' and try to sync it now? [Y/n]: " confirm_sync
+      if [[ "$confirm_sync" == "n" || "$confirm_sync" == "N" ]]; then
+        echo "❌ Aborting merge."
+        exit 1
+      fi
+
+      if ! bash "$ROOT_DIR/global_functions/sync_check.sh" "$TARGET_BRANCH"; then
+        echo "❌ Target branch sync failed. Please resolve sync issues before merging."
+        exit 1
+      fi
+
+      if ! git fetch origin "$TARGET_BRANCH" > /dev/null 2>&1; then
+        echo "❌ Failed to fetch remote information for branch '$TARGET_BRANCH'."
+        exit 1
+      fi
+
+      TARGET_REMOTE_AHEAD_AFTER=$(git rev-list --count "$TARGET_BRANCH..origin/$TARGET_BRANCH" 2>/dev/null || echo "0")
+      if [[ "$TARGET_REMOTE_AHEAD_AFTER" -gt 0 ]]; then
+        echo "❌ Target branch is still behind remote. Aborting merge."
+        exit 1
+      fi
+    fi
+  fi
+  fi
+fi
+
 
 # 1. Detect if there's anything at all to merge
 if git diff --quiet "$CURRENT_BRANCH".."$TARGET_BRANCH"; then

@@ -36,15 +36,12 @@ if ($LASTEXITCODE -ne 0) {
 }
 
 # Detect uncommitted files
-$hasUncommitted = $false
-try {
-    $null = git diff --quiet 2>$null
-    $null = git diff --cached --quiet 2>$null
-} catch {
-    $hasUncommitted = $true
-}
+$null = git diff --quiet 2>$null
+$hasWorkingChanges = ($LASTEXITCODE -ne 0)
+$null = git diff --cached --quiet 2>$null
+$hasStagedChanges = ($LASTEXITCODE -ne 0)
 
-if ($hasUncommitted) {
+if ($hasWorkingChanges -or $hasStagedChanges) {
     Write-Host "[WARNING] You have uncommitted changes in your working directory." -ForegroundColor Yellow
     Write-Host "[INFO] Please commit or stash your changes before proceeding with the merge." -ForegroundColor Cyan
     exit 1
@@ -90,6 +87,97 @@ if ($choice -match '^\d+$' -and [int]$choice -ge 1 -and [int]$choice -le $branch
 } else {
     Write-Host "[ERROR] Invalid selection. Please try again." -ForegroundColor Red
     exit 1
+}
+
+Write-Host "" 
+Write-Host "Checking if target branch '$TargetBranch' is in sync with remote..." -ForegroundColor Cyan
+
+Write-Host "Fetching latest remote information for '$TargetBranch'..." -ForegroundColor Cyan
+$fetchTargetOutput = git fetch origin $TargetBranch 2>&1
+if ($LASTEXITCODE -ne 0) {
+    $fetchTargetText = ($fetchTargetOutput | Out-String)
+    if ($fetchTargetText -match "couldn't find remote ref") {
+        Write-Host "[WARNING] Target branch '$TargetBranch' has no remote tracking branch. Skipping remote sync check." -ForegroundColor Yellow
+    } else {
+        Write-Host "[ERROR] Failed to fetch remote information for branch '$TargetBranch'." -ForegroundColor Red
+        Write-Host $fetchTargetText
+        exit 1
+    }
+} else {
+    $null = git rev-parse --verify "origin/$TargetBranch" 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "[WARNING] Target branch '$TargetBranch' has no remote tracking branch. Skipping remote sync check." -ForegroundColor Yellow
+    } else {
+        $targetLocalAhead = git rev-list --count "origin/$TargetBranch..$TargetBranch" 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $targetLocalAhead) { $targetLocalAhead = 0 } else { $targetLocalAhead = [int]$targetLocalAhead }
+
+        $targetRemoteAhead = git rev-list --count "$TargetBranch..origin/$TargetBranch" 2>$null
+        if ($LASTEXITCODE -ne 0 -or -not $targetRemoteAhead) { $targetRemoteAhead = 0 } else { $targetRemoteAhead = [int]$targetRemoteAhead }
+
+        if ($targetRemoteAhead -gt 0) {
+            Write-Host "" 
+
+            if ($targetLocalAhead -eq 0) {
+                Write-Host "[WARNING] Target branch '$TargetBranch' is behind remote by $targetRemoteAhead commit(s)." -ForegroundColor Yellow
+                $confirmUpdate = Read-Host " Switch to '$TargetBranch' and pull updates now? [Y/n]"
+                if ($confirmUpdate -match '^[Nn]$') {
+                    Write-Host "[ERROR] Aborting merge." -ForegroundColor Red
+                    exit 1
+                }
+
+                Write-Host " Switching to '$TargetBranch'..." -ForegroundColor Cyan
+                git checkout $TargetBranch
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[ERROR] Failed to checkout '$TargetBranch'." -ForegroundColor Red
+                    exit 1
+                }
+
+                Write-Host " Pulling remote changes..." -ForegroundColor Cyan
+                git pull --ff-only origin $TargetBranch
+                $pullExitCode = $LASTEXITCODE
+
+                Write-Host " Switching back to '$CurrentBranch'..." -ForegroundColor Cyan
+                git checkout $CurrentBranch
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[ERROR] Failed to switch back to '$CurrentBranch'." -ForegroundColor Red
+                    exit 1
+                }
+
+                if ($pullExitCode -ne 0) {
+                    Write-Host "[ERROR] Failed to update '$TargetBranch'." -ForegroundColor Red
+                    exit 1
+                }
+
+                Write-Host "[OK] Target branch updated." -ForegroundColor Green
+            } else {
+                Write-Host "[WARNING] Target branch '$TargetBranch' has diverged from remote (local: +$targetLocalAhead, remote: +$targetRemoteAhead)." -ForegroundColor Yellow
+                $confirmSync = Read-Host " Switch to '$TargetBranch' and try to sync it now? [Y/n]"
+                if ($confirmSync -match '^[Nn]$') {
+                    Write-Host "[ERROR] Aborting merge." -ForegroundColor Red
+                    exit 1
+                }
+
+                $syncTargetResult = & "$RootDir\global_functions\sync_check.ps1" $TargetBranch
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[ERROR] Target branch sync failed. Please resolve sync issues before merging." -ForegroundColor Red
+                    exit 1
+                }
+
+                $fetchTargetResultAfter = git fetch origin $TargetBranch 2>&1
+                if ($LASTEXITCODE -ne 0) {
+                    Write-Host "[ERROR] Failed to fetch remote information for branch '$TargetBranch'." -ForegroundColor Red
+                    exit 1
+                }
+
+                $targetRemoteAheadAfter = git rev-list --count "$TargetBranch..origin/$TargetBranch" 2>$null
+                if ($LASTEXITCODE -ne 0 -or -not $targetRemoteAheadAfter) { $targetRemoteAheadAfter = 0 } else { $targetRemoteAheadAfter = [int]$targetRemoteAheadAfter }
+                if ($targetRemoteAheadAfter -gt 0) {
+                    Write-Host "[ERROR] Target branch is still behind remote. Aborting merge." -ForegroundColor Red
+                    exit 1
+                }
+            }
+        }
+    }
 }
 
 # 1. Detect if there's anything at all to merge
