@@ -206,8 +206,50 @@ function Invoke-CommitExecution {
         $pushConfirm = Read-Host "Do you want to push the commit to the remote now? [y/N]"
         if ($pushConfirm -match "^[Yy]$") {
             Write-Host "Pushing changes to remote..."
-            $pushOutput = git push 2>&1 | Out-String
-            $pushExitCode = $LASTEXITCODE
+            $pushStdOutFile = [System.IO.Path]::GetTempFileName()
+            $pushStdErrFile = [System.IO.Path]::GetTempFileName()
+
+            try {
+                $startProcessParams = @{
+                    FilePath = "git"
+                    ArgumentList = @("push")
+                    NoNewWindow = $true
+                    Wait = $true
+                    PassThru = $true
+                    RedirectStandardOutput = $pushStdOutFile
+                    RedirectStandardError = $pushStdErrFile
+                }
+
+                $pushProcess = Start-Process @startProcessParams
+
+                $pushExitCode = $pushProcess.ExitCode
+
+                $pushStdOut = ""
+                $pushStdErr = ""
+
+                if (Test-Path $pushStdOutFile) {
+                    $pushStdOut = Get-Content -Path $pushStdOutFile -Raw -ErrorAction SilentlyContinue
+                }
+
+                if (Test-Path $pushStdErrFile) {
+                    $pushStdErr = Get-Content -Path $pushStdErrFile -Raw -ErrorAction SilentlyContinue
+                }
+
+                $pushOutputParts = @()
+                if (-not [string]::IsNullOrWhiteSpace($pushStdOut)) {
+                    $pushOutputParts += $pushStdOut.TrimEnd()
+                }
+                if (-not [string]::IsNullOrWhiteSpace($pushStdErr)) {
+                    $pushOutputParts += $pushStdErr.TrimEnd()
+                }
+
+                $pushOutput = $pushOutputParts -join [Environment]::NewLine
+            }
+            finally {
+                Remove-Item -Path $pushStdOutFile -Force -ErrorAction SilentlyContinue
+                Remove-Item -Path $pushStdErrFile -Force -ErrorAction SilentlyContinue
+            }
+
             Write-Host $pushOutput
             
             if ($pushExitCode -eq 0) {
