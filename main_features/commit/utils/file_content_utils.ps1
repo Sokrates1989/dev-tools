@@ -9,6 +9,7 @@
 $script:MAX_FILE_SIZE_BYTES = 51200      # 50KB per file
 $script:MAX_TOTAL_CONTENT_BYTES = 204800 # 200KB total content
 $script:MAX_DIFF_SIZE_BYTES = 102400     # 100KB for diff
+$script:CHARS_PER_TOKEN = 2              # Conservative estimate (accounts for JSON escaping overhead)
 
 # Binary file extensions
 $script:BINARY_EXTENSIONS = @(
@@ -198,6 +199,162 @@ function Get-SmartDiffContent {
     }
     
     return Get-Content $DiffFile -Raw -ErrorAction SilentlyContinue
+}
+
+function Get-EstimatedTokens {
+    <#
+    .SYNOPSIS
+    Estimate token count for a string (approximately 4 chars per token)
+    #>
+    param([string]$Content)
+    
+    if ([string]::IsNullOrEmpty($Content)) {
+        return 0
+    }
+    return [math]::Ceiling($Content.Length / $script:CHARS_PER_TOKEN)
+}
+
+function Get-TokenBudgetFromEnv {
+    <#
+    .SYNOPSIS
+    Get MAX_CONTEXT_TOKENS from environment, with fallback default
+    #>
+    $maxTokens = $env:MAX_CONTEXT_TOKENS
+    if ([string]::IsNullOrEmpty($maxTokens)) {
+        return 115000  # Default conservative limit
+    }
+    return [int]$maxTokens
+}
+
+function Build-TokenAwareContent {
+    <#
+    .SYNOPSIS
+    Build AI message content with token budget awareness.
+    Omits largest files first if total exceeds budget.
+    
+    .PARAMETER Sections
+    Hashtable with section name as key and content as value.
+    Special keys: 'files' should be an array of @{name; content; size} objects
+    
+    .PARAMETER MaxTokens
+    Maximum tokens allowed (from env or default)
+    #>
+    param(
+        [hashtable]$Sections,
+        [int]$MaxTokens = 0
+    )
+    
+    if ($MaxTokens -eq 0) {
+        $MaxTokens = Get-TokenBudgetFromEnv
+    }
+    
+    # Reserve tokens for system prompt and response
+    $reservedTokens = 2000
+    $availableTokens = $MaxTokens - $reservedTokens
+    
+    # Calculate tokens for fixed sections (prompts, summaries)
+    $fixedContent = ""
+    $fixedSections = @('style_instruction', 'commit_prompt', 'files_summary')
+    foreach ($section in $fixedSections) {
+        if ($Sections.ContainsKey($section)) {
+            $fixedContent += $Sections[$section] + "`n`n"
+        }
+    }
+    $fixedTokens = Get-EstimatedTokens -Content $fixedContent
+    
+    # Remaining budget for diff and file contents
+    $contentBudget = $availableTokens - $fixedTokens
+    
+    # Get diff content and size
+    $diffContent = if ($Sections.ContainsKey('diff')) { $Sections['diff'] } else { "" }
+    $diffTokens = Get-EstimatedTokens -Content $diffContent
+    
+    # Get file contents sorted by size (largest first for potential omission)
+    $fileContents = @()
+    if ($Sections.ContainsKey('files')) {
+        $fileContents = $Sections['files'] | Sort-Object -Property size -Descending
+    }
+    
+    $totalFileTokens = 0
+    foreach ($file in $fileContents) {
+        $totalFileTokens += Get-EstimatedTokens -Content $file.content
+    }
+    
+    $totalContentTokens = $diffTokens + $totalFileTokens
+    
+    # If within budget, return as-is
+    if ($totalContentTokens -le $contentBudget) {
+        return @{
+            Success = $true
+            FixedContent = $fixedContent
+            DiffContent = $diffContent
+            FileContents = $fileContents
+            TotalTokens = $fixedTokens + $totalContentTokens
+            Omitted = @()
+        }
+    }
+    
+    # Over budget - need to omit/truncate
+    Write-Host "WARNING: Content exceeds token budget ($totalContentTokens tokens > $contentBudget available)" -ForegroundColor Yellow
+    Write-Host "Intelligently reducing content..." -ForegroundColor Yellow
+    
+    $omittedFiles = @()
+    $includedFiles = @()
+    $currentFileTokens = 0
+    
+    # Allocate 60% of content budget to diff, 40% to files
+    $diffBudget = [math]::Floor($contentBudget * 0.6)
+    $fileBudget = $contentBudget - $diffBudget
+    
+    # Truncate diff if needed
+    if ($diffTokens -gt $diffBudget) {
+        $maxDiffChars = $diffBudget * $script:CHARS_PER_TOKEN
+        $diffContent = $diffContent.Substring(0, [math]::Min($maxDiffChars, $diffContent.Length))
+        $diffContent += "`n`n[... DIFF TRUNCATED - showing first $maxDiffChars characters to stay within token limit ...]`n"
+        $diffTokens = Get-EstimatedTokens -Content $diffContent
+        Write-Host "  - Diff truncated to ~$diffBudget tokens" -ForegroundColor Gray
+    }
+    
+    # Recalculate file budget with actual diff usage
+    $fileBudget = $contentBudget - $diffTokens
+    
+    # Include files smallest-first until budget exhausted (so we include more files)
+    $sortedBySmallest = $fileContents | Sort-Object -Property size
+    
+    foreach ($file in $sortedBySmallest) {
+        $fileTokens = Get-EstimatedTokens -Content $file.content
+        
+        if (($currentFileTokens + $fileTokens) -le $fileBudget) {
+            $includedFiles += $file
+            $currentFileTokens += $fileTokens
+        } else {
+            # Create placeholder for omitted file
+            $placeholder = "[FILE OMITTED: $($file.name) - $(Format-FileSize -Bytes $file.size) - content excluded to stay within token limit]"
+            $omittedFiles += @{
+                name = $file.name
+                content = $placeholder
+                size = $placeholder.Length
+                originalSize = $file.size
+            }
+            Write-Host "  - Omitted: $($file.name) ($(Format-FileSize -Bytes $file.size))" -ForegroundColor Gray
+        }
+    }
+    
+    # Combine included and omitted (omitted get placeholders)
+    $finalFiles = $includedFiles + $omittedFiles
+    
+    $finalTokens = $fixedTokens + $diffTokens + $currentFileTokens + (Get-EstimatedTokens -Content ($omittedFiles.content -join "`n"))
+    
+    Write-Host "  - Final estimated tokens: ~$finalTokens (budget: $availableTokens)" -ForegroundColor Cyan
+    
+    return @{
+        Success = $true
+        FixedContent = $fixedContent
+        DiffContent = $diffContent
+        FileContents = $finalFiles
+        TotalTokens = $finalTokens
+        Omitted = $omittedFiles
+    }
 }
 
 function Get-FilesSummary {

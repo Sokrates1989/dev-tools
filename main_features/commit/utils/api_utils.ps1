@@ -67,6 +67,45 @@ function Get-CommitMessage {
     return $null
 }
 
+# Function to truncate content to stay within token limits
+# Uses ~4 chars per token estimate, reserves space for system prompt + response
+function Limit-ContentToTokenLimit {
+    param(
+        [string]$Content,
+        [int]$MaxTokens = 115000,  # Conservative limit for 128k context models
+        [int]$CharsPerToken = 4
+    )
+    
+    $maxChars = $MaxTokens * $CharsPerToken
+    
+    if ($Content.Length -le $maxChars) {
+        return $Content
+    }
+    
+    # Content exceeds limit - truncate with warning
+    $truncationNotice = "
+
+[... CONTENT TRUNCATED due to size limits. Showing first $maxChars characters of $($Content.Length) total ...]
+
+"
+    
+    # Reserve space for truncation notice
+    $availableChars = $maxChars - $truncationNotice.Length
+    
+    # Try to truncate at a reasonable boundary (newline)
+    $truncatedContent = $Content.Substring(0, $availableChars)
+    $lastNewline = $truncatedContent.LastIndexOf("`n")
+    
+    if ($lastNewline -gt ($availableChars * 0.8)) {
+        # Found a newline in the last 20% - use it as boundary
+        $truncatedContent = $truncatedContent.Substring(0, $lastNewline)
+    }
+    
+    Write-Host "WARNING: Content truncated from $($Content.Length) to $($truncatedContent.Length) characters to stay within API limits." -ForegroundColor Yellow
+    
+    return $truncatedContent + $truncationNotice
+}
+
 # Function to validate API configuration
 function Test-ApiConfiguration {
     param(

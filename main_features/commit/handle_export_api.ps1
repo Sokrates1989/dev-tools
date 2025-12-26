@@ -79,6 +79,7 @@ if (-not (Test-ApiConfiguration -ApiKey $apiKey -ApiProvider $apiProvider -ApiUr
 
 # Compose the initial prompt.
 $content = Get-Content $AllInOneFile -Raw -Encoding UTF8
+
 # Properly escape special characters for JSON
 $escapedContent = $content -replace '\\', '\\\\' `
                              -replace '"', '\"' `

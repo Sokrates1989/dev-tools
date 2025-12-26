@@ -222,47 +222,83 @@ VERSION_FILES_STAGED=$versionFilesStaged
 # Style instruction for AI (high priority)
 $TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Summarize ALL staged changes in a single one-line git commit command. Use the format from the COMMIT MESSAGE PROMPT. Use a short feature or area name instead of listing individual filenames (e.g. "Docker Swarm prep" instead of "README.md, build-image/README.md, docs/ARCHITECTURE.md, docs/DOCKER_DEPLOYMENT.md, docs/QUICK_START.md"). If there is no clear single area, omit the area label and start directly with the description. Never invent or output dummy task IDs; always leave JIRA_ID_PLACEHOLDER exactly as shown. Choose the Category so it reflects the overall nature of all staged changes; do not use the Documentation category when there are significant script, setup, build, deployment, or code changes. Use Documentation when the changes are documentation-focused (docs/README/usage text and related screenshots/images/diagrams) and there are no behavior or tooling changes; prefer Setup, Env, or Git for setup/tooling changes and Functionality, New Feature, or BugFix for behavior changes.'
 
-# Compose the AI message prompt file.
+# Prepare commit message prompt content
+$commitPromptContent = ""
+if (Test-Path $CommitMsgFile) {
+    $commitPromptContent = Get-Content $CommitMsgFile -Raw
+} else {
+    $commitPromptContent = "(no commit_message_prompt.txt found)"
+}
+
+# Generate files summary
+$filesSummary = Get-FilesSummary -Files $StagedFiles
+
+# Get diff content
+$smartDiff = Get-SmartDiffContent -DiffFile $DiffFile
+
+# Collect file contents with sizes for token-aware building
+$fileContentsArray = @()
+foreach ($file in $StagedFiles) {
+    $basename = Split-Path $file -Leaf
+    $smartContent = Get-SmartFileContent -FilePath $file
+    $fileSize = if (Test-Path $file) { (Get-Item $file).Length } else { 0 }
+    $fileContentsArray += @{
+        name = $basename
+        content = "--- $basename ---`n$smartContent"
+        size = $fileSize
+    }
+}
+
+# Build token-aware content
+$sections = @{
+    style_instruction = $TaskID
+    commit_prompt = "===== COMMIT MESSAGE PROMPT =====`n$commitPromptContent"
+    files_summary = "===== FILES SUMMARY =====`n$filesSummary"
+    diff = $smartDiff
+    files = $fileContentsArray
+}
+
+$tokenAwareResult = Build-TokenAwareContent -Sections $sections
+
+# Compose the AI message prompt file with token-aware content
 Remove-Item -Force $AiMessageFile -ErrorAction SilentlyContinue
 "" | Out-File $AiMessageFile
 
-# Add the Task ID / Style instruction at the very top.
+# Write the content in proper order
 Add-Content $AiMessageFile $TaskID
 Add-Content $AiMessageFile ""
 
-# Add commit message and other prompts.
 Add-Content $AiMessageFile "===== COMMIT MESSAGE PROMPT ====="
-if (Test-Path $CommitMsgFile) {
-    Get-Content $CommitMsgFile | Add-Content $AiMessageFile
-} else {
-    Add-Content $AiMessageFile "(no commit_message_prompt.txt found)"
-}
+Add-Content $AiMessageFile $commitPromptContent
 Add-Content $AiMessageFile ""
 
-# Generate files summary first
 Add-Content $AiMessageFile "===== FILES SUMMARY ====="
-$filesSummary = Get-FilesSummary -Files $StagedFiles
 Add-Content $AiMessageFile $filesSummary
 Add-Content $AiMessageFile ""
 
 Add-Content $AiMessageFile "===== STAGED DIFF ====="
-$smartDiff = Get-SmartDiffContent -DiffFile $DiffFile
-Add-Content $AiMessageFile $smartDiff
+Add-Content $AiMessageFile $tokenAwareResult.DiffContent
 Add-Content $AiMessageFile ""
 
 Add-Content $AiMessageFile "===== STAGED FILE CONTENTS ====="
 Add-Content $AiMessageFile "(Binary and large files show metadata only)"
+if ($tokenAwareResult.Omitted.Count -gt 0) {
+    Add-Content $AiMessageFile "(Some files omitted to stay within token limit - see placeholders below)"
+}
 Add-Content $AiMessageFile ""
-foreach ($file in $StagedFiles) {
-    $basename = Split-Path $file -Leaf
-    Add-Content $AiMessageFile "--- $basename ---"
-    $smartContent = Get-SmartFileContent -FilePath $file
-    Add-Content $AiMessageFile $smartContent
+
+foreach ($fileEntry in $tokenAwareResult.FileContents) {
+    Add-Content $AiMessageFile $fileEntry.content
     Add-Content $AiMessageFile ""
 }
 
 Add-Content $AiMessageFile $TaskID
 Add-Content $AiMessageFile ""
+
+# Show token estimate
+$estimatedTokens = $tokenAwareResult.TotalTokens
+$maxTokens = Get-TokenBudgetFromEnv
+Write-Host "Estimated tokens: ~$estimatedTokens / $maxTokens" -ForegroundColor Gray
 
 # Call the appropriate post-export handler.
 $AI_MODE = $env:AI_MODE

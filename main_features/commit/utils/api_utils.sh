@@ -68,6 +68,49 @@ build_json_payload() {
   fi
 }
 
+# Function to truncate content to stay within token limits
+limit_content_to_token_limit() {
+  local content="$1"
+  local max_tokens="${2:-115000}"  # Conservative limit for 128k context models
+  local chars_per_token="${3:-4}"
+  
+  local max_chars=$((max_tokens * chars_per_token))
+  local content_length=${#content}
+  
+  if [[ $content_length -le $max_chars ]]; then
+    printf '%s' "$content"
+    return 0
+  fi
+  
+  # Content exceeds limit - truncate with warning
+  local truncation_notice="
+
+[... CONTENT TRUNCATED due to size limits. Showing first $max_chars characters of $content_length total ...]
+
+"
+  local notice_length=${#truncation_notice}
+  local available_chars=$((max_chars - notice_length))
+  
+  # Truncate content
+  local truncated_content="${content:0:$available_chars}"
+  
+  # Try to truncate at a reasonable boundary (last newline in last 20%)
+  local boundary_search_start=$((available_chars * 80 / 100))
+  local search_portion="${truncated_content:$boundary_search_start}"
+  
+  # Find last newline in the search portion
+  if [[ "$search_portion" == *$'\n'* ]]; then
+    # Get everything up to and including the last newline
+    local before_last_newline="${search_portion%$'\n'*}"
+    local chars_to_keep=$((boundary_search_start + ${#before_last_newline}))
+    truncated_content="${content:0:$chars_to_keep}"
+  fi
+  
+  echo "⚠️  WARNING: Content truncated from $content_length to ${#truncated_content} characters to stay within API limits." >&2
+  
+  printf '%s%s' "$truncated_content" "$truncation_notice"
+}
+
 # Function to validate API configuration
 validate_api_config() {
   local api_key="$1"

@@ -183,35 +183,53 @@ VARS_FILE="$SCRIPT_DIR/git_export_staged/.commit_vars"
 # Set TASK_ID style instruction for AI (high priority)
 TASK_ID="===== STYLE INSTRUCTION - HIGH PRIORITY ===== Summarize ALL staged changes in a single one-line git commit command. Use the format from the COMMIT MESSAGE PROMPT. Use a short feature or area name instead of listing individual filenames (e.g. 'Docker Swarm prep' instead of 'README.md, build-image/README.md, docs/ARCHITECTURE.md, docs/DOCKER_DEPLOYMENT.md, docs/QUICK_START.md'). If there is no clear single area, omit the area label and start directly with the description. Never invent or output dummy task IDs; always leave JIRA_ID_PLACEHOLDER exactly as shown. Choose the Category so it reflects the overall nature of all staged changes; do not use the Documentation category when there are significant script, setup, build, deployment, or code changes. Use Documentation when the changes are documentation-focused (docs/README/usage text and related screenshots/images/diagrams) and there are no behavior or tooling changes; prefer Setup, Env, or Git for setup/tooling changes and Functionality, New Feature, or BugFix for behavior changes."
 
-# Concatenate everything into one single file with smart content handling
+# Prepare content for token-aware building
+COMMIT_PROMPT_CONTENT=""
+if [[ -f "$COMMIT_MSG_FILE" ]]; then
+    COMMIT_PROMPT_CONTENT=$(cat "$COMMIT_MSG_FILE")
+else
+    COMMIT_PROMPT_CONTENT="(no commit_message_prompt.txt found)"
+fi
+
+FILES_SUMMARY=$(generate_files_summary "$FILES")
+SMART_DIFF=$(get_smart_diff_content "$DIFF_FILE")
+
+# Build token-aware content (may omit large files if over budget)
+build_token_aware_content "$TASK_ID" "$COMMIT_PROMPT_CONTENT" "$FILES_SUMMARY" "$SMART_DIFF" "$FILES"
+
+# Show token estimate
+MAX_TOKENS=$(get_token_budget_from_env)
+echo "📊 Estimated tokens: ~$TOKEN_AWARE_TOTAL / $MAX_TOKENS"
+
+# Concatenate everything into one single file with token-aware content
 ALL_IN_ONE_DIR="$SCRIPT_DIR/git_export_staged/all_in_one"
 ALL_IN_ONE_AI_MESSAGE_FILE="$ALL_IN_ONE_DIR/ai_message.txt"
 mkdir -p "$ALL_IN_ONE_DIR"
 rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
 {
-    echo "===== 📝 COMMIT MESSAGE PROMPT ====="
-    if [[ -f "$COMMIT_MSG_FILE" ]]; then
-        cat "$COMMIT_MSG_FILE"
-    else
-        echo "(no commit_message_prompt.txt found)"
-    fi
+    echo "$TASK_ID"
     echo ""
     
-    # Generate files summary first
+    echo "===== 📝 COMMIT MESSAGE PROMPT ====="
+    echo "$COMMIT_PROMPT_CONTENT"
+    echo ""
+    
     echo "===== 📋 FILES SUMMARY ====="
-    generate_files_summary "$FILES"
+    echo "$FILES_SUMMARY"
     echo ""
     
     echo "===== 🔍 STAGED DIFF ====="
-    get_smart_diff_content "$DIFF_FILE"
+    echo "$TOKEN_AWARE_DIFF"
     echo ""
     
     echo "===== 📁 STAGED FILE CONTENTS ====="
     echo "(Binary and large files show metadata only)"
+    if [[ ${#TOKEN_AWARE_OMITTED[@]} -gt 0 ]]; then
+        echo "(Some files omitted to stay within token limit - see placeholders below)"
+    fi
     echo ""
-    for file in $FILES; do
-        echo "--- $(basename "$file") ---"
-        get_smart_file_content "$file"
+    for file_content in "${TOKEN_AWARE_FILES[@]}"; do
+        echo "$file_content"
         echo ""
     done
     echo ""
