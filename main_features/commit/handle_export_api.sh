@@ -64,6 +64,10 @@ echo "🚀 Sending prompt to $API_PROVIDER..."
 
 USER_CONTENT=$(cat "$ALL_IN_ONE_AI_MESSAGE_FILE")
 
+# Guard against exceeding API context limits.
+MAX_CONTEXT_TOKENS="${MAX_CONTEXT_TOKENS:-115000}"
+USER_CONTENT=$(limit_content_to_token_limit "$USER_CONTENT" "$MAX_CONTEXT_TOKENS")
+
 # Build initial messages
 INITIAL_MESSAGES=$(build_conversation_messages "$USER_CONTENT")
 
