@@ -18,6 +18,9 @@ function Show-ExportInstructions {
     Write-Host "Alternatively, use the single combined file:"
     Write-Host "  $allInOneFile"
     Write-Host ""
+    Write-Host "The shared commit strategy is included in:"
+    Write-Host "  $commitPromptFile"
+    Write-Host ""
     Write-Host "Add the related Project Task ID (if available), or just write: no task ID"
     Write-Host ""
 }
@@ -29,72 +32,26 @@ $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $parentDir = Join-Path $ScriptDir "git_export_staged"
 $destDir = Join-Path $parentDir "changed_files"
 $diffFile = Join-Path $parentDir "last_staged_commit_diff.txt"
+$allInOneDir = Join-Path $parentDir "all_in_one"
+$allInOneFile = Join-Path $allInOneDir "ai_message.txt"
+$commitPromptFile = Join-Path $parentDir "commit_message_prompt.txt"
 
 # Git update check
 $RootDir = Resolve-Path "$PSScriptRoot\..\.." | Select-Object -ExpandProperty Path
 & "$RootDir\global_functions\check_for_updates.ps1"
 
-# Clean up previous outputs
-Remove-Item -Recurse -Force $destDir -ErrorAction SilentlyContinue
-New-Item -ItemType Directory -Force -Path $destDir | Out-Null
-Remove-Item -Force $diffFile -ErrorAction SilentlyContinue
-
-# Export the staged diff to a file
-git diff --staged > $diffFile
-
-# Get list of staged files
-$files = git diff --name-only --cached
-
-# Exit early if no staged files found
-if (-not $files) {
-    Write-Host "No staged files found. Please stage changes with 'git add' before running this script."
+if (-not (Test-Path $destDir) -or -not (Test-Path $diffFile) -or -not (Test-Path $allInOneFile) -or -not (Test-Path $commitPromptFile)) {
+    Write-Host "Commit export files are missing. Please run the commit export first."
     exit
-}
-
-# Copy each file (flattened into destination folder)
-foreach ($file in $files) {
-    if (Test-Path $file) {
-        Copy-Item $file -Destination (Join-Path $destDir (Split-Path $file -Leaf))
-    }
 }
 
 # Output summary
 Write-Host ""
-Write-Host "Copied staged files to: $destDir"
+Write-Host "Exported staged files available in: $destDir"
 Get-ChildItem $destDir | ForEach-Object { Write-Host $_.Name }
 Write-Host ""
-Write-Host "Staged diff saved to: $diffFile"
-
-# Copy commit_message_prompt.txt if it exists
-$commitMsgFile = Join-Path $ScriptDir "commit_message_prompt.txt"
-if (Test-Path $commitMsgFile) {
-    Copy-Item $commitMsgFile -Destination $parentDir
-    Write-Host "Copied commit_message_prompt.txt to export folder."
-}
-
-# Generate all-in-one AI message file
-$allInOneDir = Join-Path $parentDir "all_in_one"
-$allInOneFile = Join-Path $allInOneDir "ai_message.txt"
-New-Item -ItemType Directory -Force -Path $allInOneDir | Out-Null
-Remove-Item -Force $allInOneFile -ErrorAction SilentlyContinue
-
-Add-Content $allInOneFile "===== COMMIT MESSAGE PROMPT ====="
-if (Test-Path $commitMsgFile) {
-    Get-Content $commitMsgFile | Add-Content $allInOneFile
-} else {
-    Add-Content $allInOneFile "(no commit_message_prompt.txt found)"
-}
-Add-Content $allInOneFile "`n===== STAGED DIFF ====="
-Get-Content $diffFile | Add-Content $allInOneFile
-Add-Content $allInOneFile "`n===== STAGED FILE CONTENTS ====="
-foreach ($file in $files) {
-    if (Test-Path $file) {
-        Add-Content $allInOneFile "--- $(Split-Path $file -Leaf) ---"
-        Get-Content $file | Add-Content $allInOneFile
-        Add-Content $allInOneFile ""
-    }
-}
-Write-Host "Combined AI message created at: $allInOneFile"
+Write-Host "Staged diff available at: $diffFile"
+Write-Host "Combined AI message available at: $allInOneFile"
 
 # Show instructions and wait before opening the folder
 Write-Host ""

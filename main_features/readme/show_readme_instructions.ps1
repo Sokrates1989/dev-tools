@@ -44,9 +44,145 @@ Write-Host ""
 # --- Git update check again ---
 & "$RootDir\global_functions\check_for_updates.ps1"
 
-# Prompt to open the folder
-Read-Host "Press Enter to open the README instructions folder in Explorer..."
-Start-Process "explorer.exe" $InstructionsDir
+# Read instruction files content for clipboard/terminal options
+$aiInstructionsFile = Join-Path $InstructionsDir "ai_instructions.txt"
+$templateFile = Join-Path $InstructionsDir "template.md"
+$combinedContent = ""
+
+try {
+    $aiInstructions = Get-Content -Path $aiInstructionsFile -Raw -ErrorAction Stop
+    $template = Get-Content -Path $templateFile -Raw -ErrorAction Stop
+    $combinedContent = "=== AI INSTRUCTIONS ===`n`n$aiInstructions`n`n=== README TEMPLATE ===`n`n$template"
+}
+catch {
+    Write-Host "Warning: Could not read instruction files: $_" -ForegroundColor Yellow
+}
 
 Write-Host ""
-Write-Host "Done! The folder is now open. Copy the contents into your AI chat to begin."
+Write-Host "I will now attempt all 4 methods to make the README instructions accessible:"
+Write-Host ""
+
+# Method 1: Open instructions folder in Explorer
+Write-Host "1) Opening instructions folder in Explorer..."
+$explorerSuccess = $false
+try {
+    Start-Process "explorer.exe" $InstructionsDir -ErrorAction Stop
+    Write-Host "   Instructions folder opened in Explorer." -ForegroundColor Green
+    $explorerSuccess = $true
+}
+catch {
+    Write-Host "   Failed to open Explorer: $_" -ForegroundColor Red
+    Write-Host "   Folder path: $InstructionsDir" -ForegroundColor Yellow
+}
+
+# Method 2: Open ai_instructions.txt with default editor
+Write-Host "2) Opening ai_instructions.txt with default editor..."
+$editorSuccess = $false
+try {
+    Start-Process -FilePath $aiInstructionsFile -ErrorAction Stop
+    Write-Host "   AI instructions file opened with default editor." -ForegroundColor Green
+    $editorSuccess = $true
+}
+catch {
+    Write-Host "   Failed to open with editor: $_" -ForegroundColor Red
+    Write-Host "   File path: $aiInstructionsFile" -ForegroundColor Yellow
+}
+
+# Method 3: Copy all instructions to clipboard with verification
+Write-Host "3) Copying instructions to clipboard..."
+$clipboardSuccess = $false
+$clipboardMethod = ""
+try {
+    if (Get-Command "clip.exe" -ErrorAction SilentlyContinue) {
+        $combinedContent | clip.exe
+        $clipboardMethod = "Windows clip.exe"
+        
+        # Verify clipboard content
+        Start-Sleep -Milliseconds 100
+        try {
+            if (Get-Command "Get-Clipboard" -ErrorAction SilentlyContinue) {
+                $clipboardTest = Get-Clipboard -ErrorAction Stop
+                if ($clipboardTest -and $clipboardTest.Trim() -eq $combinedContent.Trim()) {
+                    Write-Host "   Instructions successfully copied to clipboard ($clipboardMethod) - VERIFIED!" -ForegroundColor Green
+                    $clipboardSuccess = $true
+                }
+                else {
+                    Write-Host "   Clipboard copy attempted but verification failed." -ForegroundColor Yellow
+                }
+            }
+            else {
+                Write-Host "   Instructions copied to clipboard ($clipboardMethod) - verification not available." -ForegroundColor Green
+                $clipboardSuccess = $true
+            }
+        }
+        catch {
+            Write-Host "   Instructions copied to clipboard ($clipboardMethod) - verification failed: $_" -ForegroundColor Yellow
+        }
+    }
+    elseif (Get-Command "Set-Clipboard" -ErrorAction SilentlyContinue) {
+        Set-Clipboard -Value $combinedContent -ErrorAction Stop
+        $clipboardMethod = "PowerShell Set-Clipboard"
+        
+        # Verify clipboard content
+        Start-Sleep -Milliseconds 100
+        try {
+            $clipboardTest = Get-Clipboard -ErrorAction Stop
+            if ($clipboardTest -and $clipboardTest.Trim() -eq $combinedContent.Trim()) {
+                Write-Host "   Instructions successfully copied to clipboard ($clipboardMethod) - VERIFIED!" -ForegroundColor Green
+                $clipboardSuccess = $true
+            }
+            else {
+                Write-Host "   Clipboard copy attempted but verification failed." -ForegroundColor Yellow
+            }
+        }
+        catch {
+            Write-Host "   Instructions copied to clipboard ($clipboardMethod) - verification failed: $_" -ForegroundColor Yellow
+        }
+    }
+    else {
+        throw "No clipboard method available"
+    }
+}
+catch {
+    Write-Host "   Failed to copy to clipboard: $_" -ForegroundColor Red
+    Write-Host "   You can manually copy from terminal display below." -ForegroundColor Yellow
+}
+
+# Method 4: Display all instructions in terminal
+Write-Host "4) Displaying all instructions in terminal..."
+$terminalSuccess = $false
+if ($combinedContent) {
+    Write-Host "   Instructions displayed in terminal below:" -ForegroundColor Green
+    Write-Host ""
+    Write-Host "=== README INSTRUCTIONS ==="
+    Write-Host $combinedContent
+    Write-Host "=== END OF INSTRUCTIONS ==="
+    $terminalSuccess = $true
+}
+else {
+    Write-Host "   Could not read instruction files content." -ForegroundColor Red
+    Write-Host "   Folder path: $InstructionsDir" -ForegroundColor Yellow
+}
+
+# Summary
+Write-Host ""
+Write-Host "=== ATTEMPT SUMMARY ==="
+Write-Host "Folder open:    $(if ($explorerSuccess) { 'SUCCESS' } else { 'FAILED' })"
+Write-Host "Editor open:    $(if ($editorSuccess) { 'SUCCESS' } else { 'FAILED' })"
+Write-Host "Clipboard copy: $(if ($clipboardSuccess) { 'SUCCESS - VERIFIED' } else { 'FAILED' })"
+Write-Host "Terminal display: $(if ($terminalSuccess) { 'SUCCESS' } else { 'FAILED' })"
+
+if ($clipboardSuccess) {
+    Write-Host ""
+    Write-Host "EXCELLENT! The README instructions are now in your clipboard." -ForegroundColor Green
+    Write-Host "You can paste them directly into your external AI chat." -ForegroundColor Green
+}
+else {
+    Write-Host ""
+    Write-Host "Clipboard copy failed, but you can:" -ForegroundColor Yellow
+    Write-Host "- Copy the content from the terminal display above" -ForegroundColor Yellow
+    Write-Host "- Use the folder path to open manually: $InstructionsDir" -ForegroundColor Yellow
+}
+
+Write-Host ""
+Write-Host "Done! Use the README instructions with your external AI."

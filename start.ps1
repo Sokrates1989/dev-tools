@@ -1,6 +1,7 @@
 param (
     [switch]$c,  # commit
     [switch]$commit,  # commit
+    [switch]$cc,  # commit external
     [switch]$l,  # log
     [switch]$log,  # log
     [switch]$r,  # readme
@@ -44,9 +45,62 @@ Get-ChildItem -Path "$RootDir" -Recurse -Filter *.ps1 -ErrorAction SilentlyConti
     }
 }
 
+$gnuStyleArgument = if ($args.Count -gt 0) { $args[0].ToLower() } else { $null }
+if ($gnuStyleArgument) {
+    switch ($gnuStyleArgument) {
+        "--c" { & "$RootDir\main_features\commit\git_export_staged.ps1"; return }
+        "--commit" { & "$RootDir\main_features\commit\git_export_staged.ps1"; return }
+        "--cm" { & "$RootDir\main_features\commit\git_export_staged.ps1"; return }
+        "--cc" { & "$RootDir\main_features\commit\create_commit_with_external_ai.ps1"; return }
+        "--m" { & "$RootDir\main_features\merge\git_export_merge.ps1"; return }
+        "--merge" { & "$RootDir\main_features\merge\git_export_merge.ps1"; return }
+        "--me" { & "$RootDir\main_features\merge\git_export_merge.ps1"; return }
+        "--l" { & "$RootDir\main_features\git\git_log_explorer.ps1"; return }
+        "--log" { & "$RootDir\main_features\git\git_log_explorer.ps1"; return }
+        "--lg" { & "$RootDir\main_features\git\git_log_explorer.ps1"; return }
+        "--r" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
+        "--readme" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
+        "--rd" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
+        "--u" { & "$RootDir\global_functions\perform_auto_update.ps1"; & "$RootDir\start.ps1"; return }
+        "--update" { & "$RootDir\global_functions\perform_auto_update.ps1"; & "$RootDir\start.ps1"; return }
+        "--x" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
+        "--reset" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
+        "--re" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
+        "--revert" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
+        "--a" { & "$RootDir\main_features\amend\git_amend.ps1"; return }
+        "--amend" { & "$RootDir\main_features\amend\git_amend.ps1"; return }
+        "--am" { & "$RootDir\main_features\amend\git_amend.ps1"; return }
+        "--i" { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1"; return }
+        "--remove-gitignored" { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1"; return }
+        "--rg" { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1"; return }
+        "--b" { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1"; return }
+        "--branch-cleanup" { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1"; return }
+        "--bc" { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1"; return }
+        "--s" { & "$RootDir\main_features\sync-branches\sync_branches.ps1"; return }
+        "--sync-branches" { & "$RootDir\main_features\sync-branches\sync_branches.ps1"; return }
+        "--sb" { & "$RootDir\main_features\sync-branches\sync_branches.ps1"; return }
+        "--t" { & "$RootDir\main_features\track-remote\track_remote.ps1"; return }
+        "--track-remote" { & "$RootDir\main_features\track-remote\track_remote.ps1"; return }
+        "--tr" { & "$RootDir\main_features\track-remote\track_remote.ps1"; return }
+        "--n" { & "$RootDir\main_features\create-branch\create_branch.ps1"; return }
+        "--create-branch" { & "$RootDir\main_features\create-branch\create_branch.ps1"; return }
+        "--nb" { & "$RootDir\main_features\create-branch\create_branch.ps1"; return }
+        "--cnb" { & "$RootDir\main_features\create-branch\create_branch.ps1"; return }
+        "--stash" { & "$RootDir\main_features\stash\stash_manager.ps1"; return }
+        "--st" { & "$RootDir\main_features\stash\stash_manager.ps1"; return }
+        "--f" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+        "--fix" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+        "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+    }
+}
+
 # === Quick flag execution ===
 if ($c -or $commit) {
     & "$RootDir\main_features\commit\git_export_staged.ps1"
+    return
+}
+if ($cc) {
+    & "$RootDir\main_features\commit\create_commit_with_external_ai.ps1"
     return
 }
 if ($l -or $log) {
@@ -115,6 +169,7 @@ Write-Host "Choose a tool to run:"
 Write-Host ""
 Write-Host "Core Operations (1-4):"
 Write-Host "1) Commit Message Helper"
+Write-Host "cc) Commit style instructions for external AI    [--cc | -cc]"
 Write-Host "2) Merge commit assistant"
 Write-Host "3) Show README creation instructions"
 Write-Host "4) Git Stash Manager                 [--stash | -st]"
@@ -141,13 +196,14 @@ if ($updateAvailable -eq "1") {
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-13, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-13, cc, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
 
 switch ($choiceLower) {
     { $_ -match "^(1|commit|--commit|-c|c)$" } { & "$RootDir\main_features\commit\git_export_staged.ps1" }
+    { $_ -match "^(cc|--cc|-cc|commit-external|external-commit)$" } { & "$RootDir\main_features\commit\create_commit_with_external_ai.ps1" }
     { $_ -match "^(2|merge|--merge|-m|m)$" } { & "$RootDir\main_features\merge\git_export_merge.ps1" }
     { $_ -match "^(3|readme|--readme|-r|r)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
     { $_ -match "^(4|stash|--stash|-st|st)$" } { & "$RootDir\main_features\stash\stash_manager.ps1" }
@@ -171,6 +227,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-13, u, q, or option names like 'commit', '--log', '-r', 'stash', 'repair', etc."
+        Write-Host "Valid options: 1-13, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', etc."
     }
 }

@@ -52,10 +52,13 @@ This tool performs the following operations:
 # Interactive mode
 ./start.sh
 # Then select option 1) Commit Message Helper
+# Or select option cc) Commit style instructions for external AI
 
 # Direct execution
 ./start.sh --commit
 ./start.sh -c
+./start.sh --cc
+./start.sh -cc
 ```
 
 ### Direct execution
@@ -63,10 +66,18 @@ This tool performs the following operations:
 ```bash
 # Bash
 ./main_features/commit/git_export_staged.sh
+# Shows only the shared commit style guide for copy/paste into another AI
+./main_features/commit/create_commit_with_external_ai.sh
 
 # PowerShell
 ./main_features/commit/git_export_staged.ps1
+# Shows only the shared commit style guide for copy/paste into another AI
+./main_features/commit/create_commit_with_external_ai.ps1
 ```
+
+### External AI Mode
+
+The external AI entrypoint is intentionally lightweight. It only shows the shared `commit_message_prompt.txt` strategy file so you can paste the commit style rules into another AI that already knows the change context. It does not inspect git state, staged files, or the current repository.
 
 ## Workflow
 

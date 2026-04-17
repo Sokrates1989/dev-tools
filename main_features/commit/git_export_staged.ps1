@@ -14,7 +14,7 @@ $CommitMsgFile     = Join-Path $ScriptDir "commit_message_prompt.txt"
 
 # --- Sync check before commit ---
 Write-Host "Checking if branch is in sync with remote..." -ForegroundColor Cyan
-$syncResult = & "$RootDir\global_functions\sync_check.ps1"
+& "$RootDir\global_functions\sync_check.ps1"
 if ($LASTEXITCODE -ne 0) {
     Write-Host "Sync check failed. Please resolve sync issues before committing." -ForegroundColor Red
     exit 1
@@ -23,6 +23,7 @@ if ($LASTEXITCODE -ne 0) {
 # Load .env file.
 . "$RootDir\global_functions\load_dotenv.ps1"
 Load-DotEnv
+$effectiveAiMode = if ($env:DEV_TOOLS_FORCE_AI_MODE) { $env:DEV_TOOLS_FORCE_AI_MODE } else { $env:AI_MODE }
 
 # Ensure the export directory exists and is empty.
 if (Test-Path $ExportDir) {
@@ -219,8 +220,7 @@ IMAGE_VERSION=$imageVersion
 VERSION_FILES_STAGED=$versionFilesStaged
 "@ | Out-File -FilePath $varsFile -Encoding UTF8
 
-# Style instruction for AI (high priority)
-$TaskID = '===== STYLE INSTRUCTION - HIGH PRIORITY ===== Summarize ALL staged changes in a single one-line git commit command. Use the format from the COMMIT MESSAGE PROMPT. Use a short feature or area name instead of listing individual filenames (e.g. "Docker Swarm prep" instead of "README.md, build-image/README.md, docs/ARCHITECTURE.md, docs/DOCKER_DEPLOYMENT.md, docs/QUICK_START.md"). If there is no clear single area, omit the area label and start directly with the description. Never invent or output dummy task IDs; always leave JIRA_ID_PLACEHOLDER exactly as shown. Choose the Category so it reflects the overall nature of all staged changes; do not use the Documentation category when there are significant script, setup, build, deployment, or code changes. Use Documentation when the changes are documentation-focused (docs/README/usage text and related screenshots/images/diagrams) and there are no behavior or tooling changes; prefer Setup, Env, or Git for setup/tooling changes and Functionality, New Feature, or BugFix for behavior changes.'
+$styleInstruction = 'Follow the COMMIT MESSAGE PROMPT section exactly and output a single one-line git commit command.'
 
 # Prepare commit message prompt content
 $commitPromptContent = ""
@@ -251,7 +251,7 @@ foreach ($file in $StagedFiles) {
 
 # Build token-aware content
 $sections = @{
-    style_instruction = $TaskID
+    style_instruction = $styleInstruction
     commit_prompt = "===== COMMIT MESSAGE PROMPT =====`n$commitPromptContent"
     files_summary = "===== FILES SUMMARY =====`n$filesSummary"
     diff = $smartDiff
@@ -265,7 +265,8 @@ Remove-Item -Force $AiMessageFile -ErrorAction SilentlyContinue
 "" | Out-File $AiMessageFile
 
 # Write the content in proper order
-Add-Content $AiMessageFile $TaskID
+Add-Content $AiMessageFile "===== STYLE INSTRUCTION - HIGH PRIORITY ====="
+Add-Content $AiMessageFile $styleInstruction
 Add-Content $AiMessageFile ""
 
 Add-Content $AiMessageFile "===== COMMIT MESSAGE PROMPT ====="
@@ -292,21 +293,17 @@ foreach ($fileEntry in $tokenAwareResult.FileContents) {
     Add-Content $AiMessageFile ""
 }
 
-Add-Content $AiMessageFile $TaskID
-Add-Content $AiMessageFile ""
-
 # Show token estimate
 $estimatedTokens = $tokenAwareResult.TotalTokens
 $maxTokens = Get-TokenBudgetFromEnv
 Write-Host "Estimated tokens: ~$estimatedTokens / $maxTokens" -ForegroundColor Gray
 
 # Call the appropriate post-export handler.
-$AI_MODE = $env:AI_MODE
-Write-Host "AI Mode: -> $AI_MODE"
-if ($AI_MODE -eq "api") {
+Write-Host "AI Mode: -> $effectiveAiMode"
+if ($effectiveAiMode -eq "api") {
     & "$ScriptDir\handle_export_api.ps1"
 } else {
-    if ($AI_MODE -eq "manual") {
+    if ($effectiveAiMode -eq "manual") {
         & "$ScriptDir\handle_export_manual.ps1"
     } else
     {

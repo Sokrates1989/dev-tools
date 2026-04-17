@@ -1,26 +1,56 @@
-Write a concise, one-line commit message for the git changes provided. Follow this format:
+STYLE INSTRUCTION - HIGH PRIORITY:
+- Follow this file exactly when generating the commit command.
+- Summarize ALL staged changes in a single one-line git commit command.
+- Use a short feature or area name instead of listing individual filenames.
+- If there is no clear single area, omit the area label and start directly with the description.
+- Choose the Category so it reflects the overall nature of all staged changes.
 
+PLACEHOLDER HANDLING - CRITICAL:
+- REMOVE placeholders unless you find CLEAR, EXPLICIT evidence in the git diffs for JIRA ID or version
+- NEVER keep placeholders in the final commit message unless you are 100% certain of the values
+- When in doubt, ALWAYS remove placeholders and use only the category
+- Look for explicit version strings (like "v1.2.3") or JIRA IDs (like "PROJ-123") in code, comments, or file names
+
+OUTPUT FORMAT:
+```bash
 git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Category] Area or feature: description of all changes"
+```
 
 INSTRUCTIONS:
-- Use EXACTLY "JIRA_ID_PLACEHOLDER" and "VERSION_PLACEHOLDER" as shown (the script will replace them)
 - Category: Choose ONE from [Cleanup|Documentation|Refactoring|UI|Navigation|Content Update|Functionality|New Feature|BugFix|OS|Git|Debug|Setup|Env|ErrorHandling|CodeVersion|Translation|Tests|Performance|Security|Build|CI|Tooling|Infra|Style] to describe the overall nature of all staged changes.
   - Use the Documentation category when the changes are focused on docs/README/usage text and their related assets (screenshots, diagrams, images used in docs), and there are no changes to runtime behavior or tooling.
   - If there are significant changes to scripts, build/deployment configuration, or setup tooling (e.g. .sh/.ps1 scripts, Docker, CI/CD), prefer Setup, Env, or Git as appropriate, even if documentation was also updated.
   - If there are code changes (new features or bug fixes) together with docs, prefer Functionality, New Feature, or BugFix rather than Documentation.
-- "Area or feature":
-  - Use a short scope/feature name that covers all important changes (max 5 words), e.g. "Docker Swarm prep", "Docs & quick-start scripts"
+- Area or feature:
+  - Use a short scope or feature name that covers all important changes (max 5 words), e.g. "Docker Swarm prep", "Docs & quick-start scripts".
   - Never list individual filenames or long comma-separated file lists.
-  - If there is no clear single area/feature that covers all changes, omit "Area or feature:" entirely and start directly with the description.
-- "description": Concise summary of all staged changes in this commit (not just a subset)
-- Keep the "|" separators and "[]" brackets exactly as shown
-- Wrap the command in bash syntax highlighting with backticks
+  - If there is no clear single area or feature that covers all changes, omit "Area or feature:" entirely and start directly with the description.
+- Description: Concise summary of all staged changes in this commit, not just a subset.
+- Keep the "|" separators and "[]" brackets exactly as shown when placeholders are present.
 
-EXAMPLE OUTPUT:
+PLACEHOLDER DECISION RULES:
+1. If you find explicit JIRA ID (e.g., "PROJ-123", "TICKET-456") in diffs: Use it
+2. If you find explicit version (e.g., "v1.2.3", "2.0.0") in diffs: Use it
+3. If NO clear evidence found: REMOVE both placeholders, use only category
+4. When uncertain: ALWAYS choose option 3 (remove placeholders)
+
+EXAMPLES:
+
+With clear JIRA ID and version in diffs:
 ```bash
-git commit -m "[JIRA_ID_PLACEHOLDER | VERSION_PLACEHOLDER | Documentation] Docker Swarm prep: updated docs and quick-start scripts"
+git commit -m "[PROJ-123 | v1.2.3 | New Feature] Activity reminders: added reminder editing and reflection flows"
 ```
 
-The script will automatically replace:
-- JIRA_ID_PLACEHOLDER → actual JIRA ID (e.g., "PROJ-123") or "ID-XY" if none provided
-- VERSION_PLACEHOLDER → actual version (e.g., "v1.2.3") or "vX.Y.Z" if none provided
+With only JIRA ID in diffs:
+```bash
+git commit -m "[PROJ-123 | New Feature] Activity reminders: added reminder editing and reflection flows"
+```
+
+With NO clear evidence (most common case):
+```bash
+git commit -m "[New Feature] Activity reminders: added reminder editing and reflection flows"
+```
+
+With NO clear evidence and no clear area:
+```bash
+git commit -m "[New Feature] Added reminder editing and reflection flows, refined Felix timer/list UI"

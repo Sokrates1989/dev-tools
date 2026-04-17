@@ -44,7 +44,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 
 ## 📖 Overview
 
-This toolbox provides a unified `start.sh` (for Linux/macOS) and `start.ps1` (for Windows) that act as an entry point into your dev-helper ecosystem. It’s built with flexibility in mind — offering interactive menus, quick flag execution (`--commit`, `--log`), and tool-specific submenus that allow you to preview and run Git commands effortlessly.
+This toolbox provides a unified `start.sh` (for Linux/macOS) and `start.ps1` (for Windows) that act as an entry point into your dev-helper ecosystem. It’s built with flexibility in mind — offering interactive menus, quick flag execution (`--commit`, `--cc`, `--log`), and tool-specific submenus that allow you to preview and run Git commands effortlessly.
 
 ---
 ## 🚀 First-Time Setup
@@ -136,6 +136,7 @@ Installed to `/tools/dev-tools`:
 ```bash
 dev-tools            # interactive mode
 dev-tools --commit   # quick launch: export staged files
+dev-tools --cc       # quick launch: show commit style instructions for external AI
 dev-tools --log      # quick launch: Git log explorer
 ```
 
@@ -149,6 +150,7 @@ dev-tools --log      # quick launch: Git log explorer
 ```bash
 dev-tools         # launch the toolbox
 dev-tools -c      # quick export of staged Git commit
+dev-tools -cc     # show commit style instructions for external AI
 ```
 
 ---
@@ -159,6 +161,7 @@ dev-tools -c      # quick export of staged Git commit
 ```powershell
 dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
+dev-tools -cc    # show commit style instructions for external AI
 open .           # open current folder in Explorer
 open C:\anywhere
 ```
@@ -231,6 +234,14 @@ No special configuration is required. The toolbox uses:
 - Warns if no staged files are present.
 
 Quick command: `--commit` or `-c`
+
+### 🤖 Commit Style Instructions for External AI
+
+- Opens the shared commit style guide from `main_features/commit/commit_message_prompt.txt`.
+- Does not inspect git state, staged files, or the current repository.
+- Lets you paste only the style instructions into another AI that already knows the change context.
+
+Quick command: `--cc` or `-cc`
 
 ---
 

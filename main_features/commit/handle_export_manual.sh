@@ -36,6 +36,9 @@ print_export_instructions() {
     echo "   or alternatively just paste the file:"
     echo "   → $ALL_IN_ONE_AI_MESSAGE_FILE"
     echo ""
+    echo "🧭 The shared commit strategy is included in:"
+    echo "   → $PARENT_DIR/commit_message_prompt.txt"
+    echo ""
     echo "📝 Then, add the related Project Task ID (if available), or write: \"no task ID\""
     echo ""
 }
@@ -44,6 +47,11 @@ print_export_instructions() {
 
 # Platform-specific: macOS or Linux open dest folder.
 OS=$(uname)
+
+if [[ ! -d "$DEST_DIR" || ! -f "$DIFF_FILE" || ! -f "$ALL_IN_ONE_AI_MESSAGE_FILE" ]]; then
+    echo "❌ Commit export files are missing. Please run the commit export first."
+    exit 1
+fi
 
 # ---- Platform-specific export handling ----
 if [[ "$OS" == "Darwin" ]]; then
@@ -75,26 +83,7 @@ elif [[ "$OS" == "Linux" ]]; then
 
         echo "🧩 Creating combined snapshot: $SNAPSHOT_FILE"
 
-        {
-            echo "===== 📝 COMMIT MESSAGE PROMPT ====="
-            if [[ -f "$SCRIPT_DIR/commit_message_prompt.txt" ]]; then
-                cat "$SCRIPT_DIR/commit_message_prompt.txt"
-            else
-                echo "(no commit_message_prompt.txt found)"
-            fi
-            echo ""
-            echo "===== 🔍 STAGED DIFF ====="
-            cat "$DIFF_FILE"
-            echo ""
-            echo "===== 📁 STAGED FILE CONTENTS ====="
-            for file in $FILES; do
-                if [[ -f "$file" ]]; then
-                    echo "--- $(basename "$file") ---"
-                    cat "$file"
-                    echo ""
-                fi
-            done
-        } > "$SNAPSHOT_FILE"
+        cp "$ALL_IN_ONE_AI_MESSAGE_FILE" "$SNAPSHOT_FILE"
 
         echo ""
         echo "📄 Snapshot saved to: $SNAPSHOT_FILE"

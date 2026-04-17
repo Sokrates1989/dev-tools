@@ -29,17 +29,19 @@ if [[ -f "$ENV_FILE" ]]; then
   # shellcheck disable=SC1090
   source "$ENV_FILE"
 else
-  echo "❌ .env file not found at $ENV_FILE"
+  echo " .env file not found at $ENV_FILE"
   exit 1
 fi
+
+EFFECTIVE_AI_MODE="${DEV_TOOLS_FORCE_AI_MODE:-$AI_MODE}"
 
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
 # --- Sync check before commit ---
-echo "🔍 Checking if branch is in sync with remote..."
+echo " Checking if branch is in sync with remote..."
 if ! bash "$ROOT_DIR/global_functions/sync_check.sh"; then
-    echo "❌ Sync check failed. Please resolve sync issues before committing."
+    echo " Sync check failed. Please resolve sync issues before committing."
     exit 1
 fi
 
@@ -56,7 +58,7 @@ FILES=$(git diff --name-only --cached)
 
 # Exit early if no staged files.
 if [[ -z "$FILES" ]]; then
-    echo "⚠️  No staged files found. Please stage some changes with 'git add' before running this script."
+    echo "  No staged files found. Please stage some changes with 'git add' before running this script."
     exit 0
 fi
 
@@ -66,8 +68,6 @@ while IFS= read -r file; do
         cp "$file" "$DEST_DIR/$(basename "$file")"
     fi
 done <<< "$FILES"
-
-
 
 # Copy commit_message_prompt.txt if available
 COMMIT_MSG_FILE="$SCRIPT_DIR/commit_message_prompt.txt"
@@ -157,7 +157,7 @@ if [[ "$HAS_CICD" == "true" ]]; then
       if [[ $? -eq 0 ]]; then
         IMAGE_VERSION="$NEW_VERSION"
         echo ""
-        echo "✅ Version updated to: $IMAGE_VERSION"
+        echo " Version updated to: $IMAGE_VERSION"
       fi
     fi
   fi
@@ -165,7 +165,7 @@ fi
 
 # Ask for JIRA Task ID (single-step input)
 echo ""
-read -r -p "🎫 Enter JIRA task ID (e.g. FA-123, or press Enter for none): " jira_input
+read -r -p " Enter JIRA task ID (e.g. FA-123, or press Enter for none): " jira_input
 if [[ -z "$jira_input" || "$jira_input" =~ ^[Nn]$ ]]; then
   JIRA_ID=""
 else
@@ -180,8 +180,7 @@ VARS_FILE="$SCRIPT_DIR/git_export_staged/.commit_vars"
   echo "VERSION_FILES_STAGED=$VERSION_FILES_STAGED"
 } > "$VARS_FILE"
 
-# Set TASK_ID style instruction for AI (high priority)
-TASK_ID="===== STYLE INSTRUCTION - HIGH PRIORITY ===== Summarize ALL staged changes in a single one-line git commit command. Use the format from the COMMIT MESSAGE PROMPT. Use a short feature or area name instead of listing individual filenames (e.g. 'Docker Swarm prep' instead of 'README.md, build-image/README.md, docs/ARCHITECTURE.md, docs/DOCKER_DEPLOYMENT.md, docs/QUICK_START.md'). If there is no clear single area, omit the area label and start directly with the description. Never invent or output dummy task IDs; always leave JIRA_ID_PLACEHOLDER exactly as shown. Choose the Category so it reflects the overall nature of all staged changes; do not use the Documentation category when there are significant script, setup, build, deployment, or code changes. Use Documentation when the changes are documentation-focused (docs/README/usage text and related screenshots/images/diagrams) and there are no behavior or tooling changes; prefer Setup, Env, or Git for setup/tooling changes and Functionality, New Feature, or BugFix for behavior changes."
+STYLE_INSTRUCTION="Follow the COMMIT MESSAGE PROMPT section exactly and output a single one-line git commit command."
 
 # Prepare content for token-aware building
 COMMIT_PROMPT_CONTENT=""
@@ -195,11 +194,11 @@ FILES_SUMMARY=$(generate_files_summary "$FILES")
 SMART_DIFF=$(get_smart_diff_content "$DIFF_FILE")
 
 # Build token-aware content (may omit large files if over budget)
-build_token_aware_content "$TASK_ID" "$COMMIT_PROMPT_CONTENT" "$FILES_SUMMARY" "$SMART_DIFF" "$FILES"
+build_token_aware_content "$STYLE_INSTRUCTION" "$COMMIT_PROMPT_CONTENT" "$FILES_SUMMARY" "$SMART_DIFF" "$FILES"
 
 # Show token estimate
 MAX_TOKENS=$(get_token_budget_from_env)
-echo "📊 Estimated tokens: ~$TOKEN_AWARE_TOTAL / $MAX_TOKENS"
+echo " Estimated tokens: ~$TOKEN_AWARE_TOTAL / $MAX_TOKENS"
 
 # Concatenate everything into one single file with token-aware content
 ALL_IN_ONE_DIR="$SCRIPT_DIR/git_export_staged/all_in_one"
@@ -207,22 +206,23 @@ ALL_IN_ONE_AI_MESSAGE_FILE="$ALL_IN_ONE_DIR/ai_message.txt"
 mkdir -p "$ALL_IN_ONE_DIR"
 rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
 {
-    echo "$TASK_ID"
+    echo "===== STYLE INSTRUCTION - HIGH PRIORITY ====="
+    echo "$STYLE_INSTRUCTION"
     echo ""
     
-    echo "===== 📝 COMMIT MESSAGE PROMPT ====="
+    echo "===== COMMIT MESSAGE PROMPT ====="
     echo "$COMMIT_PROMPT_CONTENT"
     echo ""
     
-    echo "===== 📋 FILES SUMMARY ====="
+    echo "===== FILES SUMMARY ====="
     echo "$FILES_SUMMARY"
     echo ""
     
-    echo "===== 🔍 STAGED DIFF ====="
+    echo "===== STAGED DIFF ====="
     echo "$TOKEN_AWARE_DIFF"
     echo ""
     
-    echo "===== 📁 STAGED FILE CONTENTS ====="
+    echo "===== STAGED FILE CONTENTS ====="
     echo "(Binary and large files show metadata only)"
     if [[ ${#TOKEN_AWARE_OMITTED[@]} -gt 0 ]]; then
         echo "(Some files omitted to stay within token limit - see placeholders below)"
@@ -232,18 +232,15 @@ rm -f "$ALL_IN_ONE_AI_MESSAGE_FILE"
         echo "$file_content"
         echo ""
     done
-    echo ""
-    echo "$TASK_ID"
 } > "$ALL_IN_ONE_AI_MESSAGE_FILE"
 
 
 # --- Dispatch by AI_MODE ---
-if [[ "$AI_MODE" == "api" ]]; then
+if [[ "$EFFECTIVE_AI_MODE" == "api" ]]; then
   bash "$SCRIPT_DIR/handle_export_api.sh"
-elif [[ "$AI_MODE" == "manual" ]]; then
+elif [[ "$EFFECTIVE_AI_MODE" == "manual" ]]; then
   bash "$SCRIPT_DIR/handle_export_manual.sh"
 else
-  echo "❌ Unknown AI_MODE in .env: $AI_MODE"
+  echo " Unknown AI_MODE in .env: $EFFECTIVE_AI_MODE"
   exit 1
 fi
-

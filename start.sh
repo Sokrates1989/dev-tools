@@ -10,6 +10,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
             exit 0
             ;;
+        --cc|-cc)
+            bash "$ROOT_DIR/main_features/commit/create_commit_with_external_ai.sh"
+            exit 0
+            ;;
         --merge|-m|--me)
             bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
             exit 0
@@ -71,6 +75,7 @@ if [[ $# -gt 0 ]]; then
             echo ""
             echo "🔄 Core Operations:"
             echo "  --commit | -c | --cm   → Commit Message Helper"
+            echo "  --cc     | -cc         → Commit style instructions for external AI"
             echo "  --merge  | -m | --me   → Merge commit assistant"
             echo "  --readme | -r | --rd   → Show README creation instructions"
             echo "  --stash  | -st | --st  → Git Stash Manager"
@@ -98,7 +103,7 @@ fi
 
 
 
-# --- Git update check ---´
+# --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 DEVTOOLS_UPDATE_AVAILABLE=$(bash "$ROOT_DIR/global_functions/check_for_updates_flag.sh")
 
@@ -111,6 +116,7 @@ echo "Choose a tool to run (you can also use these flags directly):"
 echo ""
 echo "🔄 Core Operations (1-4):"
 echo "1) 📤 Commit Message Helper             [--commit | -c | --cm]"
+echo "cc) 🤖 Commit style instructions for external AI [--cc | -cc]"
 echo "2) 🔀 Merge commit assistant            [--merge  | -m | --me]"
 echo "3) 📘 Show README creation instructions [--readme | -r | --rd]"
 echo "4) 📦 Git Stash Manager                 [--stash | -st | --st]"
@@ -141,7 +147,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-13, u, q, or option name]: " choice
+read -p "Enter your choice [1-13, cc, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -149,6 +155,9 @@ choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
 case "$choice_lower" in
   1|"commit"|"--commit"|"-c"|"c"|"cm")
     bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
+    ;;
+  "cc"|"--cc"|"-cc"|"commit-external"|"external-commit")
+    bash "$ROOT_DIR/main_features/commit/create_commit_with_external_ai.sh"
     ;;
   2|"merge"|"--merge"|"-m"|"m"|"me")
     bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
@@ -201,6 +210,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-13, u, q, or option names like 'commit', '--merge', '-l', 'stash', 'repair', etc."
+    echo "Valid options: 1-13, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', etc."
     ;;
 esac
