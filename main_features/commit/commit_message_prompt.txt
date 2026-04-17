@@ -6,10 +6,11 @@ STYLE INSTRUCTION - HIGH PRIORITY:
 - Choose the Category so it reflects the overall nature of all staged changes.
 
 PLACEHOLDER HANDLING - CRITICAL:
-- REMOVE placeholders unless you find CLEAR, EXPLICIT evidence in the git diffs for JIRA ID or version
+- REMOVE placeholders unless you find CLEAR, EXPLICIT evidence in the git diffs for JIRA ID or version OR the user has explicitly given those such IDs in this prompt
 - NEVER keep placeholders in the final commit message unless you are 100% certain of the values
 - When in doubt, ALWAYS remove placeholders and use only the category
 - Look for explicit version strings (like "v1.2.3") or JIRA IDs (like "PROJ-123") in code, comments, or file names
+- Check if user provided specific JIRA ID or version in their request to you
 
 OUTPUT FORMAT:
 ```bash
@@ -29,9 +30,9 @@ INSTRUCTIONS:
 - Keep the "|" separators and "[]" brackets exactly as shown when placeholders are present.
 
 PLACEHOLDER DECISION RULES:
-1. If you find explicit JIRA ID (e.g., "PROJ-123", "TICKET-456") in diffs: Use it
-2. If you find explicit version (e.g., "v1.2.3", "2.0.0") in diffs: Use it
-3. If NO clear evidence found: REMOVE both placeholders, use only category
+1. If you find explicit JIRA ID (e.g., "PROJ-123", "TICKET-456") in diffs OR user provided one in their request: Use it
+2. If you find explicit version (e.g., "v1.2.3", "2.0.0") in diffs OR user provided one in their request: Use it
+3. If NO clear evidence found AND user didn't provide any: REMOVE both placeholders, use only category
 4. When uncertain: ALWAYS choose option 3 (remove placeholders)
 
 EXAMPLES:
@@ -44,6 +45,11 @@ git commit -m "[PROJ-123 | v1.2.3 | New Feature] Activity reminders: added remin
 With only JIRA ID in diffs:
 ```bash
 git commit -m "[PROJ-123 | New Feature] Activity reminders: added reminder editing and reflection flows"
+```
+
+When user provides JIRA ID "FA-456" and version "0.1.0" in their request:
+```bash
+git commit -m "[FA-456 | 0.1.0 | New Feature] Activity reminders: added reminder editing and reflection flows"
 ```
 
 With NO clear evidence (most common case):
