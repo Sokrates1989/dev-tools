@@ -23,8 +23,12 @@ echo "   (use these exact words. JIRA_ID_PLACEHOLDER , VERSION_PLACEHOLDER)"
 echo ""
 echo "3) I will now attempt to copy the instructions to your clipboard."
 echo ""
-echo "Press Enter to begin, or Ctrl+C to cancel..."
-read -r
+while true; do
+    read -r -p "Press Enter to begin: " continue_input
+    if [[ -z "$continue_input" ]]; then
+        break
+    fi
+done
 echo ""
 echo ""
 

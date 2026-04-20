@@ -19,8 +19,10 @@ Write-Host "   (use these exact words. JIRA_ID_PLACEHOLDER , VERSION_PLACEHOLDER
 Write-Host ""
 Write-Host "3) I will now attempt to copy the instructions to your clipboard."
 Write-Host ""
-Write-Host "Press Enter to begin, or Ctrl+C to cancel..."
-$null = $Host.UI.RawUI.ReadKey('NoEcho,IncludeKeyDown')
+do {
+    $continueInput = Read-Host "Press Enter to begin"
+}
+while ($continueInput -ne "")
 Write-Host ""
 Write-Host ""
 
