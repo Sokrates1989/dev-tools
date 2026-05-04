@@ -29,7 +29,10 @@ param (
     [switch]$stash,  # stash
     [switch]$f,  # repair
     [switch]$fix,  # repair
-    [switch]$repair  # repair
+    [switch]$repair,  # repair
+    [switch]$cfg,  # settings/config
+    [switch]$settings,  # settings/config
+    [switch]$config  # settings/config
 )
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
@@ -91,6 +94,10 @@ if ($gnuStyleArgument) {
         "--f" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--fix" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+        "--cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
+        "-cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
+        "--settings" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
+        "--config" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
     }
 }
 
@@ -156,6 +163,10 @@ if ($f -or $fix -or $repair) {
     & "$RootDir\main_features\git-repair\git_repair.ps1"
     return
 }
+if ($cfg -or $settings -or $config) {
+    & "$RootDir\main_features\settings\edit_settings.ps1"
+    return
+}
 
 # Git update check (optional)
 & "$RootDir\global_functions\check_for_updates.ps1"
@@ -190,13 +201,16 @@ Write-Host "12) Reset Local Git Changes"
 Write-Host ""
 Write-Host "Repair & Maintenance (13):"
 Write-Host "13) Repair Corrupted Git Repository  [--repair | --fix | -f]"
+Write-Host ""
+Write-Host "Configuration (14):"
+Write-Host "14) Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-13, cc, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-14, cc, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -216,6 +230,7 @@ switch ($choiceLower) {
     { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
     { $_ -match "^(12|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
+    { $_ -match "^(14|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -227,6 +242,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-13, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', etc."
+        Write-Host "Valid options: 1-14, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', 'settings', etc."
     }
 }

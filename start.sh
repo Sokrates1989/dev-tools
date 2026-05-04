@@ -62,6 +62,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
             exit 0
             ;;
+        --settings|--cfg|-cfg|--config)
+            bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
+            exit 0
+            ;;
         --update|-u)
             # Auto update and restart script.
             bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
@@ -96,6 +100,9 @@ if [[ $# -gt 0 ]]; then
             echo ""
             echo "🔧 Repair & Maintenance:"
             echo "  --repair | --fix | -f  → Repair Corrupted Git Repository"
+            echo ""
+            echo "⚙️  Configuration:"
+            echo "  --settings | --cfg | -cfg | --config → Edit .env settings/config"
             exit 1
             ;;
     esac
@@ -138,6 +145,9 @@ echo ""
 echo "🔧 Repair & Maintenance (13):"
 echo "13) 🔧 Repair Corrupted Git Repository  [--repair | --fix | -f]"
 echo ""
+echo "⚙️  Configuration (14):"
+echo "14) ⚙️  Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
+echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
 fi
@@ -147,7 +157,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-13, cc, u, q, or option name]: " choice
+read -p "Enter your choice [1-14, cc, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -195,6 +205,9 @@ case "$choice_lower" in
   13|"repair"|"--repair"|"fix"|"--fix"|"-f"|"f")
     bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
     ;;
+  14|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
+    bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
+    ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
       # Auto update and restart script.
@@ -210,6 +223,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-13, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', etc."
+    echo "Valid options: 1-14, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', 'settings', etc."
     ;;
 esac
