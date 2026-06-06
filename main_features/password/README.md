@@ -1,7 +1,7 @@
 # Safe Password Generator
 
-The safe password generator creates high-entropy values for production Docker
-secrets and dotenv-style `secrets.env` files.
+The safe password generator creates high-entropy password values for production
+secrets. It does not emit `KEY=value` or `secrets.env`-styled output.
 
 ## Usage
 
@@ -10,25 +10,34 @@ dev-tools --password
 dev-tools --pw
 ```
 
-Direct script usage supports custom output:
+The interactive menu asks for:
 
-```bash
-bash main_features/password/generate_safe_passwords.sh --length 64 --single
-bash main_features/password/generate_safe_passwords.sh --length 64 --count 3
-```
+- Whether to include safe special characters.
+- Password length, defaulting to 64 characters.
+- Number of passwords, defaulting to 1.
+- Delivery method, defaulting to clipboard as the recommended option.
 
-```powershell
-.\main_features\password\generate_safe_passwords.ps1 -Length 64 -Single
-.\main_features\password\generate_safe_passwords.ps1 -Length 64 -Count 3
-```
+## Delivery Options
+
+Clipboard is recommended because it avoids terminal scrollback and plaintext
+files. After pasting, the tool asks whether to clear the clipboard.
+
+The file option writes plaintext password values, one per line, and should only
+be used when you immediately move the file into secure secret storage. The
+terminal option is least secure because scrollback may retain the password.
+
+## File Layout
+
+- `generate_safe_passwords.ps1` / `generate_safe_passwords.sh`: entrypoints.
+- `password_core.ps1` / `password_core.sh`: CSPRNG password generation.
+- `password_ui.ps1` / `password_ui.sh`: prompts and delivery methods.
 
 ## Security Policy
 
 - Uses OS-backed cryptographic randomness.
 - Uses rejection sampling to avoid modulo bias.
-- Defaults to 48 characters per secret.
-- Requires uppercase, lowercase, digit, and approved special characters.
-- Outputs unquoted `KEY=value` lines for easy pasting into `secrets.env`.
+- Defaults to 64 characters per password.
+- Requires uppercase, lowercase, digit, and optionally safe special characters.
 
 Approved special characters:
 

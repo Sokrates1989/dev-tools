@@ -106,7 +106,7 @@ if [[ $# -gt 0 ]]; then
             echo "  --repair | --fix | -f  → Repair Corrupted Git Repository"
             echo ""
             echo "Security:"
-            echo "  --password | --pw      -> Generate safe production secrets"
+            echo "  --password | --pw      -> Generate safe passwords"
             echo ""
             echo "⚙️  Configuration:"
             echo "  --settings | --cfg | -cfg | --config → Edit .env settings/config"

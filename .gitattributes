@@ -1,0 +1,6 @@
+# Repository line-ending policy.
+# Shell scripts must stay LF so they run correctly under Ubuntu, macOS, and Git Bash.
+*.sh text eol=lf
+
+# PowerShell scripts may use Windows line endings in working trees.
+*.ps1 text eol=crlf
