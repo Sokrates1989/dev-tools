@@ -138,6 +138,7 @@ dev-tools            # interactive mode
 dev-tools --commit   # quick launch: export staged files
 dev-tools --cc       # quick launch: show commit style instructions for external AI
 dev-tools --log      # quick launch: Git log explorer
+dev-tools --password # quick launch: generate safe production secrets
 ```
 
 ---
@@ -151,6 +152,7 @@ dev-tools --log      # quick launch: Git log explorer
 dev-tools         # launch the toolbox
 dev-tools -c      # quick export of staged Git commit
 dev-tools -cc     # show commit style instructions for external AI
+dev-tools --pw    # generate safe production secrets
 ```
 
 ---
@@ -162,6 +164,7 @@ dev-tools -cc     # show commit style instructions for external AI
 dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
+dev-tools -pw    # generate safe production secrets
 open .           # open current folder in Explorer
 open C:\anywhere
 ```
@@ -260,6 +263,18 @@ Quick command: `--cc` or `-cc`
   - `q` → exit toolbox
 
 Quick command: `--log` or `-l`
+
+---
+
+### Safe Password Generator
+
+- Generates production-ready passwords for dotenv-style `secrets.env` files.
+- Uses OS-backed cryptographic randomness and rejection sampling.
+- Defaults to five keys used by the Python API deployment secrets template.
+- Uses safe special characters that avoid quotes, backslashes, whitespace, shell
+  expansion, command separators, comments, brackets, and equals signs.
+
+Quick command: `--password` or `--pw`
 
 ---
 

@@ -62,6 +62,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
             exit 0
             ;;
+        --password|--pw)
+            bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh" "${@:2}"
+            exit 0
+            ;;
         --settings|--cfg|-cfg|--config)
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
             exit 0
@@ -100,6 +104,9 @@ if [[ $# -gt 0 ]]; then
             echo ""
             echo "🔧 Repair & Maintenance:"
             echo "  --repair | --fix | -f  → Repair Corrupted Git Repository"
+            echo ""
+            echo "Security:"
+            echo "  --password | --pw      -> Generate safe production secrets"
             echo ""
             echo "⚙️  Configuration:"
             echo "  --settings | --cfg | -cfg | --config → Edit .env settings/config"
@@ -145,8 +152,11 @@ echo ""
 echo "🔧 Repair & Maintenance (13):"
 echo "13) 🔧 Repair Corrupted Git Repository  [--repair | --fix | -f]"
 echo ""
-echo "⚙️  Configuration (14):"
-echo "14) ⚙️  Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
+echo "Security (14):"
+echo "14) Generate Safe Passwords              [--password | --pw]"
+echo ""
+echo "⚙️  Configuration (15):"
+echo "15) ⚙️  Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -157,7 +167,7 @@ echo ""
 # --- Git update check ---
 bash "$ROOT_DIR/global_functions/check_for_updates.sh"
 
-read -p "Enter your choice [1-14, cc, u, q, or option name]: " choice
+read -p "Enter your choice [1-15, cc, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -205,7 +215,10 @@ case "$choice_lower" in
   13|"repair"|"--repair"|"fix"|"--fix"|"-f"|"f")
     bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
     ;;
-  14|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
+  14|"password"|"--password"|"pw"|"--pw")
+    bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh"
+    ;;
+  15|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
     bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
     ;;
   "u"|"update"|"--update"|"-u")
@@ -223,6 +236,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-14, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', 'settings', etc."
+    echo "Valid options: 1-15, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', 'password', 'settings', etc."
     ;;
 esac

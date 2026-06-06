@@ -30,6 +30,8 @@ param (
     [switch]$f,  # repair
     [switch]$fix,  # repair
     [switch]$repair,  # repair
+    [switch]$pw,  # safe password generator
+    [switch]$password,  # safe password generator
     [switch]$cfg,  # settings/config
     [switch]$settings,  # settings/config
     [switch]$config  # settings/config
@@ -94,6 +96,8 @@ if ($gnuStyleArgument) {
         "--f" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--fix" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+        "--pw" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
+        "--password" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
         "--cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "-cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "--settings" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
@@ -163,6 +167,10 @@ if ($f -or $fix -or $repair) {
     & "$RootDir\main_features\git-repair\git_repair.ps1"
     return
 }
+if ($pw -or $password) {
+    & "$RootDir\main_features\password\generate_safe_passwords.ps1"
+    return
+}
 if ($cfg -or $settings -or $config) {
     & "$RootDir\main_features\settings\edit_settings.ps1"
     return
@@ -202,15 +210,18 @@ Write-Host ""
 Write-Host "Repair & Maintenance (13):"
 Write-Host "13) Repair Corrupted Git Repository  [--repair | --fix | -f]"
 Write-Host ""
-Write-Host "Configuration (14):"
-Write-Host "14) Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
+Write-Host "Security (14):"
+Write-Host "14) Generate Safe Passwords          [--password | --pw]"
+Write-Host ""
+Write-Host "Configuration (15):"
+Write-Host "15) Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
 if ($updateAvailable -eq "1") {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-14, cc, u, q, or option name]"
+$choice = Read-Host "Enter your choice [1-15, cc, u, q, or option name]"
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -230,7 +241,8 @@ switch ($choiceLower) {
     { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
     { $_ -match "^(12|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
-    { $_ -match "^(14|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
+    { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
+    { $_ -match "^(15|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable -eq "1") {
             & "$RootDir\global_functions\perform_auto_update.ps1"
@@ -242,6 +254,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-14, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', 'settings', etc."
+        Write-Host "Valid options: 1-15, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', 'password', 'settings', etc."
     }
 }
