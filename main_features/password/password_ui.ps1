@@ -10,6 +10,7 @@
     Dependencies:
       - password_core.ps1 must be dot-sourced first.
       - Set-Clipboard for clipboard delivery.
+      - System.Windows.Forms for clearing clipboard contents when available.
 #>
 
 Set-StrictMode -Version Latest
@@ -165,11 +166,41 @@ function Read-DeliveryChoice {
 
 <#
 .SYNOPSIS
+    Removes generated password material from the clipboard.
+
+.DESCRIPTION
+    Uses the Windows Forms clipboard API to clear the clipboard entirely. If the
+    host cannot load or use that API, the function overwrites the clipboard with
+    a single space so the generated secret is no longer retained.
+
+.OUTPUTS
+    System.Boolean. True when the clipboard was cleared or overwritten.
+#>
+function Clear-PasswordClipboard {
+    try {
+        Add-Type -AssemblyName System.Windows.Forms -ErrorAction Stop
+        [System.Windows.Forms.Clipboard]::Clear()
+        return $true
+    }
+    catch {
+        try {
+            Set-Clipboard -Value " "
+            return $true
+        }
+        catch {
+            return $false
+        }
+    }
+}
+
+<#
+.SYNOPSIS
     Copies generated passwords to the system clipboard.
 
 .DESCRIPTION
     Copies newline-separated passwords and offers to clear the clipboard after
-    the user has pasted them.
+    the user has pasted them. Clearing failures are reported as warnings because
+    the original clipboard delivery has already succeeded.
 
 .PARAMETER Passwords
     Password values to copy.
@@ -193,9 +224,12 @@ function Copy-PasswordsToClipboard {
     Write-Host "Copied $($Passwords.Count) password(s) to the clipboard." -ForegroundColor Green
     Write-Host "Paste them into the target secret manager now."
 
-    if (Read-YesNoChoice -Prompt "Clear clipboard after you have pasted them? (recommended)" -DefaultYes $true) {
-        Set-Clipboard -Value ""
+    $shouldClearClipboard = Read-YesNoChoice -Prompt "Clear clipboard after you have pasted them? (recommended)" -DefaultYes $true
+    if ($shouldClearClipboard -and (Clear-PasswordClipboard)) {
         Write-Host "Clipboard cleared." -ForegroundColor Green
+    }
+    elseif ($shouldClearClipboard) {
+        Write-Host "Could not clear the clipboard automatically. Please clear it manually." -ForegroundColor Yellow
     }
 }
 

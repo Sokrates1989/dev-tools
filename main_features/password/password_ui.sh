@@ -170,6 +170,31 @@ read_delivery_choice() {
     done
 }
 
+# write_passwords_to_clipboard
+#
+# Writes generated password material to the selected clipboard command.
+#
+# Arguments:
+#   $1 - clipboard_command: command identifier from find_clipboard_command.
+#   $2 - payload: newline-separated password values.
+#
+# Returns:
+#   0 when the clipboard command accepted the payload; 1 otherwise.
+write_passwords_to_clipboard() {
+    local clipboard_command="$1"
+    local payload="$2"
+
+    case "$clipboard_command" in
+        pbcopy) printf '%s' "$payload" | pbcopy ;;
+        wl-copy) printf '%s' "$payload" | wl-copy ;;
+        xclip) printf '%s' "$payload" | xclip -selection clipboard ;;
+        xsel) printf '%s' "$payload" | xsel --clipboard --input ;;
+        clip.exe) printf '%s' "$payload" | clip.exe ;;
+        clip) printf '%s' "$payload" | clip ;;
+        *) return 1 ;;
+    esac
+}
+
 # copy_passwords_to_clipboard
 #
 # Copies generated passwords to the system clipboard and offers to clear it
@@ -190,14 +215,10 @@ copy_passwords_to_clipboard() {
     local payload
     payload=$(printf '%s\n' "$@")
 
-    case "$clipboard_command" in
-        pbcopy) printf '%s' "$payload" | pbcopy ;;
-        wl-copy) printf '%s' "$payload" | wl-copy ;;
-        xclip) printf '%s' "$payload" | xclip -selection clipboard ;;
-        xsel) printf '%s' "$payload" | xsel --clipboard --input ;;
-        clip.exe) printf '%s' "$payload" | clip.exe ;;
-        clip) printf '%s' "$payload" | clip ;;
-    esac
+    if ! write_passwords_to_clipboard "$clipboard_command" "$payload"; then
+        echo "Clipboard copy failed with ${clipboard_command}." >&2
+        return 1
+    fi
 
     echo ""
     echo "Copied $# password(s) to the clipboard."
@@ -205,17 +226,39 @@ copy_passwords_to_clipboard() {
 
     local clear_clipboard
     clear_clipboard=$(read_yes_no_choice "Clear clipboard after you have pasted them? (recommended)" true)
-    if [ "$clear_clipboard" = true ]; then
-        case "$clipboard_command" in
-            pbcopy) printf '' | pbcopy ;;
-            wl-copy) printf '' | wl-copy ;;
-            xclip) printf '' | xclip -selection clipboard ;;
-            xsel) printf '' | xsel --clipboard --input ;;
-            clip.exe) printf '' | clip.exe ;;
-            clip) printf '' | clip ;;
-        esac
+    if [ "$clear_clipboard" = true ] && clear_password_clipboard "$clipboard_command"; then
         echo "Clipboard cleared."
+    elif [ "$clear_clipboard" = true ]; then
+        echo "Could not clear the clipboard automatically. Please clear it manually." >&2
     fi
+}
+
+# clear_password_clipboard
+#
+# Removes generated password material from the clipboard.
+#
+# Arguments:
+#   $1 - clipboard_command: command identifier from find_clipboard_command.
+#
+# Returns:
+#   0 when the clipboard was cleared or overwritten; 1 otherwise.
+clear_password_clipboard() {
+    local clipboard_command="$1"
+
+    case "$clipboard_command" in
+        pbcopy) printf '' | pbcopy && return 0 ;;
+        wl-copy) printf '' | wl-copy && return 0 ;;
+        xclip) printf '' | xclip -selection clipboard && return 0 ;;
+        xsel) printf '' | xsel --clipboard --input && return 0 ;;
+        clip.exe|clip)
+            if command -v powershell.exe >/dev/null 2>&1; then
+                powershell.exe -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; [System.Windows.Forms.Clipboard]::Clear()" >/dev/null 2>&1 && return 0
+            fi
+            printf ' ' | "$clipboard_command" && return 0
+            ;;
+    esac
+
+    return 1
 }
 
 # save_passwords_to_file
