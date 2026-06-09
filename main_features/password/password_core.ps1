@@ -22,7 +22,7 @@ Set-StrictMode -Version Latest
 $script:UpperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 $script:LowerChars = "abcdefghijklmnopqrstuvwxyz"
 $script:DigitChars = "0123456789"
-$script:SafeSpecialChars = "@%+-_:,."
+$script:SafeSpecialChars = "_.-"
 $script:MinimumPasswordLength = 16
 $script:DefaultPasswordLength = 64
 $script:DefaultPasswordCount = 1
