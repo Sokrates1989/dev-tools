@@ -224,6 +224,24 @@ No special configuration is required. The toolbox uses:
   - `wl-clipboard` for Wayland
   - Auto-detected in the script for CLI-only Linux environments
 
+### Automatic Dev Tools updates
+
+Every interactive `dev-tools` invocation checks for repository updates before
+opening the menu or dispatching a flag such as `--password`. When the installed
+checkout is a clean `main` branch that is strictly behind the official upstream,
+the launcher shows the current and available commit and asks whether to update.
+Pressing Enter accepts the update; declining continues immediately with the
+original command. After an accepted fast-forward update, the launcher replays
+the original command automatically.
+
+The updater never overwrites local work. Dirty, ahead, diverged, detached,
+wrong-branch, missing/unexpected-upstream, and unexpected-origin installations
+are not updated automatically. Offline and non-interactive/CI invocations continue
+without prompting. Successful up-to-date checks are cached for 300 seconds by
+default; set `DEV_TOOLS_UPDATE_CHECK_INTERVAL_SECONDS` to a non-negative number
+to change the interval (`0` always performs a fresh remote check). Run
+`dev-tools --update` for an explicit safe update attempt.
+
 ---
 
 ## 🧭 Toolbox Features

@@ -1,31 +1,24 @@
 #!/bin/bash
-
-# -----------------------------------------------------------------------------
-# Script: check_for_updates.sh
-# Description: Checks for updates in the Dev Tools Git repo
-# -----------------------------------------------------------------------------
+#
+# Reports safe Dev Tools update state without modifying the checkout.
+#
+# This compatibility entrypoint remains non-prompting because the top-level
+# dispatcher owns the once-per-launch update prompt.
+#
 
 SCRIPT_PATH="$(realpath "$0")"
 SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
-ROOT_DIR="$(cd "$SCRIPT_DIR/.." && pwd)"
-ORIGINAL_DIR="$(pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if [[ -f "$SCRIPT_DIR/git_credential_check.sh" ]]; then
-  # shellcheck source=/dev/null
-  GIT_CRED_CHECK_SCRIPT="$SCRIPT_DIR/git_credential_check.sh"
+# shellcheck source=global_functions/update_manager.sh
+source "${SCRIPT_DIR}/update_manager.sh"
+initialize_dev_tools_update_messages "$ROOT_DIR" || exit 0
+is_dev_tools_interactive_session || exit 0
+
+get_dev_tools_update_state "$ROOT_DIR" true
+if [ "$DEV_TOOLS_UPDATE_STATE" = "behind" ]; then
+    format_dev_tools_update_message updates.available "${DEV_TOOLS_UPDATE_LOCAL_COMMIT:0:7}" "${DEV_TOOLS_UPDATE_REMOTE_COMMIT:0:7}"
+    printf '\n'
+else
+    write_dev_tools_update_state_notice
 fi
-
-cd "$ROOT_DIR"
-
-if [[ -n "$GIT_CRED_CHECK_SCRIPT" ]]; then
-  # shellcheck source=/dev/null
-  source "$GIT_CRED_CHECK_SCRIPT"
-fi
-
-if git fetch --quiet && ! git diff --quiet HEAD..origin/HEAD; then
-  echo ""
-  echo "📦 Updates available in Dev Tools repository! (run 'dev-tools -u' to update)"
-  echo ""
-fi
-
-cd "$ORIGINAL_DIR"

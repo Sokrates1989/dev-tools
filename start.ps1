@@ -40,7 +40,6 @@ param (
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
 $RootDir = Resolve-Path "$ScriptDir" | Select-Object -ExpandProperty Path
 
-
 # Automatically unblock all .ps1 files under the dev-tools directory (Windows only)
 Get-ChildItem -Path "$RootDir" -Recurse -Filter *.ps1 -ErrorAction SilentlyContinue | ForEach-Object {
     try {
@@ -51,6 +50,40 @@ Get-ChildItem -Path "$RootDir" -Recurse -Filter *.ps1 -ErrorAction SilentlyConti
 }
 
 $gnuStyleArgument = if ($args.Count -gt 0) { $args[0].ToLower() } else { $null }
+$originalArguments = @($args)
+if ($originalArguments.Count -eq 0) {
+    foreach ($parameterName in $PSBoundParameters.Keys) {
+        if ($PSBoundParameters[$parameterName]) {
+            $originalArguments += "-$parameterName"
+        }
+    }
+}
+
+#
+# Startup update guard.
+# Every normal launcher invocation checks once before dispatch. An accepted
+# update replays the original command through the updated dispatcher.
+#
+. "$RootDir\global_functions\update_manager.ps1"
+Initialize-DevToolsUpdateMessages -RootDir $RootDir
+$skipUpdateGuard = $env:DEV_TOOLS_UPDATE_REPLAYED -eq "1"
+if ($skipUpdateGuard) {
+    Remove-Item Env:\DEV_TOOLS_UPDATE_REPLAYED -ErrorAction SilentlyContinue
+}
+
+$isExplicitUpdate = $gnuStyleArgument -in @("--u", "--update") -or $u -or $update
+$updateAvailable = $false
+if (-not $skipUpdateGuard -and -not $isExplicitUpdate) {
+    $updateResult = Invoke-DevToolsStartupUpdateCheck -RootDir $RootDir
+    $updateAvailable = $updateResult.UpdateAvailable
+
+    if ($updateResult.Updated) {
+        $env:DEV_TOOLS_UPDATE_REPLAYED = "1"
+        & "$RootDir\start.ps1" @originalArguments
+        return
+    }
+}
+
 if ($gnuStyleArgument) {
     switch ($gnuStyleArgument) {
         "--c" { & "$RootDir\main_features\commit\git_export_staged.ps1"; return }
@@ -66,8 +99,8 @@ if ($gnuStyleArgument) {
         "--r" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
         "--readme" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
         "--rd" { & "$RootDir\main_features\readme\show_readme_instructions.ps1"; return }
-        "--u" { & "$RootDir\global_functions\perform_auto_update.ps1"; & "$RootDir\start.ps1"; return }
-        "--update" { & "$RootDir\global_functions\perform_auto_update.ps1"; & "$RootDir\start.ps1"; return }
+        "--u" { Initialize-DevToolsUpdateMessages -RootDir $RootDir; if (Invoke-DevToolsUpdate -RootDir $RootDir) { & "$RootDir\start.ps1" }; return }
+        "--update" { Initialize-DevToolsUpdateMessages -RootDir $RootDir; if (Invoke-DevToolsUpdate -RootDir $RootDir) { & "$RootDir\start.ps1" }; return }
         "--x" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
         "--reset" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
         "--re" { & "$RootDir\main_features\git\reset_local_changes.ps1"; return }
@@ -123,8 +156,10 @@ if ($r -or $readme) {
     return
 }
 if ($u -or $update) {
-    & "$RootDir\global_functions\perform_auto_update.ps1"
-    & "$RootDir\start.ps1"
+    Initialize-DevToolsUpdateMessages -RootDir $RootDir
+    if (Invoke-DevToolsUpdate -RootDir $RootDir) {
+        & "$RootDir\start.ps1"
+    }
     return
 }
 if ($x -or $reset -or $revert) {
@@ -176,10 +211,6 @@ if ($cfg -or $settings -or $config) {
     return
 }
 
-# Git update check (optional)
-& "$RootDir\global_functions\check_for_updates.ps1"
-$updateAvailable = & "$RootDir\global_functions\check_for_updates_flag.ps1"
-
 # === Interactive Menu ===
 Write-Host ""
 Write-Host "Dev Tools Launcher"
@@ -215,7 +246,7 @@ Write-Host "14) Generate Safe Passwords          [--password | --pw]"
 Write-Host ""
 Write-Host "Configuration (15):"
 Write-Host "15) Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
-if ($updateAvailable -eq "1") {
+if ($updateAvailable) {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
@@ -244,11 +275,12 @@ switch ($choiceLower) {
     { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
     { $_ -match "^(15|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
-        if ($updateAvailable -eq "1") {
-            & "$RootDir\global_functions\perform_auto_update.ps1"
-            & "$RootDir\start.ps1"
+        if ($updateAvailable) {
+            if (Invoke-DevToolsUpdate -RootDir $RootDir) {
+                & "$RootDir\start.ps1"
+            }
         } else {
-            Write-Host "Already up to date."
+            Write-Host (Get-DevToolsUpdateMessage -Key "updates.current")
         }
     }
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }

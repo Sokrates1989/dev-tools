@@ -1,32 +1,29 @@
-# -----------------------------------------------------------------------------
-# Script: check_for_updates.ps1
-# Description: Displays update information in a human-friendly format.
-# -----------------------------------------------------------------------------
+<#
+.SYNOPSIS
+    Reports safe Dev Tools update state without modifying the checkout.
+
+.DESCRIPTION
+    Uses the shared update manager and successful-check cache. This compatibility
+    entrypoint remains non-prompting because the top-level dispatcher owns the
+    once-per-launch update prompt.
+#>
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$OriginalDir = Get-Location
-Set-Location $ScriptDir
+$RootDir = Resolve-Path (Join-Path $ScriptDir "..") | Select-Object -ExpandProperty Path
 
-$RootDir = Resolve-Path "$ScriptDir\.." | Select-Object -ExpandProperty Path
-Set-Location $RootDir
+. (Join-Path $ScriptDir "update_manager.ps1")
+Initialize-DevToolsUpdateMessages -RootDir $RootDir
 
-$CredentialCheckScript = Join-Path $ScriptDir "git_credential_check.ps1"
-if (Test-Path $CredentialCheckScript) {
-    . $CredentialCheckScript
+if (-not (Test-DevToolsInteractiveSession)) {
+    return
 }
 
-try {
-    git fetch | Out-Null
-    $diff = git diff HEAD..origin/HEAD
-
-    if ($diff) {
-        Write-Host ""
-        Write-Host "Updates available in Dev Tools repository! (run 'dev-tools -u' to update)"
-        Write-Host ""
-    }
+$state = Get-DevToolsUpdateState -RootDir $RootDir -UseCache $true
+if ($state.State -eq "behind") {
+    $oldShortCommit = $state.LocalCommit.Substring(0, [Math]::Min(7, $state.LocalCommit.Length))
+    $newShortCommit = $state.RemoteCommit.Substring(0, [Math]::Min(7, $state.RemoteCommit.Length))
+    Write-Host (Get-DevToolsUpdateMessage -Key "updates.available" -Arguments $oldShortCommit, $newShortCommit) -ForegroundColor Cyan
 }
-catch {
-    Write-Host "Warning: Unable to check for updates. Git may not be initialized."
+else {
+    Write-DevToolsUpdateStateNotice -State $state
 }
-
-Set-Location $OriginalDir

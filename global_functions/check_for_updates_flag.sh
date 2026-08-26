@@ -1,14 +1,19 @@
 #!/bin/bash
+#
+# Returns 1 only when a clean main checkout is strictly behind the official
+# configured upstream. All unsafe, ambiguous, cached, or offline states return 0.
+#
 
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-ROOT_DIR="$SCRIPT_DIR"
-ORIGINAL_DIR="$(pwd)"
-cd "$ROOT_DIR"
+SCRIPT_PATH="$(realpath "$0")"
+SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+ROOT_DIR="$(cd "${SCRIPT_DIR}/.." && pwd)"
 
-if git fetch --quiet && ! git diff --quiet HEAD..origin/HEAD; then
-  echo "1"
+# shellcheck source=global_functions/update_manager.sh
+source "${SCRIPT_DIR}/update_manager.sh"
+get_dev_tools_update_state "$ROOT_DIR" false
+
+if [ "$DEV_TOOLS_UPDATE_STATE" = "behind" ]; then
+    printf '1\n'
 else
-  echo "0"
+    printf '0\n'
 fi
-
-cd "$ORIGINAL_DIR"

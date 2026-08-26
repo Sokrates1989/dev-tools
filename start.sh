@@ -2,8 +2,34 @@
 
 SCRIPT_PATH="$(realpath "$0")"
 ROOT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
+ORIGINAL_ARGS=("$@")
 
-# --- Argument-based quick start (must be FIRST!) ---
+# --- Startup update guard ---
+# Every normal launcher invocation checks once before dispatch. An accepted
+# update replays the exact original argument array through the updated script.
+# shellcheck source=global_functions/update_manager.sh
+source "$ROOT_DIR/global_functions/update_manager.sh"
+initialize_dev_tools_update_messages "$ROOT_DIR"
+
+SKIP_UPDATE_GUARD="false"
+if [ "${DEV_TOOLS_UPDATE_REPLAYED:-}" = "1" ]; then
+    SKIP_UPDATE_GUARD="true"
+    unset DEV_TOOLS_UPDATE_REPLAYED
+fi
+
+IS_EXPLICIT_UPDATE="false"
+case "${1:-}" in
+    --update|-u) IS_EXPLICIT_UPDATE="true" ;;
+esac
+
+if [ "$SKIP_UPDATE_GUARD" = "false" ] && [ "$IS_EXPLICIT_UPDATE" = "false" ]; then
+    invoke_dev_tools_startup_update_check "$ROOT_DIR"
+    if [ "$DEV_TOOLS_UPDATE_PERFORMED" = "true" ]; then
+        DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh" "${ORIGINAL_ARGS[@]}"
+    fi
+fi
+
+# --- Argument-based quick start ---
 if [[ $# -gt 0 ]]; then
     case "$1" in
         --commit|-c|--cm)
@@ -71,9 +97,10 @@ if [[ $# -gt 0 ]]; then
             exit 0
             ;;
         --update|-u)
-            # Auto update and restart script.
-            bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
-            exec bash "$ROOT_DIR/start.sh"
+            if invoke_dev_tools_update "$ROOT_DIR"; then
+                DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh"
+            fi
+            exit 1
             ;;
 
         *)
@@ -115,11 +142,6 @@ if [[ $# -gt 0 ]]; then
     esac
 fi
 
-
-
-# --- Git update check ---
-bash "$ROOT_DIR/global_functions/check_for_updates.sh"
-DEVTOOLS_UPDATE_AVAILABLE=$(bash "$ROOT_DIR/global_functions/check_for_updates_flag.sh")
 
 
 # --- Interactive Menu ---
@@ -164,10 +186,7 @@ fi
 echo "q) ❌ Exit"
 echo ""
 
-# --- Git update check ---
-bash "$ROOT_DIR/global_functions/check_for_updates.sh"
-
-read -p "Enter your choice [1-15, cc, u, q, or option name]: " choice
+read -r -p "Enter your choice [1-15, cc, u, q, or option name]: " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -185,7 +204,7 @@ case "$choice_lower" in
   3|"readme"|"--readme"|"-r"|"r"|"rd")
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
     ;;
-  4|"stash"|"--stash"|"-st"|"st"|"st"|"--st")
+  4|"stash"|"--stash"|"-st"|"st"|"--st")
     bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
     ;;
   5|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"bc"|"--bc")
@@ -223,11 +242,11 @@ case "$choice_lower" in
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
-      # Auto update and restart script.
-      bash "$ROOT_DIR/global_functions/perform_auto_update.sh"
-      exec bash "$ROOT_DIR/start.sh"
+      if invoke_dev_tools_update "$ROOT_DIR"; then
+        DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh"
+      fi
     else
-      echo "✅ Already up to date with the latest version of Dev Tools."
+      printf '%s\n' "$(get_dev_tools_update_message updates.current)"
     fi
     ;;
   "q"|"quit"|"exit")

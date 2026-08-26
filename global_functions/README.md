@@ -5,9 +5,21 @@ This directory contains utility scripts that are shared across multiple dev tool
 ## Available Functions
 
 ### Update Management
-- **`check_for_updates.sh/.ps1`** - Checks for dev tools updates
-- **`check_for_updates_flag.sh/.ps1`** - Returns update availability flag
-- **`perform_auto_update.sh/.ps1`** - Performs automatic updates
+- **`update_manager.sh/.ps1`** - Centralizes localized startup checks, safe
+  repository-state classification, caching, prompting, and fast-forward updates
+- **`check_for_updates.sh/.ps1`** - Non-prompting compatibility status check
+- **`check_for_updates_flag.sh/.ps1`** - Returns `1` only for a clean official
+  `main` checkout that is strictly behind its upstream
+- **`perform_auto_update.sh/.ps1`** - Compatibility entry point for the guarded
+  fast-forward updater
+
+The top-level `start.sh` and `start.ps1` dispatchers own the interactive update
+lifecycle. They check before any normal menu or flag dispatch, default the update
+prompt to yes, and replay the exact requested command after a successful update.
+Only clean fast-forward updates from the official repository are eligible;
+unsafe repository states are left untouched. Successful up-to-date checks use a
+short cache controlled by `DEV_TOOLS_UPDATE_CHECK_INTERVAL_SECONDS` (default:
+300 seconds).
 
 ### Environment Management
 - **`load_dotenv.ps1`** - Loads environment variables from .env file
@@ -136,4 +148,4 @@ The sync check respects the same environment configuration as other dev tools:
 - Uses `.env` file for configuration
 - Integrates with the update check system
 - Follows the same error handling patterns
-- Maintains consistent UI/UX with other tools 
+- Maintains consistent UI/UX with other tools

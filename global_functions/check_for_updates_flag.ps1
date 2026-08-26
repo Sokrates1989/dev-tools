@@ -1,24 +1,20 @@
-# -----------------------------------------------------------------------------
-# Script: check_for_updates_flag.ps1
-# Description: Returns 1 if updates are available, 0 otherwise. No user output.
-# -----------------------------------------------------------------------------
+<#
+.SYNOPSIS
+    Returns whether Dev Tools is safely eligible for an automatic update.
+
+.OUTPUTS
+    System.String. "1" only for a clean main branch strictly behind the
+    official configured upstream; otherwise "0".
+#>
 
 $ScriptDir = Split-Path -Parent $MyInvocation.MyCommand.Definition
-$OriginalDir = Get-Location
-Set-Location $ScriptDir
+$RootDir = Resolve-Path (Join-Path $ScriptDir "..") | Select-Object -ExpandProperty Path
 
-try {
-    git fetch | Out-Null
-    $diff = git diff HEAD..origin/HEAD
-    if ($diff) {
-        Write-Output "1"
-    } else {
-        Write-Output "0"
-    }
+. (Join-Path $ScriptDir "update_manager.ps1")
+$state = Get-DevToolsUpdateState -RootDir $RootDir -UseCache $false
+if ($state.State -eq "behind") {
+    Write-Output "1"
 }
-catch {
-    # If anything fails (e.g. not a git repo), return 0 to avoid breaking the tool
+else {
     Write-Output "0"
 }
-
-Set-Location $OriginalDir
