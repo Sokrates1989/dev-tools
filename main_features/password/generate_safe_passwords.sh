@@ -19,7 +19,11 @@ SCRIPT_DIR="$(cd "$(dirname "$SCRIPT_PATH")" && pwd)"
 # Module loading.
 # Core owns cryptographic generation; UI owns prompts and delivery behavior.
 #
+# shellcheck source-path=SCRIPTDIR
+# shellcheck source=password_core.sh
 source "${SCRIPT_DIR}/password_core.sh"
+# The runtime-resolved sibling path is validated by syntax and behavior tests.
+# shellcheck disable=SC1091
 source "${SCRIPT_DIR}/password_ui.sh"
 
 case "${1:-}" in
@@ -31,7 +35,8 @@ case "${1:-}" in
         invoke_safe_password_generator
         ;;
     *)
-        echo "Unknown option: $1" >&2
+        format_password_message unknown_option "$1" >&2
+        printf '\n' >&2
         show_password_generator_help >&2
         exit 1
         ;;

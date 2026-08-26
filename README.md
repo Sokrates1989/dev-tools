@@ -271,9 +271,11 @@ Quick command: `--log` or `-l`
 - Generates production-ready password values only.
 - Uses OS-backed cryptographic randomness and rejection sampling.
 - Defaults to one 64-character password.
+- Offers None, Minimum, Balanced, High, and All special-character presets;
+  Balanced is the recommended default.
+- Guarantees uppercase, lowercase, and numeric characters, plus at least one
+  selected special character unless None is chosen.
 - Recommends clipboard delivery to avoid terminal scrollback and plaintext files.
-- Uses safe special characters that avoid quotes, backslashes, whitespace, shell
-  expansion, command separators, comments, brackets, and equals signs.
 
 Quick command: `--password` or `--pw`
 

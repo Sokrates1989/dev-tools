@@ -10,6 +10,96 @@
 #   - Optional clipboard tool: pbcopy, wl-copy, xclip, xsel, clip.exe, or clip.
 #
 
+declare -A PASSWORD_MESSAGES=()
+
+# load_password_messages
+#
+# Loads password-generator messages for the active locale. German is selected
+# for de locales and English otherwise. PASSWORD_GENERATOR_LOCALE can override
+# locale detection with en or de for deterministic CLI use and testing.
+#
+# Returns:
+#   0 after populating the global PASSWORD_MESSAGES catalog.
+load_password_messages() {
+    local requested_locale locale_file line key value
+    requested_locale="${PASSWORD_GENERATOR_LOCALE:-${LC_ALL:-${LC_MESSAGES:-${LANG:-en}}}}"
+
+    case "${requested_locale,,}" in
+        de|de[_-]*) locale_file="de.properties" ;;
+        *) locale_file="en.properties" ;;
+    esac
+
+    PASSWORD_MESSAGES=()
+    while IFS= read -r line || [ -n "$line" ]; do
+        line="${line%$'\r'}"
+        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
+            continue
+        fi
+
+        key="${line%%=*}"
+        value="${line#*=}"
+        PASSWORD_MESSAGES["$key"]="$value"
+    done < "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/locales/${locale_file}"
+}
+
+# get_password_message
+#
+# Returns one localized message without interpreting percent characters.
+#
+# Arguments:
+#   $1 - key: stable message-catalog key.
+#
+# Outputs:
+#   The localized message.
+#
+# Returns:
+#   0 when the key exists; 1 otherwise.
+get_password_message() {
+    local key="$1"
+    if [ -z "${PASSWORD_MESSAGES[$key]+present}" ]; then
+        printf 'Missing password message key: %s\n' "$key" >&2
+        return 1
+    fi
+
+    printf '%s' "${PASSWORD_MESSAGES[$key]}"
+}
+
+# format_password_message
+#
+# Formats one localized message with ordered %s placeholders.
+#
+# Arguments:
+#   $1 - key: stable message-catalog key.
+#   Remaining arguments - values for the message's %s placeholders.
+#
+# Outputs:
+#   The formatted localized message.
+#
+# Returns:
+#   0 when the key exists and formatting succeeds; 1 otherwise.
+format_password_message() {
+    local key="$1" message remaining prefix formatted argument
+    shift
+    message=$(get_password_message "$key") || return 1
+    remaining="$message"
+    formatted=""
+
+    for argument in "$@"; do
+        if [[ "$remaining" != *"%s"* ]]; then
+            printf 'Password message key has too few placeholders: %s\n' "$key" >&2
+            return 1
+        fi
+
+        prefix="${remaining%%\%s*}"
+        formatted+="${prefix}${argument}"
+        remaining="${remaining#*%s}"
+    done
+
+    printf '%s' "${formatted}${remaining}"
+}
+
+load_password_messages
+
 # show_password_generator_help
 #
 # Prints launcher usage and summarizes the interactive defaults.
@@ -20,17 +110,24 @@
 # Returns:
 #   0 after writing usage text.
 show_password_generator_help() {
-    echo "Safe Password Generator"
-    echo ""
-    echo "Usage:"
-    echo "  dev-tools --password"
-    echo "  dev-tools --pw"
-    echo ""
-    echo "Interactive defaults:"
-    echo "  Characters: A-Z, a-z, 0-9, and safe specials (${SAFE_SPECIAL_CHARS})"
-    echo "  Length:     ${DEFAULT_PASSWORD_LENGTH}"
-    echo "  Count:      ${DEFAULT_PASSWORD_COUNT}"
-    echo "  Delivery:   Clipboard (recommended)"
+    local balanced_special_characters
+    balanced_special_characters=$(get_special_character_set "$DEFAULT_SPECIAL_CHARACTER_PRESET")
+
+    printf '%s\n' "$(get_password_message title)"
+    printf '\n'
+    printf '%s\n' "$(get_password_message usage)"
+    printf '%s\n' "$(get_password_message usage_password)"
+    printf '%s\n' "$(get_password_message usage_pw)"
+    printf '\n'
+    printf '%s\n' "$(get_password_message interactive_defaults)"
+    format_password_message default_characters "$balanced_special_characters"
+    printf '\n'
+    printf '%s\n' "$(get_password_message default_special_preset)"
+    format_password_message default_length "$DEFAULT_PASSWORD_LENGTH"
+    printf '\n'
+    format_password_message default_count "$DEFAULT_PASSWORD_COUNT"
+    printf '\n'
+    printf '%s\n' "$(get_password_message default_delivery)"
 }
 
 # read_yes_no_choice
@@ -52,13 +149,13 @@ read_yes_no_choice() {
     local suffix answer
 
     if [ "$default_yes" = true ]; then
-        suffix="[Y/n]"
+        suffix="Y/n"
     else
-        suffix="[y/N]"
+        suffix="y/N"
     fi
 
     while true; do
-        read -r -p "${prompt} ${suffix}: " answer
+        read -r -p "$(format_password_message prompt_with_default "$prompt" "$suffix"): " answer
         answer="${answer,,}"
 
         if [ -z "$answer" ]; then
@@ -69,7 +166,7 @@ read_yes_no_choice() {
         case "$answer" in
             y|yes) echo "true"; return 0 ;;
             n|no) echo "false"; return 0 ;;
-            *) echo "Please enter yes or no." >&2 ;;
+            *) printf '%s\n' "$(get_password_message yes_no_invalid)" >&2 ;;
         esac
     done
 }
@@ -97,7 +194,7 @@ read_integer_choice() {
     local answer
 
     while true; do
-        read -r -p "${prompt} [${default_value}]: " answer
+        read -r -p "$(format_password_message prompt_with_default "$prompt" "$default_value"): " answer
         if [ -z "$answer" ]; then
             echo "$default_value"
             return 0
@@ -110,7 +207,43 @@ read_integer_choice() {
             return 0
         fi
 
-        echo "Enter a number from ${minimum_value} to ${maximum_value}." >&2
+        format_password_message integer_range "$minimum_value" "$maximum_value" >&2
+        printf '\n' >&2
+    done
+}
+
+# read_special_character_preset
+#
+# Prompts for a numbered or lettered special-character compatibility preset.
+# Pressing Enter selects balanced, the recommended default.
+#
+# Outputs:
+#   "none", "minimum", "balanced", "high", or "all".
+#
+# Returns:
+#   0 after a valid selection is read.
+read_special_character_preset() {
+    local answer
+
+    while true; do
+        printf '\n' >&2
+        printf '%s\n' "$(get_password_message special_menu_title)" >&2
+        printf '%s\n' "$(get_password_message special_option_none)" >&2
+        printf '%s\n' "$(get_password_message special_option_minimum)" >&2
+        printf '%s\n' "$(get_password_message special_option_balanced)" >&2
+        printf '%s\n' "$(get_password_message special_option_high)" >&2
+        printf '%s\n' "$(get_password_message special_option_all)" >&2
+        read -r -p "$(get_password_message special_prompt): " answer
+
+        answer="${answer,,}"
+        case "${answer:-$DEFAULT_SPECIAL_CHARACTER_PRESET}" in
+            1|n|none) printf '%s' "none"; return 0 ;;
+            2|m|minimum) printf '%s' "minimum"; return 0 ;;
+            3|b|balanced) printf '%s' "balanced"; return 0 ;;
+            4|h|high) printf '%s' "high"; return 0 ;;
+            5|a|all) printf '%s' "all"; return 0 ;;
+            *) printf '%s\n' "$(get_password_message special_invalid)" >&2 ;;
+        esac
     done
 }
 
@@ -154,18 +287,18 @@ read_delivery_choice() {
     local answer
 
     while true; do
-        echo "" >&2
-        echo "How should the password be shown?" >&2
-        echo "1) Copy to clipboard (Recommended: avoids terminal history and plaintext files)" >&2
-        echo "2) Save to a plaintext file" >&2
-        echo "3) Echo to CLI output" >&2
-        read -r -p "Choose delivery method [1]: " answer
+        printf '\n' >&2
+        printf '%s\n' "$(get_password_message delivery_title)" >&2
+        printf '%s\n' "$(get_password_message delivery_clipboard)" >&2
+        printf '%s\n' "$(get_password_message delivery_file)" >&2
+        printf '%s\n' "$(get_password_message delivery_terminal)" >&2
+        read -r -p "$(get_password_message delivery_prompt): " answer
 
         case "${answer:-1}" in
             1) echo "clipboard"; return 0 ;;
             2) echo "file"; return 0 ;;
             3) echo "terminal"; return 0 ;;
-            *) echo "Choose 1, 2, or 3." >&2 ;;
+            *) printf '%s\n' "$(get_password_message delivery_invalid)" >&2 ;;
         esac
     done
 }
@@ -208,7 +341,7 @@ write_passwords_to_clipboard() {
 copy_passwords_to_clipboard() {
     local clipboard_command
     clipboard_command=$(find_clipboard_command) || {
-        echo "No supported clipboard utility was found." >&2
+        printf '%s\n' "$(get_password_message clipboard_missing)" >&2
         return 1
     }
 
@@ -216,20 +349,22 @@ copy_passwords_to_clipboard() {
     payload=$(printf '%s\n' "$@")
 
     if ! write_passwords_to_clipboard "$clipboard_command" "$payload"; then
-        echo "Clipboard copy failed with ${clipboard_command}." >&2
+        format_password_message clipboard_copy_failed "$clipboard_command" >&2
+        printf '\n' >&2
         return 1
     fi
 
-    echo ""
-    echo "Copied $# password(s) to the clipboard."
-    echo "Paste them into the target secret manager now."
+    printf '\n'
+    format_password_message clipboard_copied "$#"
+    printf '\n'
+    printf '%s\n' "$(get_password_message clipboard_paste)"
 
     local clear_clipboard
-    clear_clipboard=$(read_yes_no_choice "Clear clipboard after you have pasted them? (recommended)" true)
+    clear_clipboard=$(read_yes_no_choice "$(get_password_message clipboard_clear_prompt)" true)
     if [ "$clear_clipboard" = true ] && clear_password_clipboard "$clipboard_command"; then
-        echo "Clipboard cleared."
+        printf '%s\n' "$(get_password_message clipboard_cleared)"
     elif [ "$clear_clipboard" = true ]; then
-        echo "Could not clear the clipboard automatically. Please clear it manually." >&2
+        printf '%s\n' "$(get_password_message clipboard_clear_failed)" >&2
     fi
 }
 
@@ -271,17 +406,18 @@ clear_password_clipboard() {
 # Returns:
 #   0 after the file is written.
 save_passwords_to_file() {
-    echo ""
-    echo "Warning: this writes plaintext passwords to disk."
+    printf '\n'
+    printf '%s\n' "$(get_password_message file_warning)"
 
     local path
-    read -r -p "File path [generated-passwords.txt]: " path
+    read -r -p "$(get_password_message file_prompt): " path
     path="${path:-generated-passwords.txt}"
 
     umask 077
     printf '%s\n' "$@" > "$path"
-    echo "Saved $# password(s) to ${path}."
-    echo "Delete or move this file into your secure secret storage as soon as possible."
+    format_password_message file_saved "$#" "$path"
+    printf '\n'
+    printf '%s\n' "$(get_password_message file_cleanup)"
 }
 
 # write_passwords_to_terminal
@@ -294,8 +430,8 @@ save_passwords_to_file() {
 # Returns:
 #   0 after writing password values.
 write_passwords_to_terminal() {
-    echo ""
-    echo "Generated password(s):"
+    printf '\n'
+    printf '%s\n' "$(get_password_message terminal_header)"
     printf '%s\n' "$@"
 }
 
@@ -306,19 +442,16 @@ write_passwords_to_terminal() {
 # Returns:
 #   0 after passwords are generated and delivered.
 invoke_safe_password_generator() {
-    echo ""
-    echo "Safe Password Generator"
-    echo "======================="
-    echo ""
-    echo "Special characters use this safe set: ${SAFE_SPECIAL_CHARS}"
-    echo "Excluded: quotes, backslashes, whitespace, #, $, &, |, ;, <, >, brackets, equals"
-    echo ""
+    printf '\n'
+    printf '%s\n' "$(get_password_message title)"
+    printf '%s\n' "$(get_password_message title_divider)"
+    printf '\n'
 
-    local include_special password_length password_count passwords delivery
-    include_special=$(read_yes_no_choice "Include safe special characters?" true)
-    password_length=$(read_integer_choice "Password length" "$DEFAULT_PASSWORD_LENGTH" "$MINIMUM_PASSWORD_LENGTH" 4096)
-    password_count=$(read_integer_choice "Number of passwords to generate" "$DEFAULT_PASSWORD_COUNT" 1 100)
-    mapfile -t passwords < <(new_safe_password_set "$password_length" "$password_count" "$include_special")
+    local special_character_preset password_length password_count passwords delivery
+    special_character_preset=$(read_special_character_preset)
+    password_length=$(read_integer_choice "$(get_password_message password_length)" "$DEFAULT_PASSWORD_LENGTH" "$MINIMUM_PASSWORD_LENGTH" 4096)
+    password_count=$(read_integer_choice "$(get_password_message password_count)" "$DEFAULT_PASSWORD_COUNT" 1 100)
+    mapfile -t passwords < <(new_safe_password_set "$password_length" "$password_count" "$special_character_preset")
 
     while true; do
         delivery=$(read_delivery_choice)
@@ -327,7 +460,7 @@ invoke_safe_password_generator() {
                 if copy_passwords_to_clipboard "${passwords[@]}"; then
                     return 0
                 fi
-                echo "Please choose another delivery method." >&2
+                printf '%s\n' "$(get_password_message delivery_retry)" >&2
                 ;;
             file)
                 save_passwords_to_file "${passwords[@]}"

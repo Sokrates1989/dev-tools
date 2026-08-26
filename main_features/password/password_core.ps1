@@ -16,13 +16,19 @@ Set-StrictMode -Version Latest
 
 #
 # Password policy constants.
-# Safe specials avoid quotes, backslashes, whitespace, shell expansion,
-# separators, comments, brackets, and equals signs.
+# Presets trade compatibility for a progressively wider punctuation alphabet.
 #
 $script:UpperChars = "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 $script:LowerChars = "abcdefghijklmnopqrstuvwxyz"
 $script:DigitChars = "0123456789"
-$script:SafeSpecialChars = "_.-"
+$script:SpecialCharacterPresets = [ordered]@{
+    none = ""
+    minimum = "_.-"
+    balanced = "@%+-_:,."
+    high = '@%+-_:,.!#$^&*?~=()'
+    all = '!"#$%&''()*+,-./:;<=>?@[\]^_`{|}~'
+}
+$script:DefaultSpecialCharacterPreset = "balanced"
 $script:MinimumPasswordLength = 16
 $script:DefaultPasswordLength = 64
 $script:DefaultPasswordCount = 1
@@ -99,26 +105,52 @@ function Get-SecureRandomCharacter {
 
 <#
 .SYNOPSIS
+    Returns the special-character set assigned to a policy preset.
+
+.DESCRIPTION
+    Resolves none, minimum, balanced, high, or all to the exact punctuation
+    alphabet used for password generation and complexity validation.
+
+.PARAMETER Preset
+    Special-character compatibility preset to resolve.
+
+.OUTPUTS
+    System.String. The preset's special-character set, or an empty string for
+    none.
+#>
+function Get-SpecialCharacterSet {
+    param(
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("none", "minimum", "balanced", "high", "all")]
+        [string]$Preset
+    )
+
+    return $script:SpecialCharacterPresets[$Preset]
+}
+
+<#
+.SYNOPSIS
     Builds the allowed alphabet for the selected password policy.
 
 .DESCRIPTION
-    Combines uppercase, lowercase, digit, and optionally safe special
-    characters.
+    Combines uppercase, lowercase, digit, and the selected special-character
+    set.
 
-.PARAMETER IncludeSpecialCharacters
-    When true, appends safe special characters to the alphanumeric alphabet.
+.PARAMETER SpecialCharacters
+    Special characters to append. An empty string selects alphanumeric only.
 
 .OUTPUTS
     System.String. The complete allowed character alphabet.
 #>
 function Get-PasswordAlphabet {
     param(
-        [bool]$IncludeSpecialCharacters
+        [AllowEmptyString()]
+        [string]$SpecialCharacters
     )
 
     $alphabet = "$script:UpperChars$script:LowerChars$script:DigitChars"
-    if ($IncludeSpecialCharacters) {
-        $alphabet = "$alphabet$script:SafeSpecialChars"
+    if (-not [string]::IsNullOrEmpty($SpecialCharacters)) {
+        $alphabet = "$alphabet$SpecialCharacters"
     }
 
     return $alphabet
@@ -129,14 +161,14 @@ function Get-PasswordAlphabet {
     Checks whether a password satisfies the selected complexity policy.
 
 .DESCRIPTION
-    Requires uppercase, lowercase, digit, and optionally approved special
-    characters.
+    Requires uppercase, lowercase, digit, and, when a non-empty set is
+    supplied, at least one character from that special-character set.
 
 .PARAMETER Password
     Password string to validate.
 
-.PARAMETER IncludeSpecialCharacters
-    Whether a safe special character is required.
+.PARAMETER SpecialCharacters
+    Allowed special characters. When non-empty, one of them is required.
 
 .OUTPUTS
     System.Boolean. True when all required categories are present.
@@ -145,15 +177,15 @@ function Test-SafePasswordComplexity {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Password,
-        [bool]$IncludeSpecialCharacters
+        [AllowEmptyString()]
+        [string]$SpecialCharacters
     )
 
     $hasUpper = $Password.IndexOfAny($script:UpperChars.ToCharArray()) -ge 0
     $hasLower = $Password.IndexOfAny($script:LowerChars.ToCharArray()) -ge 0
     $hasDigit = $Password.IndexOfAny($script:DigitChars.ToCharArray()) -ge 0
-    $hasSpecial = $Password.IndexOfAny($script:SafeSpecialChars.ToCharArray()) -ge 0
-
-    if ($IncludeSpecialCharacters) {
+    if (-not [string]::IsNullOrEmpty($SpecialCharacters)) {
+        $hasSpecial = $Password.IndexOfAny($SpecialCharacters.ToCharArray()) -ge 0
         return $hasUpper -and $hasLower -and $hasDigit -and $hasSpecial
     }
 
@@ -171,8 +203,9 @@ function Test-SafePasswordComplexity {
 .PARAMETER PasswordLength
     Number of characters to generate. Must be at least 16.
 
-.PARAMETER IncludeSpecialCharacters
-    Whether to include and require approved special characters.
+.PARAMETER SpecialCharacterPreset
+    Compatibility preset controlling which special characters are allowed and
+    required. The none preset requires only alphanumeric character classes.
 
 .OUTPUTS
     System.String. A generated password value.
@@ -184,14 +217,17 @@ function New-SafePassword {
     param(
         [Parameter(Mandatory = $true)]
         [int]$PasswordLength,
-        [bool]$IncludeSpecialCharacters
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("none", "minimum", "balanced", "high", "all")]
+        [string]$SpecialCharacterPreset
     )
 
     if ($PasswordLength -lt $script:MinimumPasswordLength) {
         throw "Password length must be at least $script:MinimumPasswordLength characters."
     }
 
-    $alphabet = Get-PasswordAlphabet -IncludeSpecialCharacters $IncludeSpecialCharacters
+    $specialCharacters = Get-SpecialCharacterSet -Preset $SpecialCharacterPreset
+    $alphabet = Get-PasswordAlphabet -SpecialCharacters $specialCharacters
 
     do {
         $builder = [System.Text.StringBuilder]::new($PasswordLength)
@@ -200,7 +236,7 @@ function New-SafePassword {
         }
 
         $password = $builder.ToString()
-    } while (-not (Test-SafePasswordComplexity -Password $password -IncludeSpecialCharacters $IncludeSpecialCharacters))
+    } while (-not (Test-SafePasswordComplexity -Password $password -SpecialCharacters $specialCharacters))
 
     return $password
 }
@@ -218,8 +254,8 @@ function New-SafePassword {
 .PARAMETER PasswordCount
     Number of passwords to generate.
 
-.PARAMETER IncludeSpecialCharacters
-    Whether generated passwords should include safe special characters.
+.PARAMETER SpecialCharacterPreset
+    Compatibility preset controlling the allowed special characters.
 
 .OUTPUTS
     System.String[]. Generated password values.
@@ -230,12 +266,14 @@ function New-SafePasswordSet {
         [int]$PasswordLength,
         [Parameter(Mandatory = $true)]
         [int]$PasswordCount,
-        [bool]$IncludeSpecialCharacters
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("none", "minimum", "balanced", "high", "all")]
+        [string]$SpecialCharacterPreset
     )
 
     $passwords = @()
     for ($index = 0; $index -lt $PasswordCount; $index++) {
-        $passwords += New-SafePassword -PasswordLength $PasswordLength -IncludeSpecialCharacters $IncludeSpecialCharacters
+        $passwords += New-SafePassword -PasswordLength $PasswordLength -SpecialCharacterPreset $SpecialCharacterPreset
     }
 
     return $passwords

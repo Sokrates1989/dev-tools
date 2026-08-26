@@ -13,15 +13,23 @@
 
 #
 # Password policy constants.
-# Safe specials avoid quotes, backslashes, whitespace, shell expansion,
-# separators, comments, brackets, and equals signs.
+# Presets trade compatibility for a progressively wider punctuation alphabet.
 #
 UPPER_CHARS="ABCDEFGHIJKLMNOPQRSTUVWXYZ"
 LOWER_CHARS="abcdefghijklmnopqrstuvwxyz"
 DIGIT_CHARS="0123456789"
-SAFE_SPECIAL_CHARS="_.-"
+SPECIAL_CHARS_NONE=""
+SPECIAL_CHARS_MINIMUM="_.-"
+SPECIAL_CHARS_BALANCED="@%+-_:,."
+SPECIAL_CHARS_HIGH='@%+-_:,.!#$^&*?~=()'
+SPECIAL_CHARS_ALL=$'!"#$%&\'()*+,-./:;<=>?@[\\]^_`{|}~'
+# Interactive defaults are consumed after this core file is sourced by the UI.
+# shellcheck disable=SC2034
+DEFAULT_SPECIAL_CHARACTER_PRESET="balanced"
 MINIMUM_PASSWORD_LENGTH=16
+# shellcheck disable=SC2034
 DEFAULT_PASSWORD_LENGTH=64
+# shellcheck disable=SC2034
 DEFAULT_PASSWORD_COUNT=1
 
 # get_secure_random_integer
@@ -83,12 +91,40 @@ get_secure_random_character() {
     echo "${characters:index:1}"
 }
 
+# get_special_character_set
+#
+# Resolves a special-character compatibility preset to its punctuation set.
+#
+# Arguments:
+#   $1 - preset: none, minimum, balanced, high, or all.
+#
+# Outputs:
+#   The preset's special-character set; empty output for none.
+#
+# Returns:
+#   0 for a recognized preset; 1 otherwise.
+get_special_character_set() {
+    local preset="$1"
+
+    case "$preset" in
+        none) printf '%s' "$SPECIAL_CHARS_NONE" ;;
+        minimum) printf '%s' "$SPECIAL_CHARS_MINIMUM" ;;
+        balanced) printf '%s' "$SPECIAL_CHARS_BALANCED" ;;
+        high) printf '%s' "$SPECIAL_CHARS_HIGH" ;;
+        all) printf '%s' "$SPECIAL_CHARS_ALL" ;;
+        *)
+            printf 'Unknown special-character preset: %s\n' "$preset" >&2
+            return 1
+            ;;
+    esac
+}
+
 # get_password_alphabet
 #
 # Builds the allowed alphabet for the selected password policy.
 #
 # Arguments:
-#   $1 - include_special: "true" to include safe special characters.
+#   $1 - special_characters: set to append; empty for alphanumeric only.
 #
 # Outputs:
 #   The complete allowed alphabet.
@@ -96,11 +132,11 @@ get_secure_random_character() {
 # Returns:
 #   0 after writing the alphabet.
 get_password_alphabet() {
-    local include_special="$1"
+    local special_characters="$1"
     local alphabet="${UPPER_CHARS}${LOWER_CHARS}${DIGIT_CHARS}"
 
-    if [ "$include_special" = true ]; then
-        alphabet="${alphabet}${SAFE_SPECIAL_CHARS}"
+    if [ -n "$special_characters" ]; then
+        alphabet="${alphabet}${special_characters}"
     fi
 
     echo "$alphabet"
@@ -133,24 +169,24 @@ contains_character_from_set() {
 
 # test_safe_password_complexity
 #
-# Verifies required uppercase, lowercase, digit, and optional special classes.
+# Verifies required uppercase, lowercase, digit, and selected special classes.
 #
 # Arguments:
 #   $1 - password: generated password candidate.
-#   $2 - include_special: "true" when a special character is required.
+#   $2 - special_characters: non-empty set when a special is required.
 #
 # Returns:
 #   0 when the password satisfies policy; 1 otherwise.
 test_safe_password_complexity() {
     local password="$1"
-    local include_special="$2"
+    local special_characters="$2"
 
     contains_character_from_set "$password" "$UPPER_CHARS" &&
         contains_character_from_set "$password" "$LOWER_CHARS" &&
         contains_character_from_set "$password" "$DIGIT_CHARS" || return 1
 
-    if [ "$include_special" = true ]; then
-        contains_character_from_set "$password" "$SAFE_SPECIAL_CHARS"
+    if [ -n "$special_characters" ]; then
+        contains_character_from_set "$password" "$special_characters"
         return $?
     fi
 
@@ -163,7 +199,7 @@ test_safe_password_complexity() {
 #
 # Arguments:
 #   $1 - password_length: number of characters to generate, minimum 16.
-#   $2 - include_special: "true" to include and require safe specials.
+#   $2 - special_character_preset: controls allowed and required specials.
 #
 # Outputs:
 #   A generated password value only.
@@ -172,15 +208,16 @@ test_safe_password_complexity() {
 #   0 on success; non-zero when password_length is too short.
 new_safe_password() {
     local password_length="$1"
-    local include_special="$2"
+    local special_character_preset="$2"
 
     if [ "$password_length" -lt "$MINIMUM_PASSWORD_LENGTH" ]; then
         echo "Password length must be at least ${MINIMUM_PASSWORD_LENGTH} characters." >&2
         return 1
     fi
 
-    local alphabet password index
-    alphabet=$(get_password_alphabet "$include_special")
+    local special_characters alphabet password index
+    special_characters=$(get_special_character_set "$special_character_preset") || return 1
+    alphabet=$(get_password_alphabet "$special_characters")
 
     while true; do
         password=""
@@ -188,7 +225,7 @@ new_safe_password() {
             password+="$(get_secure_random_character "$alphabet")"
         done
 
-        if test_safe_password_complexity "$password" "$include_special"; then
+        if test_safe_password_complexity "$password" "$special_characters"; then
             echo "$password"
             return 0
         fi
@@ -202,7 +239,7 @@ new_safe_password() {
 # Arguments:
 #   $1 - password_length: number of characters in each password.
 #   $2 - password_count: number of passwords to generate.
-#   $3 - include_special: "true" to include safe specials.
+#   $3 - special_character_preset: controls allowed special characters.
 #
 # Outputs:
 #   One password value per line.
@@ -212,10 +249,10 @@ new_safe_password() {
 new_safe_password_set() {
     local password_length="$1"
     local password_count="$2"
-    local include_special="$3"
+    local special_character_preset="$3"
     local index
 
     for ((index = 0; index < password_count; index++)); do
-        new_safe_password "$password_length" "$include_special"
+        new_safe_password "$password_length" "$special_character_preset"
     done
 }

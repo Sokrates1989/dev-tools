@@ -15,6 +15,90 @@
 
 Set-StrictMode -Version Latest
 
+$script:PasswordMessages = @{}
+
+<#
+.SYNOPSIS
+    Loads password-generator messages for the active locale.
+
+.DESCRIPTION
+    Selects German for a de locale and English otherwise. The
+    PASSWORD_GENERATOR_LOCALE environment variable can override locale
+    detection with en or de for deterministic CLI use and testing.
+
+.OUTPUTS
+    System.Void. Populates the module-level password message catalog.
+#>
+function Initialize-PasswordMessages {
+    $requestedLocale = $env:PASSWORD_GENERATOR_LOCALE
+    if ([string]::IsNullOrWhiteSpace($requestedLocale)) {
+        $requestedLocale = [System.Globalization.CultureInfo]::CurrentUICulture.Name
+    }
+
+    $language = if ($requestedLocale -match "^de([_-]|$)") { "de" } else { "en" }
+    $localePath = Join-Path $PSScriptRoot "locales\$language.properties"
+    $script:PasswordMessages = @{}
+
+    foreach ($line in [System.IO.File]::ReadAllLines($localePath, [System.Text.Encoding]::UTF8)) {
+        if ([string]::IsNullOrWhiteSpace($line) -or $line.StartsWith("#")) {
+            continue
+        }
+
+        $parts = $line -split "=", 2
+        if ($parts.Count -eq 2) {
+            $script:PasswordMessages[$parts[0]] = $parts[1]
+        }
+    }
+}
+
+<#
+.SYNOPSIS
+    Returns a localized password-generator message.
+
+.DESCRIPTION
+    Resolves a message key and replaces each %s placeholder in order with the
+    supplied arguments.
+
+.PARAMETER Key
+    Stable message-catalog key.
+
+.PARAMETER Arguments
+    Optional values used to replace %s placeholders from left to right.
+
+.OUTPUTS
+    System.String. The formatted localized message.
+
+.EXCEPTION
+    Throws when the key is missing or too few placeholders are available.
+#>
+function Get-PasswordMessage {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key,
+        [object[]]$Arguments = @()
+    )
+
+    if (-not $script:PasswordMessages.ContainsKey($Key)) {
+        throw "Missing password message key: $Key"
+    }
+
+    $remaining = $script:PasswordMessages[$Key]
+    $formatted = ""
+    foreach ($argument in $Arguments) {
+        $placeholderIndex = $remaining.IndexOf("%s", [System.StringComparison]::Ordinal)
+        if ($placeholderIndex -lt 0) {
+            throw "Password message key '$Key' has too few placeholders."
+        }
+
+        $formatted += $remaining.Substring(0, $placeholderIndex) + [string]$argument
+        $remaining = $remaining.Substring($placeholderIndex + 2)
+    }
+
+    return "$formatted$remaining"
+}
+
+Initialize-PasswordMessages
+
 <#
 .SYNOPSIS
     Prints command-line usage for the password generator.
@@ -26,17 +110,20 @@ Set-StrictMode -Version Latest
     System.Void. Writes usage text to the console.
 #>
 function Show-PasswordGeneratorHelp {
-    Write-Host "Safe Password Generator"
+    $balancedSpecialCharacters = Get-SpecialCharacterSet -Preset $script:DefaultSpecialCharacterPreset
+
+    Write-Host (Get-PasswordMessage -Key "title")
     Write-Host ""
-    Write-Host "Usage:"
-    Write-Host "  dev-tools --password"
-    Write-Host "  dev-tools --pw"
+    Write-Host (Get-PasswordMessage -Key "usage")
+    Write-Host (Get-PasswordMessage -Key "usage_password")
+    Write-Host (Get-PasswordMessage -Key "usage_pw")
     Write-Host ""
-    Write-Host "Interactive defaults:"
-    Write-Host "  Characters: A-Z, a-z, 0-9, and safe specials ($script:SafeSpecialChars)"
-    Write-Host "  Length:     $script:DefaultPasswordLength"
-    Write-Host "  Count:      $script:DefaultPasswordCount"
-    Write-Host "  Delivery:   Clipboard (recommended)"
+    Write-Host (Get-PasswordMessage -Key "interactive_defaults")
+    Write-Host (Get-PasswordMessage -Key "default_characters" -Arguments $balancedSpecialCharacters)
+    Write-Host (Get-PasswordMessage -Key "default_special_preset")
+    Write-Host (Get-PasswordMessage -Key "default_length" -Arguments $script:DefaultPasswordLength)
+    Write-Host (Get-PasswordMessage -Key "default_count" -Arguments $script:DefaultPasswordCount)
+    Write-Host (Get-PasswordMessage -Key "default_delivery")
 }
 
 <#
@@ -63,10 +150,10 @@ function Read-YesNoChoice {
         [bool]$DefaultYes = $true
     )
 
-    $suffix = if ($DefaultYes) { "[Y/n]" } else { "[y/N]" }
+    $suffix = if ($DefaultYes) { "Y/n" } else { "y/N" }
 
     while ($true) {
-        $answer = Read-Host "$Prompt $suffix"
+        $answer = Read-Host (Get-PasswordMessage -Key "prompt_with_default" -Arguments $Prompt, $suffix)
         if ([string]::IsNullOrWhiteSpace($answer)) {
             return $DefaultYes
         }
@@ -74,7 +161,7 @@ function Read-YesNoChoice {
         switch ($answer.Trim().ToLowerInvariant()) {
             { $_ -in @("y", "yes") } { return $true }
             { $_ -in @("n", "no") } { return $false }
-            default { Write-Host "Please enter yes or no." -ForegroundColor Yellow }
+            default { Write-Host (Get-PasswordMessage -Key "yes_no_invalid") -ForegroundColor Yellow }
         }
     }
 }
@@ -115,7 +202,7 @@ function Read-IntegerChoice {
     )
 
     while ($true) {
-        $answer = Read-Host "$Prompt [$DefaultValue]"
+        $answer = Read-Host (Get-PasswordMessage -Key "prompt_with_default" -Arguments $Prompt, $DefaultValue)
         if ([string]::IsNullOrWhiteSpace($answer)) {
             return $DefaultValue
         }
@@ -127,7 +214,44 @@ function Read-IntegerChoice {
             return $parsed
         }
 
-        Write-Host "Enter a number from $MinimumValue to $MaximumValue." -ForegroundColor Yellow
+        Write-Host (Get-PasswordMessage -Key "integer_range" -Arguments $MinimumValue, $MaximumValue) -ForegroundColor Yellow
+    }
+}
+
+<#
+.SYNOPSIS
+    Prompts for a special-character compatibility preset.
+
+.DESCRIPTION
+    Presents numbered and lettered none, minimum, balanced, high, and all
+    choices. Pressing Enter selects balanced, the recommended default.
+
+.OUTPUTS
+    System.String. One of "none", "minimum", "balanced", "high", or "all".
+#>
+function Read-SpecialCharacterPreset {
+    while ($true) {
+        Write-Host ""
+        Write-Host (Get-PasswordMessage -Key "special_menu_title")
+        Write-Host (Get-PasswordMessage -Key "special_option_none")
+        Write-Host (Get-PasswordMessage -Key "special_option_minimum")
+        Write-Host (Get-PasswordMessage -Key "special_option_balanced")
+        Write-Host (Get-PasswordMessage -Key "special_option_high")
+        Write-Host (Get-PasswordMessage -Key "special_option_all")
+
+        $answer = Read-Host (Get-PasswordMessage -Key "special_prompt")
+        if ([string]::IsNullOrWhiteSpace($answer)) {
+            return $script:DefaultSpecialCharacterPreset
+        }
+
+        switch ($answer.Trim().ToLowerInvariant()) {
+            { $_ -in @("1", "n", "none") } { return "none" }
+            { $_ -in @("2", "m", "minimum") } { return "minimum" }
+            { $_ -in @("3", "b", "balanced") } { return "balanced" }
+            { $_ -in @("4", "h", "high") } { return "high" }
+            { $_ -in @("5", "a", "all") } { return "all" }
+            default { Write-Host (Get-PasswordMessage -Key "special_invalid") -ForegroundColor Yellow }
+        }
     }
 }
 
@@ -145,12 +269,12 @@ function Read-IntegerChoice {
 function Read-DeliveryChoice {
     while ($true) {
         Write-Host ""
-        Write-Host "How should the password be shown?"
-        Write-Host "1) Copy to clipboard (Recommended: avoids terminal history and plaintext files)"
-        Write-Host "2) Save to a plaintext file"
-        Write-Host "3) Echo to CLI output"
+        Write-Host (Get-PasswordMessage -Key "delivery_title")
+        Write-Host (Get-PasswordMessage -Key "delivery_clipboard")
+        Write-Host (Get-PasswordMessage -Key "delivery_file")
+        Write-Host (Get-PasswordMessage -Key "delivery_terminal")
 
-        $answer = Read-Host "Choose delivery method [1]"
+        $answer = Read-Host (Get-PasswordMessage -Key "delivery_prompt")
         if ([string]::IsNullOrWhiteSpace($answer)) {
             return "clipboard"
         }
@@ -159,7 +283,7 @@ function Read-DeliveryChoice {
             "1" { return "clipboard" }
             "2" { return "file" }
             "3" { return "terminal" }
-            default { Write-Host "Choose 1, 2, or 3." -ForegroundColor Yellow }
+            default { Write-Host (Get-PasswordMessage -Key "delivery_invalid") -ForegroundColor Yellow }
         }
     }
 }
@@ -221,15 +345,15 @@ function Copy-PasswordsToClipboard {
     Set-Clipboard -Value $payload
 
     Write-Host ""
-    Write-Host "Copied $($Passwords.Count) password(s) to the clipboard." -ForegroundColor Green
-    Write-Host "Paste them into the target secret manager now."
+    Write-Host (Get-PasswordMessage -Key "clipboard_copied" -Arguments $Passwords.Count) -ForegroundColor Green
+    Write-Host (Get-PasswordMessage -Key "clipboard_paste")
 
-    $shouldClearClipboard = Read-YesNoChoice -Prompt "Clear clipboard after you have pasted them? (recommended)" -DefaultYes $true
+    $shouldClearClipboard = Read-YesNoChoice -Prompt (Get-PasswordMessage -Key "clipboard_clear_prompt") -DefaultYes $true
     if ($shouldClearClipboard -and (Clear-PasswordClipboard)) {
-        Write-Host "Clipboard cleared." -ForegroundColor Green
+        Write-Host (Get-PasswordMessage -Key "clipboard_cleared") -ForegroundColor Green
     }
     elseif ($shouldClearClipboard) {
-        Write-Host "Could not clear the clipboard automatically. Please clear it manually." -ForegroundColor Yellow
+        Write-Host (Get-PasswordMessage -Key "clipboard_clear_failed") -ForegroundColor Yellow
     }
 }
 
@@ -257,16 +381,16 @@ function Save-PasswordsToFile {
     )
 
     Write-Host ""
-    Write-Host "Warning: this writes plaintext passwords to disk." -ForegroundColor Yellow
+    Write-Host (Get-PasswordMessage -Key "file_warning") -ForegroundColor Yellow
 
-    $path = Read-Host "File path [generated-passwords.txt]"
+    $path = Read-Host (Get-PasswordMessage -Key "file_prompt")
     if ([string]::IsNullOrWhiteSpace($path)) {
         $path = "generated-passwords.txt"
     }
 
     $Passwords | Set-Content -Path $path -Encoding UTF8
-    Write-Host "Saved $($Passwords.Count) password(s) to $path." -ForegroundColor Green
-    Write-Host "Delete or move this file into your secure secret storage as soon as possible."
+    Write-Host (Get-PasswordMessage -Key "file_saved" -Arguments $Passwords.Count, $path) -ForegroundColor Green
+    Write-Host (Get-PasswordMessage -Key "file_cleanup")
 }
 
 <#
@@ -290,7 +414,7 @@ function Write-PasswordsToTerminal {
     )
 
     Write-Host ""
-    Write-Host "Generated password(s):"
+    Write-Host (Get-PasswordMessage -Key "terminal_header")
     foreach ($password in $Passwords) {
         Write-Host $password
     }
@@ -309,17 +433,14 @@ function Write-PasswordsToTerminal {
 #>
 function Invoke-SafePasswordGenerator {
     Write-Host ""
-    Write-Host "Safe Password Generator"
-    Write-Host "======================="
-    Write-Host ""
-    Write-Host "Special characters use this safe set: $script:SafeSpecialChars"
-    Write-Host "Excluded: quotes, backslashes, whitespace, #, $, &, |, ;, <, >, brackets, equals"
+    Write-Host (Get-PasswordMessage -Key "title")
+    Write-Host (Get-PasswordMessage -Key "title_divider")
     Write-Host ""
 
-    $includeSpecial = Read-YesNoChoice -Prompt "Include safe special characters?" -DefaultYes $true
-    $passwordLength = Read-IntegerChoice -Prompt "Password length" -DefaultValue $script:DefaultPasswordLength -MinimumValue $script:MinimumPasswordLength -MaximumValue 4096
-    $passwordCount = Read-IntegerChoice -Prompt "Number of passwords to generate" -DefaultValue $script:DefaultPasswordCount -MinimumValue 1 -MaximumValue 100
-    $passwords = New-SafePasswordSet -PasswordLength $passwordLength -PasswordCount $passwordCount -IncludeSpecialCharacters $includeSpecial
+    $specialCharacterPreset = Read-SpecialCharacterPreset
+    $passwordLength = Read-IntegerChoice -Prompt (Get-PasswordMessage -Key "password_length") -DefaultValue $script:DefaultPasswordLength -MinimumValue $script:MinimumPasswordLength -MaximumValue 4096
+    $passwordCount = Read-IntegerChoice -Prompt (Get-PasswordMessage -Key "password_count") -DefaultValue $script:DefaultPasswordCount -MinimumValue 1 -MaximumValue 100
+    $passwords = New-SafePasswordSet -PasswordLength $passwordLength -PasswordCount $passwordCount -SpecialCharacterPreset $specialCharacterPreset
 
     while ($true) {
         $delivery = Read-DeliveryChoice
@@ -332,8 +453,8 @@ function Invoke-SafePasswordGenerator {
             }
         }
         catch {
-            Write-Host "Delivery failed: $($_.Exception.Message)" -ForegroundColor Red
-            Write-Host "Please choose another delivery method." -ForegroundColor Yellow
+            Write-Host (Get-PasswordMessage -Key "delivery_failed" -Arguments $_.Exception.Message) -ForegroundColor Red
+            Write-Host (Get-PasswordMessage -Key "delivery_retry") -ForegroundColor Yellow
         }
     }
 }
