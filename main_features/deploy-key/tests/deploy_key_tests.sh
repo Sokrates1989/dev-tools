@@ -15,9 +15,11 @@ REPOSITORY_ROOT="$(cd "${FEATURE_DIRECTORY}/../.." && pwd)"
 # shellcheck source-path=SCRIPTDIR/..
 # shellcheck source=deploy_key_core.sh
 source "${FEATURE_DIRECTORY}/deploy_key_core.sh"
-# The runtime-resolved sibling path is exercised by this test.
+# Runtime-resolved sibling paths are exercised by this test.
 # shellcheck disable=SC1091
 source "${FEATURE_DIRECTORY}/deploy_key_ui.sh"
+# shellcheck disable=SC1091
+source "${FEATURE_DIRECTORY}/deploy_key_instructions.sh"
 
 if ! command -v ssh-keygen >/dev/null 2>&1; then
     printf 'ssh-keygen is required for Deploy Key Manager tests.\n' >&2
@@ -238,6 +240,34 @@ if [[ "$invocation_output" == *'BEGIN OPENSSH PRIVATE KEY'* ]]; then
 fi
 if [ -e "${invocation_home}/.ssh/config" ]; then
     printf 'Entrypoint unexpectedly modified SSH configuration.\n' >&2
+    exit 1
+fi
+
+provider_only_output=$(printf '%s\n' \
+    'https://github.com/my-user/server-info.git' | \
+    HOME="$invocation_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=provider \
+        bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh")
+assert_contains 'GitHub setup' "$provider_only_output" 'Provider mode omitted GitHub instructions'
+if [[ "$provider_only_output" == *'SSH configuration'* ]]; then
+    printf 'Provider mode unexpectedly printed server SSH instructions.\n' >&2
+    exit 1
+fi
+
+ssh_only_output=$(printf '%s\n' \
+    'https://github.com/my-user/server-info.git' | \
+    HOME="$invocation_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=ssh \
+        bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh")
+assert_contains 'SSH configuration' "$ssh_only_output" 'SSH mode omitted server instructions'
+assert_contains 'git remote set-url origin git@' "$ssh_only_output" 'SSH mode omitted Git commands'
+if [[ "$ssh_only_output" == *'GitHub setup'* ]]; then
+    printf 'SSH mode unexpectedly printed provider-registration instructions.\n' >&2
+    exit 1
+fi
+
+if printf '%s\n' 'https://github.com/my-user/server-info.git' | \
+    HOME="$invocation_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=unsupported \
+        bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh" >/dev/null 2>&1; then
+    printf 'An unsupported instruction mode was accepted.\n' >&2
     exit 1
 fi
 

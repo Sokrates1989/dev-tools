@@ -310,6 +310,8 @@ Quick command: `--password` or `--pw`
   permissions.
 - Prints the public key, GitHub registration steps, a repository-specific SSH
   alias, and exact clone/fetch/test commands.
+- Asks whether to show provider registration, server SSH/Git configuration, or
+  both setup stages.
 - Leaves GitHub write access disabled by default and never edits
   `~/.ssh/config`.
 

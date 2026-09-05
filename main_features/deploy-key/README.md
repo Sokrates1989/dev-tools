@@ -47,6 +47,35 @@ github.com__my-user__server-info__netcup-server.pub
 The SSH directories use mode `700`, private keys use `600`, and public keys use
 `644`. The private key is never printed or copied outside this directory.
 
+## Guided Setup Stages
+
+After printing the public key, an interactive run explains that a working
+deploy-key connection has two required stages and asks which instructions to
+show:
+
+1. **Repository provider**: add the public key to GitHub or the detected
+   provider.
+2. **This server**: configure the repository-specific SSH alias and Git remote.
+3. **Both stages**: show the provider and server instructions together.
+
+The first option is the interactive default. Selecting one stage only changes
+the displayed instructions; it does not change or regenerate the key. Run the
+helper again to view the other stage.
+
+The selection, dispatch, GitHub renderer, provider-neutral renderer, and
+server SSH/Git renderer live in `deploy_key_instructions.sh`. Adding another
+provider or independently selectable instruction stage does not require
+changing the key lifecycle.
+
+For non-interactive use, the helper shows both stages by default. Set an
+explicit mode when only one section is wanted:
+
+```bash
+DEPLOY_KEY_INSTRUCTION_MODE=provider dev-tools --deploy-key
+DEPLOY_KEY_INSTRUCTION_MODE=ssh dev-tools --deploy-key
+DEPLOY_KEY_INSTRUCTION_MODE=both dev-tools --deploy-key
+```
+
 ## Idempotency and Recovery
 
 - When both files exist and match, the helper reuses them.

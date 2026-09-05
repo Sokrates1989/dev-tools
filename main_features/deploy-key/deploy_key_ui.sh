@@ -1,9 +1,9 @@
 #!/bin/bash
 #
-# Interactive prompts and result output for the Deploy Key Manager.
+# Interactive repository input and result output for the Deploy Key Manager.
 #
-# This module consumes deploy_key_core.sh and localized root catalogs. It only
-# prints SSH configuration instructions and never changes ~/.ssh/config.
+# This module consumes deploy_key_core.sh, deploy_key_instructions.sh, and
+# localized root catalogs. It never changes ~/.ssh/config.
 #
 
 DEPLOY_KEY_LOCALE_FILE=""
@@ -104,6 +104,7 @@ show_deploy_key_help() {
     printf '%s\n' "$(get_deploy_key_message deploy_key.help.description)"
     printf '%s\n' "$(get_deploy_key_message deploy_key.help.input)"
     printf '%s\n' "$(get_deploy_key_message deploy_key.help.storage)"
+    printf '%s\n' "$(get_deploy_key_message deploy_key.help.instructions)"
 }
 
 # Collects a complete immediately available paste block from standard input.
@@ -199,64 +200,6 @@ get_deploy_key_display_path() {
     esac
 }
 
-# Prints the GitHub deploy-key registration steps.
-#
-# Arguments:
-#   $1 - hostname: detected server hostname.
-show_github_deploy_key_instructions() {
-    local hostname="$1"
-
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.heading)"
-    printf '\n'
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.step_open)"
-    printf '\nhttps://github.com/%s/%s/settings/keys\n\n' "$DEPLOY_KEY_OWNER" "$DEPLOY_KEY_REPOSITORY"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.step_add)"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.step_title)"
-    printf '\n%s - %s\n\n' "$hostname" "$DEPLOY_KEY_REPOSITORY"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.step_paste)"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.github.step_read_only)"
-    printf '\n%s\n' "$(get_deploy_key_message deploy_key.github.read_only_explanation)"
-}
-
-# Prints provider-neutral deploy-key registration guidance.
-show_generic_deploy_key_instructions() {
-    printf '%s\n' "$(get_deploy_key_message deploy_key.generic.heading)"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.generic.instructions)"
-}
-
-# Prints exact SSH config and Git commands for the managed key.
-#
-# Arguments:
-#   $1 - ssh_alias: repository-specific SSH alias.
-#   $2 - displayed_private_path: private key location, never its contents.
-show_deploy_key_usage_instructions() {
-    local ssh_alias="$1"
-    local displayed_private_path="$2"
-    local remote_url="git@${ssh_alias}:${DEPLOY_KEY_OWNER}/${DEPLOY_KEY_REPOSITORY}.git"
-
-    printf '\n%s\n' "$(get_deploy_key_message deploy_key.ssh.heading)"
-    printf '%s\n' "$(get_deploy_key_message deploy_key.ssh.preserve_config)"
-    printf '\nHost %s\n' "$ssh_alias"
-    printf '    HostName %s\n' "$DEPLOY_KEY_PROVIDER"
-    printf '    User git\n'
-    printf '    IdentityFile %s\n' "$displayed_private_path"
-    printf '    IdentitiesOnly yes\n'
-
-    printf '\n%s\n\n%s\n' \
-        "$(get_deploy_key_message deploy_key.remote.heading)" "$remote_url"
-    printf '\n%s\n\n' "$(get_deploy_key_message deploy_key.existing_clone.heading)"
-    printf 'git remote set-url origin %s\n' "$remote_url"
-    printf 'git remote -v\n'
-    printf 'git fetch\n'
-    printf '\n%s\n\n' "$(get_deploy_key_message deploy_key.new_clone.heading)"
-    printf 'git clone %s\n' "$remote_url"
-    printf '\n%s\n\n' "$(get_deploy_key_message deploy_key.test.heading)"
-    printf 'ssh -T git@%s\n' "$ssh_alias"
-    if [ "$DEPLOY_KEY_PROVIDER" = "github.com" ]; then
-        printf '\n%s\n' "$(get_deploy_key_message deploy_key.test.github_note)"
-    fi
-}
-
 # Prints the safe recovery explanation for an incomplete managed key pair.
 #
 # Arguments:
@@ -286,6 +229,7 @@ show_deploy_key_result() {
     local key_comment="$3"
     local public_key_path="${private_key_path}.pub"
     local displayed_private_path displayed_public_path ssh_alias public_material status_text
+    local provider_label
 
     displayed_private_path=$(get_deploy_key_display_path "$private_key_path")
     displayed_public_path=$(get_deploy_key_display_path "$public_key_path")
@@ -323,12 +267,13 @@ show_deploy_key_result() {
         "$(get_deploy_key_message deploy_key.public_key.divider)"
     printf '%s %s\n\n' "$public_material" "$key_comment"
 
-    if [ "$DEPLOY_KEY_PROVIDER" = "github.com" ]; then
-        show_github_deploy_key_instructions "$hostname"
-    else
-        show_generic_deploy_key_instructions
-    fi
-    show_deploy_key_usage_instructions "$ssh_alias" "$displayed_private_path"
+    provider_label=$(get_deploy_key_provider_label)
+    select_deploy_key_instruction_mode "$provider_label" || return 1
+    show_selected_deploy_key_instructions \
+        "$DEPLOY_KEY_SELECTED_INSTRUCTION_MODE" \
+        "$hostname" \
+        "$ssh_alias" \
+        "$displayed_private_path"
 }
 
 # Runs the complete interactive Deploy Key Manager workflow.
@@ -400,7 +345,7 @@ invoke_deploy_key_manager() {
     key_comment="dev-tools deploy key | ${DEPLOY_KEY_REPOSITORY_ID} | ${hostname}"
 
     if ensure_managed_deploy_key "$private_key_path" "$key_comment"; then
-        show_deploy_key_result "$hostname" "$private_key_path" "$key_comment"
+        show_deploy_key_result "$hostname" "$private_key_path" "$key_comment" || return 1
         return 0
     else
         ensure_status=$?
