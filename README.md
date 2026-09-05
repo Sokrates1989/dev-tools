@@ -308,8 +308,8 @@ Quick command: `--password` or `--pw`
 - Reuses an existing managed key and recovers a missing public-key file.
 - Stores keys below `~/.ssh/dev-tools/deploy-keys/` with restrictive
   permissions.
-- Prints the public key, GitHub registration steps, a repository-specific SSH
-  alias, and exact clone/fetch/test commands.
+- Prints the public key, GitHub registration steps, and directly executable
+  repository-local SSH clone/fetch/test commands.
 - Asks whether to show provider registration, server SSH/Git configuration, or
   both setup stages.
 - Leaves GitHub write access disabled by default and never edits

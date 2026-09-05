@@ -55,7 +55,7 @@ show:
 
 1. **Repository provider**: add the public key to GitHub or the detected
    provider.
-2. **This server**: configure the repository-specific SSH alias and Git remote.
+2. **This server**: configure the checkout to use the managed key over SSH.
 3. **Both stages**: show the provider and server instructions together.
 
 The first option is the interactive default. Selecting one stage only changes
@@ -93,10 +93,17 @@ The result includes the repository's exact GitHub deploy-key settings URL, a
 suggested title, and a reminder to leave **Allow write access** disabled for
 normal clone, fetch, and pull deployments.
 
-Each repository receives a dedicated SSH alias. Copy the printed block into
-`~/.ssh/config`, preserving any existing entries, and then use the printed
-repository-specific remote URL. The helper also prints exact commands for an
-existing checkout, a new clone, and an SSH connection test.
+For a matching current checkout, the helper prints one complete copy-paste
+block containing its detected absolute path, the managed private-key path, a
+repository-local `core.sshCommand`, the canonical SSH remote, and a fetch. This
+keeps different repositories on separate deploy keys without changing the
+user's global `~/.ssh/config`. When no matching checkout can be detected, the
+same block uses an explicit path placeholder that must be replaced first.
+
+New-clone instructions use `GIT_SSH_COMMAND` for the clone and then persist the
+same repository-local `core.sshCommand`. Previously printed deterministic SSH
+aliases remain accepted as repository input so an affected checkout can be
+migrated by rerunning the helper.
 
 ## Supported Remotes
 

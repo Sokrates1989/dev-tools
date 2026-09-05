@@ -6,6 +6,9 @@
 # read, changed, or removed.
 #
 
+# Literal dollar expressions verify generated copy-paste command variables.
+# shellcheck disable=SC2016
+
 set -euo pipefail
 
 TEST_SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -21,10 +24,12 @@ source "${FEATURE_DIRECTORY}/deploy_key_ui.sh"
 # shellcheck disable=SC1091
 source "${FEATURE_DIRECTORY}/deploy_key_instructions.sh"
 
-if ! command -v ssh-keygen >/dev/null 2>&1; then
-    printf 'ssh-keygen is required for Deploy Key Manager tests.\n' >&2
-    exit 1
-fi
+for required_command in ssh-keygen git; do
+    if ! command -v "$required_command" >/dev/null 2>&1; then
+        printf '%s is required for Deploy Key Manager tests.\n' "$required_command" >&2
+        exit 1
+    fi
+done
 
 TEST_TEMP_PARENT="${TMPDIR:-/tmp}"
 TEST_ROOT="$(mktemp -d "${TEST_TEMP_PARENT%/}/dev-tools-deploy-key-tests.XXXXXX")"
@@ -96,6 +101,11 @@ assert_repository_parse \
     'git@github.com:my-user/server-info.git' \
     'github.com/my-user/server-info' \
     'GitHub SCP-style SSH remote'
+legacy_alias=$(get_deploy_key_ssh_alias github.com my-user server-info)
+assert_repository_parse \
+    "git@${legacy_alias}:my-user/server-info.git" \
+    'github.com/my-user/server-info' \
+    'Previously generated GitHub SSH alias'
 assert_repository_parse \
     'origin  https://github.com/my-user/server-info.git (fetch)' \
     'github.com/my-user/server-info' \
@@ -232,8 +242,14 @@ assert_contains 'github.com/my-user/server-info' "$invocation_output" 'Entrypoin
 assert_contains 'Status     : CREATED' "$invocation_output" 'Entrypoint omitted creation status'
 assert_contains 'PUBLIC KEY' "$invocation_output" 'Entrypoint omitted the public key section'
 assert_contains 'Allow write access' "$invocation_output" 'Entrypoint omitted read-only GitHub guidance'
-assert_contains 'git remote set-url origin git@' "$invocation_output" 'Entrypoint omitted existing-checkout command'
-assert_contains 'ssh -T git@' "$invocation_output" 'Entrypoint omitted connection-test command'
+assert_contains 'git -C "$REPOSITORY_DIR" config core.sshCommand' "$invocation_output" \
+    'Entrypoint omitted repository-local SSH configuration'
+assert_contains 'git -C "$REPOSITORY_DIR" remote set-url origin' "$invocation_output" \
+    'Entrypoint omitted existing-checkout remote command'
+assert_contains 'git@github.com:my-user/server-info.git' "$invocation_output" \
+    'Entrypoint omitted the canonical SSH remote'
+assert_contains 'ssh -T -i "$DEPLOY_KEY_PATH"' "$invocation_output" \
+    'Entrypoint omitted connection-test command'
 if [[ "$invocation_output" == *'BEGIN OPENSSH PRIVATE KEY'* ]]; then
     printf 'Entrypoint exposed private key material.\n' >&2
     exit 1
@@ -242,6 +258,47 @@ if [ -e "${invocation_home}/.ssh/config" ]; then
     printf 'Entrypoint unexpectedly modified SSH configuration.\n' >&2
     exit 1
 fi
+
+matching_checkout="${TEST_ROOT}/matching checkout"
+matching_home="${TEST_ROOT}/matching-home"
+mkdir -p "$matching_checkout"
+git -C "$matching_checkout" init --quiet
+git -C "$matching_checkout" remote add origin \
+    'https://github.com/my-user/server-info.git'
+matching_checkout_output=$(
+    cd "$matching_checkout"
+    printf '%s\n' 'https://github.com/my-user/server-info.git' | \
+        HOME="$matching_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=ssh \
+            bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh"
+)
+matching_checkout_root=$(git -C "$matching_checkout" rev-parse --show-toplevel)
+printf -v expected_checkout_assignment 'REPOSITORY_DIR=%q' "$matching_checkout_root"
+assert_contains "$expected_checkout_assignment" "$matching_checkout_output" \
+    'Detected checkout path was not emitted as a safe assignment'
+assert_contains 'Copy and run this complete block' "$matching_checkout_output" \
+    'Detected checkout did not receive direct setup guidance'
+assert_contains 'git -C "$REPOSITORY_DIR" config core.sshCommand' \
+    "$matching_checkout_output" \
+    'Detected checkout omitted repository-local key configuration'
+if [[ "$matching_checkout_output" == *'/path/to/server-info'* ]]; then
+    printf 'A matching checkout unexpectedly received a path placeholder.\n' >&2
+    exit 1
+fi
+
+git -C "$matching_checkout" remote set-url origin \
+    "git@${legacy_alias}:my-user/server-info.git"
+legacy_checkout_output=$(
+    cd "$matching_checkout"
+    printf '\n' | \
+        HOME="$matching_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=ssh \
+            bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh"
+)
+assert_contains 'github.com/my-user/server-info' "$legacy_checkout_output" \
+    'Previously generated alias was not normalized in a current checkout'
+assert_contains "$expected_checkout_assignment" "$legacy_checkout_output" \
+    'Previously generated alias prevented checkout-path detection'
+assert_contains 'git@github.com:my-user/server-info.git' "$legacy_checkout_output" \
+    'Previously generated alias was not migrated to the canonical SSH remote'
 
 provider_only_output=$(printf '%s\n' \
     'https://github.com/my-user/server-info.git' | \
@@ -257,8 +314,10 @@ ssh_only_output=$(printf '%s\n' \
     'https://github.com/my-user/server-info.git' | \
     HOME="$invocation_home" DEV_TOOLS_LOCALE=en DEPLOY_KEY_INSTRUCTION_MODE=ssh \
         bash "${FEATURE_DIRECTORY}/deploy_key_manager.sh")
-assert_contains 'SSH configuration' "$ssh_only_output" 'SSH mode omitted server instructions'
-assert_contains 'git remote set-url origin git@' "$ssh_only_output" 'SSH mode omitted Git commands'
+assert_contains 'Server Git/SSH setup' "$ssh_only_output" \
+    'SSH mode omitted server instructions'
+assert_contains 'git -C "$REPOSITORY_DIR" remote set-url origin' "$ssh_only_output" \
+    'SSH mode omitted Git commands'
 if [[ "$ssh_only_output" == *'GitHub setup'* ]]; then
     printf 'SSH mode unexpectedly printed provider-registration instructions.\n' >&2
     exit 1

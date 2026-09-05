@@ -228,13 +228,11 @@ show_deploy_key_result() {
     local private_key_path="$2"
     local key_comment="$3"
     local public_key_path="${private_key_path}.pub"
-    local displayed_private_path displayed_public_path ssh_alias public_material status_text
-    local provider_label
+    local displayed_private_path displayed_public_path public_material status_text
+    local provider_label checkout_directory=""
 
     displayed_private_path=$(get_deploy_key_display_path "$private_key_path")
     displayed_public_path=$(get_deploy_key_display_path "$public_key_path")
-    ssh_alias=$(get_deploy_key_ssh_alias \
-        "$DEPLOY_KEY_PROVIDER" "$DEPLOY_KEY_OWNER" "$DEPLOY_KEY_REPOSITORY")
     public_material=$(derive_deploy_key_public_material "$private_key_path")
 
     if [ "$DEPLOY_KEY_STATUS" = "CREATED" ]; then
@@ -268,12 +266,13 @@ show_deploy_key_result() {
     printf '%s %s\n\n' "$public_material" "$key_comment"
 
     provider_label=$(get_deploy_key_provider_label)
+    checkout_directory=$(get_matching_deploy_key_checkout_directory || true)
     select_deploy_key_instruction_mode "$provider_label" || return 1
     show_selected_deploy_key_instructions \
         "$DEPLOY_KEY_SELECTED_INSTRUCTION_MODE" \
         "$hostname" \
-        "$ssh_alias" \
-        "$displayed_private_path"
+        "$private_key_path" \
+        "$checkout_directory"
 }
 
 # Runs the complete interactive Deploy Key Manager workflow.

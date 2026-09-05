@@ -26,7 +26,7 @@ DEPLOY_KEY_PUBLIC_RECOVERED="false"
 #   0 for a valid host/owner/repository URL; 1 otherwise.
 normalize_deploy_key_repository_url() {
     local candidate="$1"
-    local authority path host owner repository
+    local authority path host owner repository expected_legacy_alias
 
     candidate="${candidate%$'\r'}"
     candidate="${candidate%%\#*}"
@@ -87,6 +87,15 @@ normalize_deploy_key_repository_url() {
     fi
 
     host="${host,,}"
+    if [[ "$host" == github.com-* ]]; then
+        owner="${owner,,}"
+        repository="${repository,,}"
+        expected_legacy_alias=$(get_deploy_key_ssh_alias \
+            github.com "$owner" "$repository") || return 1
+        if [ "$host" = "$expected_legacy_alias" ]; then
+            host="github.com"
+        fi
+    fi
     if [ "$host" = "github.com" ]; then
         owner="${owner,,}"
         repository="${repository,,}"
