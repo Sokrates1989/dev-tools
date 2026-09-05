@@ -30,6 +30,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 5. [🧭 Toolbox Features](#-toolbox-features)
    - [🧱 Commit Exporter](#-commit-exporter)
    - [🔍 Git Log Explorer](#-git-log-explorer)
+   - [🔑 Deploy Key Manager](#-deploy-key-manager)
 
 6. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
@@ -139,6 +140,7 @@ dev-tools --commit   # quick launch: export staged files
 dev-tools --cc       # quick launch: show commit style instructions for external AI
 dev-tools --log      # quick launch: Git log explorer
 dev-tools --password # quick launch: generate safe passwords
+dev-tools --deploy-key # quick launch: create or show a server deploy key
 ```
 
 ---
@@ -299,11 +301,32 @@ Quick command: `--password` or `--pw`
 
 ---
 
+### 🔑 Deploy Key Manager
+
+- Accepts an HTTPS URL, SSH URL, or complete `git remote -v` paste.
+- Creates one ED25519 key for the normalized repository and current hostname.
+- Reuses an existing managed key and recovers a missing public-key file.
+- Stores keys below `~/.ssh/dev-tools/deploy-keys/` with restrictive
+  permissions.
+- Prints the public key, GitHub registration steps, a repository-specific SSH
+  alias, and exact clone/fetch/test commands.
+- Leaves GitHub write access disabled by default and never edits
+  `~/.ssh/config`.
+
+Quick command: `--deploy-key` or `--dk` on the Bash launcher.
+
+See [main_features/deploy-key/README.md](main_features/deploy-key/README.md) for
+the complete workflow and recovery behavior.
+
+---
+
 ## 🪟 Platform Support
 
 ### 🖥️ Linux / macOS
 
 Use the `start.sh` entry point. Scripts auto-detect X11/Wayland GUI or terminal-only environments.
+The Deploy Key Manager is available through this Bash entry point for
+server-side repository access.
 
 ::: tip
 Use `Ctrl + H` to show hidden files (e.g., `.gitignore`) in most Linux file managers.

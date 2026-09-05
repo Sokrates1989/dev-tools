@@ -92,6 +92,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh" "${@:2}"
             exit 0
             ;;
+        --deploy-key|--dk)
+            bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh" "${@:2}"
+            exit 0
+            ;;
         --settings|--cfg|-cfg|--config)
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
             exit 0
@@ -134,6 +138,7 @@ if [[ $# -gt 0 ]]; then
             echo ""
             echo "Security:"
             echo "  --password | --pw      -> Generate safe passwords"
+            printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_usage)"
             echo ""
             echo "⚙️  Configuration:"
             echo "  --settings | --cfg | -cfg | --config → Edit .env settings/config"
@@ -174,11 +179,12 @@ echo ""
 echo "🔧 Repair & Maintenance (13):"
 echo "13) 🔧 Repair Corrupted Git Repository  [--repair | --fix | -f]"
 echo ""
-echo "Security (14):"
+printf '%s\n' "$(get_dev_tools_update_message launcher.security_heading)"
 echo "14) Generate Safe Passwords              [--password | --pw]"
+printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_menu)"
 echo ""
-echo "⚙️  Configuration (15):"
-echo "15) ⚙️  Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
+printf '⚙️  %s\n' "$(get_dev_tools_update_message launcher.configuration_heading)"
+printf '%s\n' "$(get_dev_tools_update_message launcher.settings_menu)"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -186,7 +192,7 @@ fi
 echo "q) ❌ Exit"
 echo ""
 
-read -r -p "Enter your choice [1-15, cc, u, q, or option name]: " choice
+read -r -p "$(get_dev_tools_update_message launcher.choice_prompt) " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
@@ -237,7 +243,10 @@ case "$choice_lower" in
   14|"password"|"--password"|"pw"|"--pw")
     bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh"
     ;;
-  15|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
+  15|"deploy-key"|"--deploy-key"|"dk"|"--dk")
+    bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh"
+    ;;
+  16|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
     bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
     ;;
   "u"|"update"|"--update"|"-u")
@@ -255,6 +264,6 @@ case "$choice_lower" in
     ;;
   *)
     echo "❌ Invalid choice: $choice"
-    echo "Valid options: 1-15, cc, u, q, or option names like 'commit', '--cc', '--merge', '-l', 'stash', 'repair', 'password', 'settings', etc."
+    printf '%s\n' "$(get_dev_tools_update_message launcher.invalid_choices)"
     ;;
 esac
