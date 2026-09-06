@@ -29,6 +29,45 @@ if [ "$SKIP_UPDATE_GUARD" = "false" ] && [ "$IS_EXPLICIT_UPDATE" = "false" ]; th
     fi
 fi
 
+# Prints the complete top-level command reference.
+show_dev_tools_help() {
+    printf '%s\n%s\n\n' \
+        "$(get_dev_tools_update_message launcher.help.usage)" \
+        "$(get_dev_tools_update_message launcher.help.description)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.core_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.commit)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.cc)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.merge)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.readme)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.stash)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.branch_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.branch_cleanup)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.sync_branches)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.track_remote)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.create_branch)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.debug_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.log)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.amend)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.cleanup_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.remove_gitignored)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.reset)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.maintenance_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.repair)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.update)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.security_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.password)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.deploy_key)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.configuration_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.settings)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.cls)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.general_heading)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.help)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.examples_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_menu)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_cls)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.cls_note)"
+}
+
 # --- Argument-based quick start ---
 if [[ $# -gt 0 ]]; then
     case "$1" in
@@ -96,8 +135,16 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh" "${@:2}"
             exit 0
             ;;
+        --cls)
+            bash "$ROOT_DIR/main_features/cls/cls_installer.sh" "${@:2}"
+            exit $?
+            ;;
         --settings|--cfg|-cfg|--config)
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
+            exit 0
+            ;;
+        --help|-h|help)
+            show_dev_tools_help
             exit 0
             ;;
         --update|-u)
@@ -110,38 +157,7 @@ if [[ $# -gt 0 ]]; then
         *)
             echo "❌ Unknown argument: $1"
             echo ""
-            echo "Usage:"
-            echo ""
-            echo "🔄 Core Operations:"
-            echo "  --commit | -c | --cm   → Commit Message Helper"
-            echo "  --cc     | -cc         → Commit style instructions for external AI"
-            echo "  --merge  | -m | --me   → Merge commit assistant"
-            echo "  --readme | -r | --rd   → Show README creation instructions"
-            echo "  --stash  | -st | --st  → Git Stash Manager"
-            echo ""
-            echo "🔄 Branch Management:"
-            echo "  --branch-cleanup | -b | --bc → Clean Up Merged Branches"
-            echo "  --sync-branches | -s | --sb → Sync All Branches"
-            echo "  --track-remote | -t | --tr → Track Remote Branches"
-            echo "  --create-branch | -n | --nb | --cnb → Create New Branch"
-            echo ""
-            echo "🔍 Debug & Investigation:"
-            echo "  --log    | -l | --lg   → Git log explorer"
-            echo "  --amend  | -a | --am   → Amend Last Commit"
-            echo ""
-            echo "🧹 Cleanup & Reset:"
-            echo "  --remove-gitignored | -i | --rg → Remove Gitignored Files"
-            echo "  --reset  | -x | --re   → Reset Local Git Changes"
-            echo ""
-            echo "🔧 Repair & Maintenance:"
-            echo "  --repair | --fix | -f  → Repair Corrupted Git Repository"
-            echo ""
-            echo "Security:"
-            echo "  --password | --pw      -> Generate safe passwords"
-            printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_usage)"
-            echo ""
-            echo "⚙️  Configuration:"
-            echo "  --settings | --cfg | -cfg | --config → Edit .env settings/config"
+            show_dev_tools_help
             exit 1
             ;;
     esac
@@ -185,6 +201,7 @@ printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_menu)"
 echo ""
 printf '⚙️  %s\n' "$(get_dev_tools_update_message launcher.configuration_heading)"
 printf '%s\n' "$(get_dev_tools_update_message launcher.settings_menu)"
+printf '%s\n' "$(get_dev_tools_update_message launcher.cls_menu)"
 echo ""
 if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
     echo "u) 🔄 Update Dev Tools now            [--update | -u]"
@@ -248,6 +265,9 @@ case "$choice_lower" in
     ;;
   16|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
     bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
+    ;;
+  17|"cls"|"--cls")
+    bash "$ROOT_DIR/main_features/cls/cls_installer.sh"
     ;;
   "u"|"update"|"--update"|"-u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then

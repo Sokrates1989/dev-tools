@@ -30,6 +30,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
 5. [🧭 Toolbox Features](#-toolbox-features)
    - [🧱 Commit Exporter](#-commit-exporter)
    - [🔍 Git Log Explorer](#-git-log-explorer)
+   - [🧹 cls Terminal Cleaner](#-cls-terminal-cleaner)
    - [🔑 Deploy Key Manager](#-deploy-key-manager)
 
 6. [🪟 Platform Support](#-platform-support)
@@ -141,6 +142,7 @@ dev-tools --cc       # quick launch: show commit style instructions for external
 dev-tools --log      # quick launch: Git log explorer
 dev-tools --password # quick launch: generate safe passwords
 dev-tools --deploy-key # quick launch: create or show a server deploy key
+dev-tools --cls      # install the persistent cls terminal cleaner
 ```
 
 ---
@@ -155,6 +157,7 @@ dev-tools         # launch the toolbox
 dev-tools -c      # quick export of staged Git commit
 dev-tools -cc     # show commit style instructions for external AI
 dev-tools --pw    # generate safe passwords
+dev-tools --cls   # install the persistent cls terminal cleaner
 ```
 
 ---
@@ -167,6 +170,7 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
 dev-tools -pw    # generate safe passwords
+dev-tools --cls  # install the persistent cls terminal cleaner
 open .           # open current folder in Explorer
 open C:\anywhere
 ```
@@ -298,6 +302,41 @@ Quick command: `--log` or `-l`
 - Recommends clipboard delivery to avoid terminal scrollback and plaintext files.
 
 Quick command: `--password` or `--pw`
+
+---
+
+### 🧹 cls Terminal Cleaner
+
+Install the persistent helper once, confirm the profile change, reload the
+profile as instructed, and then use the short command:
+
+```text
+dev-tools --cls
+cls
+```
+
+`Ctrl+L` and `clear` commonly clear only the visible screen while retaining
+scrollback. The `cls` helper sends these ANSI operations in order: cursor home,
+clear screen, and ED3 clear scrollback (`ESC[H`, `ESC[2J`, `ESC[3J`). Whether
+scrollback is actually removed depends on the terminal emulator's ANSI ED3
+support.
+
+The setup detects the user's shell rather than choosing only from the operating
+system. It supports Bash (`~/.bashrc`), Zsh (`~/.zshrc`), POSIX `sh` and BusyBox
+`ash` (`~/.profile`), and PowerShell (`$PROFILE`). BusyBox loads `~/.profile`
+for login shells, including typical SSH sessions; non-login sessions may need
+the printed `. ~/.profile` command. Unknown shells remain manual-only because
+the helper does not guess a startup file.
+
+Installation uses a clearly marked dev-tools block and is idempotent. An
+existing dev-tools block is reused or updated in place. A separate user-defined
+`cls` triggers an explicit override prompt. PowerShell's normal `cls` alias to
+`Clear-Host` is recognized as expected and is replaced only after confirmation.
+No profile is changed when installation is declined; the exact block and reload
+command are printed for manual installation instead.
+
+See [main_features/cls/README.md](main_features/cls/README.md) for profile,
+conflict, and recovery details.
 
 ---
 

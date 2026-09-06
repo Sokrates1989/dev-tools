@@ -32,6 +32,8 @@ param (
     [switch]$repair,  # repair
     [switch]$pw,  # safe password generator
     [switch]$password,  # safe password generator
+    [switch]$cls,  # cls terminal cleaner
+    [switch]$help,  # help
     [switch]$cfg,  # settings/config
     [switch]$settings,  # settings/config
     [switch]$config  # settings/config
@@ -66,6 +68,61 @@ if ($originalArguments.Count -eq 0) {
 #
 . "$RootDir\global_functions\update_manager.ps1"
 Initialize-DevToolsUpdateMessages -RootDir $RootDir
+
+<#
+.SYNOPSIS
+    Prints the complete top-level command reference.
+#>
+function Show-DevToolsHelp {
+    Write-Host (Get-DevToolsUpdateMessage -Key "launcher.help.usage")
+    Write-Host (Get-DevToolsUpdateMessage -Key "launcher.help.description")
+    Write-Host ""
+    foreach ($key in @(
+            "launcher.help.core_heading",
+            "launcher.help.commit",
+            "launcher.help.cc",
+            "launcher.help.merge",
+            "launcher.help.readme",
+            "launcher.help.stash",
+            "launcher.help.branch_heading",
+            "launcher.help.branch_cleanup",
+            "launcher.help.sync_branches",
+            "launcher.help.track_remote",
+            "launcher.help.create_branch",
+            "launcher.help.debug_heading",
+            "launcher.help.log",
+            "launcher.help.amend",
+            "launcher.help.cleanup_heading",
+            "launcher.help.remove_gitignored",
+            "launcher.help.reset",
+            "launcher.help.maintenance_heading",
+            "launcher.help.repair",
+            "launcher.help.update",
+            "launcher.help.security_heading",
+            "launcher.help.password",
+            "launcher.help.configuration_heading",
+            "launcher.help.settings",
+            "launcher.help.cls",
+            "launcher.help.general_heading",
+            "launcher.help.help",
+            "launcher.help.examples_heading",
+            "launcher.help.example_menu",
+            "launcher.help.example_cls",
+            "launcher.help.cls_note")) {
+        Write-Host (Get-DevToolsUpdateMessage -Key $key)
+        if ($key -in @(
+                "launcher.help.stash",
+                "launcher.help.create_branch",
+                "launcher.help.amend",
+                "launcher.help.reset",
+                "launcher.help.update",
+                "launcher.help.password",
+                "launcher.help.cls",
+                "launcher.help.help")) {
+            Write-Host ""
+        }
+    }
+}
 $skipUpdateGuard = $env:DEV_TOOLS_UPDATE_REPLAYED -eq "1"
 if ($skipUpdateGuard) {
     Remove-Item Env:\DEV_TOOLS_UPDATE_REPLAYED -ErrorAction SilentlyContinue
@@ -131,6 +188,10 @@ if ($gnuStyleArgument) {
         "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--pw" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
         "--password" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
+        "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1"; return }
+        "--help" { Show-DevToolsHelp; return }
+        "-h" { Show-DevToolsHelp; return }
+        "help" { Show-DevToolsHelp; return }
         "--cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "-cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "--settings" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
@@ -206,6 +267,14 @@ if ($pw -or $password) {
     & "$RootDir\main_features\password\generate_safe_passwords.ps1"
     return
 }
+if ($cls) {
+    & "$RootDir\main_features\cls\cls_installer.ps1"
+    return
+}
+if ($help) {
+    Show-DevToolsHelp
+    return
+}
 if ($cfg -or $settings -or $config) {
     & "$RootDir\main_features\settings\edit_settings.ps1"
     return
@@ -244,15 +313,16 @@ Write-Host ""
 Write-Host "Security (14):"
 Write-Host "14) Generate Safe Passwords          [--password | --pw]"
 Write-Host ""
-Write-Host "Configuration (15):"
+Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.configuration_heading")
 Write-Host "15) Edit Settings / Config (.env)    [--settings | --cfg | -cfg]"
+Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.cls_menu")
 if ($updateAvailable) {
     Write-Host "u) Update Dev Tools now"
 }
 Write-Host "q) Exit"
 Write-Host ""
 
-$choice = Read-Host "Enter your choice [1-15, cc, u, q, or option name]"
+$choice = Read-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.choice_prompt")
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
@@ -274,6 +344,7 @@ switch ($choiceLower) {
     { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
     { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
     { $_ -match "^(15|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
+    { $_ -match "^(16|cls|--cls)$" } { & "$RootDir\main_features\cls\cls_installer.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {
         if ($updateAvailable) {
             if (Invoke-DevToolsUpdate -RootDir $RootDir) {
@@ -286,6 +357,6 @@ switch ($choiceLower) {
     { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
     default { 
         Write-Host "Invalid choice: $choice"
-        Write-Host "Valid options: 1-15, cc, u, q, or option names like 'commit', '--cc', '--log', '-r', 'stash', 'repair', 'password', 'settings', etc."
+        Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.invalid_choices")
     }
 }
