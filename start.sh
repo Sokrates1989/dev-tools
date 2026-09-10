@@ -56,7 +56,8 @@ show_dev_tools_help() {
     printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.update)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.security_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.password)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.deploy_key)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.deploy_key)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.github_notifications)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.configuration_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.settings)"
     printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.cls)"
@@ -135,6 +136,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh" "${@:2}"
             exit 0
             ;;
+        --github-notifications|--gh-notifications)
+            bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh" "${@:2}"
+            exit $?
+            ;;
         --cls)
             bash "$ROOT_DIR/main_features/cls/cls_installer.sh" "${@:2}"
             exit $?
@@ -198,6 +203,7 @@ echo ""
 printf '%s\n' "$(get_dev_tools_update_message launcher.security_heading)"
 echo "14) Generate Safe Passwords              [--password | --pw]"
 printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_menu)"
+printf '%s\n' "$(get_dev_tools_update_message launcher.github_notifications_menu)"
 echo ""
 printf '⚙️  %s\n' "$(get_dev_tools_update_message launcher.configuration_heading)"
 printf '%s\n' "$(get_dev_tools_update_message launcher.settings_menu)"
@@ -262,6 +268,9 @@ case "$choice_lower" in
     ;;
   15|"deploy-key"|"--deploy-key"|"dk"|"--dk")
     bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh"
+    ;;
+  "gn"|"github-notifications"|"--github-notifications"|"gh-notifications"|"--gh-notifications")
+    bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh"
     ;;
   16|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
     bash "$ROOT_DIR/main_features/settings/edit_settings.sh"

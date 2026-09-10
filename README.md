@@ -32,6 +32,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
    - [🔍 Git Log Explorer](#-git-log-explorer)
    - [🧹 cls Terminal Cleaner](#-cls-terminal-cleaner)
    - [🔑 Deploy Key Manager](#-deploy-key-manager)
+   - [🔔 GitHub Notification Audit](#-github-notification-audit)
 
 6. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
@@ -142,6 +143,7 @@ dev-tools --cc       # quick launch: show commit style instructions for external
 dev-tools --log      # quick launch: Git log explorer
 dev-tools --password # quick launch: generate safe passwords
 dev-tools --deploy-key # quick launch: create or show a server deploy key
+dev-tools --github-notifications # audit owned repository subscriptions
 dev-tools --cls      # install the persistent cls terminal cleaner
 ```
 
@@ -157,6 +159,7 @@ dev-tools         # launch the toolbox
 dev-tools -c      # quick export of staged Git commit
 dev-tools -cc     # show commit style instructions for external AI
 dev-tools --pw    # generate safe passwords
+dev-tools --github-notifications # audit owned repository subscriptions
 dev-tools --cls   # install the persistent cls terminal cleaner
 ```
 
@@ -170,6 +173,7 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
 dev-tools -pw    # generate safe passwords
+dev-tools --github-notifications # audit owned repository subscriptions
 dev-tools --cls  # install the persistent cls terminal cleaner
 open .           # open current folder in Explorer
 open C:\anywhere
@@ -358,6 +362,29 @@ Quick command: `--deploy-key` or `--dk` on the Bash launcher.
 
 See [main_features/deploy-key/README.md](main_features/deploy-key/README.md) for
 the complete workflow and recovery behavior.
+
+---
+
+### 🔔 GitHub Notification Audit
+
+- Uses authenticated GitHub CLI API requests to audit active repositories owned
+  by the current account, including public and private repositories.
+- Follows pagination, skips archived repositories, and distinguishes subscribed,
+  not subscribed, ignored, and API-error states.
+- Prints copyable repository URLs for items requiring attention.
+- Never changes notification settings in its default audit mode.
+- Clearly reports that GitHub's public API cannot inspect or set the individual
+  **Watch → Custom** categories.
+
+Normal Git credentials support clone, fetch, pull, and push but do not provide
+this account-level notification audit. Install `gh` only if you use this feature,
+authenticate with `gh auth login`, then run `dev-tools --github-notifications`
+(or `--gh-notifications`). For actively maintained repositories, manually review
+**Issues**, **Pull requests**, and **Security alerts** under **Watch → Custom**.
+
+See
+[main_features/github-notifications/README.md](main_features/github-notifications/README.md)
+for installation, state semantics, tests, and the API limitation.
 
 ---
 
