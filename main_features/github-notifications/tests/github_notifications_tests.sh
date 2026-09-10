@@ -45,8 +45,9 @@ assert_not_contains() {
 
 # Fakes the gh command for authentication and paginated GraphQL watch states.
 gh() {
-    local joined=" $* " index literal_end_cursor=\$endCursor
-    if [ "${GH_MOCK_SCENARIO:-}" = "unauthenticated" ] &&
+    local joined=" $* " index error_state=BROKEN literal_end_cursor=\$endCursor
+    if { [ "${GH_MOCK_SCENARIO:-}" = "unauthenticated" ] ||
+        [ "${GH_MOCK_SCENARIO:-}" = "recoverable-login" ]; } &&
         [[ "$joined" == *" auth status "* ]]; then
         return 1
     fi
@@ -59,16 +60,30 @@ gh() {
             [[ "$joined" != *"$literal_end_cursor"* ]]; then
             return 70
         fi
-        if [ "${GH_MOCK_SCENARIO:-}" = "api-failure" ]; then
+        if [[ "$joined" == *'"UNREPRESENTED"'* ]]; then
+            return 71
+        fi
+        if [ "${GH_MOCK_SCENARIO:-}" = "api-failure" ] ||
+            [ "${GH_MOCK_SCENARIO:-}" = "recoverable-api-failure" ] ||
+            { [ "${GH_MOCK_SCENARIO:-}" = "environment-recoverable" ] &&
+                [ -n "${GITHUB_TOKEN:-}" ]; }; then
             printf 'gh: mock GraphQL access denied (HTTP 403)\n' >&2
             return 75
         fi
+        if [ "${GH_MOCK_SCENARIO:-}" = "client-failure" ]; then
+            printf 'function not defined: UNREPRESENTED/0\n' >&2
+            return 1
+        fi
+        if [ "${GH_MOCK_SCENARIO:-}" = "recovered-audit" ] ||
+            [ "${GH_MOCK_SCENARIO:-}" = "environment-recoverable" ]; then
+            error_state=SUBSCRIBED
+        fi
         printf '%s\t%s\t%s\t%s\t%s\n' \
             'audit-user/all-activity' false false SUBSCRIBED true \
-            'Sokrates1989/thunderbird-ai' false true UNREPRESENTED true \
+            'Sokrates1989/thunderbird-ai' false true null true \
             'audit-user/participating' false false UNSUBSCRIBED true \
             'audit-user/ignored' false false IGNORED true \
-            'audit-user/api-error' false false BROKEN true \
+            'audit-user/api-error' false false "$error_state" true \
             'audit-user/archived' true true SUBSCRIBED true
         for ((index = 1; index <= 101; index++)); do
             printf 'audit-user/bulk-%03d\tfalse\tfalse\tSUBSCRIBED\ttrue\n' "$index"
@@ -77,6 +92,31 @@ gh() {
     fi
     if [[ "$joined" == *" api "* && "$joined" == *" user "* ]]; then
         printf 'audit-user\n'
+        return 0
+    fi
+    return 64
+}
+
+MOCK_GITHUB_NOTIFICATIONS_INTERACTIVE=false
+MOCK_GITHUB_NOTIFICATIONS_CONFIRM=false
+
+is_github_notifications_interactive() {
+    [ "$MOCK_GITHUB_NOTIFICATIONS_INTERACTIVE" = "true" ]
+}
+
+confirm_github_notifications_recovery() {
+    [ "$MOCK_GITHUB_NOTIFICATIONS_CONFIRM" = "true" ]
+}
+
+run_github_notifications_gh_interactive() {
+    if [ "${GH_MOCK_SCENARIO:-}" = "recoverable-login" ] &&
+        [ "$*" = "auth login --hostname github.com" ]; then
+        GH_MOCK_SCENARIO=recovered-audit
+        return 0
+    fi
+    if [ "${GH_MOCK_SCENARIO:-}" = "recoverable-api-failure" ] &&
+        [ "$*" = "auth refresh --hostname github.com" ]; then
+        GH_MOCK_SCENARIO=recovered-audit
         return 0
     fi
     return 64
@@ -127,6 +167,42 @@ assert_contains 'gh auth status --active --hostname github.com' "$api_failure_ou
 assert_contains 'Keep GITHUB_TOKEN' "$api_failure_output" 'Environment-token replacement option is missing'
 assert_not_contains 'hidden-mock-token' "$api_failure_output" 'Environment-token value was exposed'
 unset GITHUB_TOKEN
+
+GH_MOCK_SCENARIO=client-failure
+MOCK_GITHUB_NOTIFICATIONS_INTERACTIVE=true
+MOCK_GITHUB_NOTIFICATIONS_CONFIRM=true
+set +e
+client_failure_output=$(invoke_github_notifications_audit 2>&1)
+client_failure_status=$?
+set -e
+assert_equal 1 "$client_failure_status" 'A client-side gh failure did not fail the audit'
+assert_contains 'not being treated as an authentication problem' "$client_failure_output" 'Client-side failure was misclassified'
+assert_not_contains 'gh auth refresh --hostname github.com' "$client_failure_output" 'Client-side failure suggested an authentication refresh'
+
+GH_MOCK_SCENARIO=recoverable-login
+login_recovery_output=$(invoke_github_notifications_audit 2>&1)
+assert_equal 2 "$(grep -c '^GitHub Notification Audit$' <<< "$login_recovery_output")" 'Audit did not rerun after gh auth login'
+assert_contains 'Errors:                              0' "$login_recovery_output" 'Login recovery did not complete successfully'
+
+GH_MOCK_SCENARIO=recoverable-api-failure
+set +e
+recovery_output=$(invoke_github_notifications_audit 2>&1)
+recovery_status=$?
+set -e
+assert_equal 0 "$recovery_status" 'Recovered audit did not complete successfully'
+assert_equal 2 "$(grep -c '^GitHub Notification Audit$' <<< "$recovery_output")" 'Audit did not rerun after gh auth refresh'
+assert_contains 'Recovery step completed.' "$recovery_output" 'Automatic retry message is missing'
+assert_contains 'Errors:                              0' "$recovery_output" 'Recovered audit did not complete successfully'
+
+GH_MOCK_SCENARIO=environment-recoverable
+GITHUB_TOKEN=hidden-mock-token
+environment_recovery_output=$(invoke_github_notifications_audit 2>&1)
+assert_equal 2 "$(grep -c '^GitHub Notification Audit$' <<< "$environment_recovery_output")" 'Audit did not rerun after ignoring the environment token'
+assert_contains 'stored gh credentials (no environment-token override detected)' "$environment_recovery_output" 'Stored credentials were not selected on retry'
+assert_contains 'Errors:                              0' "$environment_recovery_output" 'Environment-token recovery did not complete successfully'
+unset GITHUB_TOKEN
+MOCK_GITHUB_NOTIFICATIONS_INTERACTIVE=false
+MOCK_GITHUB_NOTIFICATIONS_CONFIRM=false
 
 GH_MOCK_SCENARIO=audit
 set +e

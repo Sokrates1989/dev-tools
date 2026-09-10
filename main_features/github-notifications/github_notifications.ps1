@@ -190,11 +190,126 @@ function Show-GitHubNotificationsApiDiagnostics {
     if (-not [string]::IsNullOrEmpty($EnvironmentTokenName)) {
         Show-GitHubNotificationsEnvironmentTokenMitigation -EnvironmentTokenName $EnvironmentTokenName
     }
-    else {
+    elseif (Test-GitHubNotificationsApiAuthenticationFailure -Detail $Detail) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.refresh")
         Write-Output "  gh auth status --active --hostname github.com"
         Write-Output "  gh auth refresh --hostname github.com"
     }
+    else {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.non_auth")
+    }
+}
+
+<#
+.SYNOPSIS
+    Reports whether gh returned an authentication or authorization HTTP status.
+#>
+function Test-GitHubNotificationsApiAuthenticationFailure {
+    param([string]$Detail)
+    return $Detail -match "HTTP\s+(401|403)"
+}
+
+<#
+.SYNOPSIS
+    Reports whether prompting is safe for the current terminal.
+#>
+function Test-GitHubNotificationsInteractive {
+    try {
+        return -not [Console]::IsInputRedirected
+    }
+    catch {
+        return $false
+    }
+}
+
+<#
+.SYNOPSIS
+    Requests a localized yes/no decision without exposing credential values.
+#>
+function Confirm-GitHubNotificationsRecovery {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$MessageKey,
+        [Parameter(Mandatory = $true)]
+        [bool]$DefaultYes,
+        [string[]]$Arguments = @()
+    )
+
+    $message = Get-DevToolsUpdateMessage -Key $MessageKey -Arguments $Arguments
+    $response = Read-Host -Prompt $message
+    if ([string]::IsNullOrWhiteSpace($response)) {
+        return $DefaultYes
+    }
+    return $response -match "^(?i:y|yes|j|ja)$"
+}
+
+<#
+.SYNOPSIS
+    Runs an interactive gh authentication command with live terminal output.
+#>
+function Invoke-GitHubNotificationsGhInteractive {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string[]]$Arguments
+    )
+
+    $processArguments = @{
+        FilePath = $script:GitHubNotificationsGhCommand
+        ArgumentList = $Arguments
+        NoNewWindow = $true
+        Wait = $true
+        PassThru = $true
+    }
+    $process = Start-Process @processArguments
+    return $process.ExitCode
+}
+
+<#
+.SYNOPSIS
+    Applies one explicitly confirmed recovery step before a single audit retry.
+#>
+function Invoke-GitHubNotificationsAuthenticationRecovery {
+    param(
+        [string]$EnvironmentTokenName,
+        [Parameter(Mandatory = $true)]
+        [ValidateSet("login", "refresh")]
+        [string]$RecoveryAction
+    )
+
+    if (-not (Test-GitHubNotificationsInteractive)) {
+        return $false
+    }
+
+    if (-not [string]::IsNullOrEmpty($EnvironmentTokenName)) {
+        $confirmationParameters = @{
+            MessageKey = "github_notifications.auth.recovery.environment_prompt"
+            DefaultYes = $false
+            Arguments = @($EnvironmentTokenName)
+        }
+        $confirmed = Confirm-GitHubNotificationsRecovery @confirmationParameters
+        if (-not $confirmed) {
+            return $false
+        }
+        Remove-Item Env:\GH_TOKEN -ErrorAction SilentlyContinue
+        Remove-Item Env:\GITHUB_TOKEN -ErrorAction SilentlyContinue
+    }
+    else {
+        $promptKey = "github_notifications.auth.recovery.$($RecoveryAction)_prompt"
+        $runningKey = "github_notifications.auth.recovery.$($RecoveryAction)_running"
+        if (-not (Confirm-GitHubNotificationsRecovery -MessageKey $promptKey -DefaultYes $true)) {
+            return $false
+        }
+        Write-Host (Get-DevToolsUpdateMessage -Key $runningKey)
+        $exitCode = Invoke-GitHubNotificationsGhInteractive -Arguments @(
+            "auth", $RecoveryAction, "--hostname", "github.com")
+        if ($exitCode -ne 0) {
+            Write-Host (Get-DevToolsUpdateMessage -Key "github_notifications.auth.recovery.failed")
+            return $false
+        }
+    }
+
+    Write-Host (Get-DevToolsUpdateMessage -Key "github_notifications.auth.recovery.retry")
+    return $true
 }
 
 <#
@@ -259,6 +374,8 @@ function Show-GitHubNotificationsRepositoryList {
     makes the audit incomplete. Attention findings alone remain successful.
 #>
 function Invoke-GitHubNotificationsAudit {
+    param([switch]$RecoveryAttempted)
+
     $script:GitHubNotificationsLastExitCode = 0
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.title")
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.title_divider")
@@ -287,6 +404,13 @@ function Invoke-GitHubNotificationsAudit {
         else {
             Show-GitHubNotificationsEnvironmentTokenMitigation -EnvironmentTokenName $environmentTokenName
         }
+        if (-not $RecoveryAttempted) {
+            $recovered = Invoke-GitHubNotificationsAuthenticationRecovery -EnvironmentTokenName $environmentTokenName -RecoveryAction "login"
+            if ($recovered) {
+                Invoke-GitHubNotificationsAudit -RecoveryAttempted
+                return
+            }
+        }
         $script:GitHubNotificationsLastExitCode = 1
         return
     }
@@ -300,6 +424,15 @@ function Invoke-GitHubNotificationsAudit {
     if ($accountResult.ExitCode -ne 0) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.account")
         Show-GitHubNotificationsApiDiagnostics -Detail $accountResult.Output -EnvironmentTokenName $environmentTokenName -ExitCode $accountResult.ExitCode
+        $authenticationFailure = -not [string]::IsNullOrEmpty($environmentTokenName) -or
+            (Test-GitHubNotificationsApiAuthenticationFailure -Detail $accountResult.Output)
+        if (-not $RecoveryAttempted -and $authenticationFailure) {
+            $recovered = Invoke-GitHubNotificationsAuthenticationRecovery -EnvironmentTokenName $environmentTokenName -RecoveryAction "refresh"
+            if ($recovered) {
+                Invoke-GitHubNotificationsAudit -RecoveryAttempted
+                return
+            }
+        }
         $script:GitHubNotificationsLastExitCode = 1
         return
     }
@@ -326,10 +459,19 @@ query($endCursor: String) {
         "graphql",
         "--paginate",
         "-f", "query=$repositoryQuery",
-        "--jq", '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv')
+        "--jq", '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription | tostring), (.viewerCanSubscribe | tostring)] | @tsv')
     if ($repositoryResult.ExitCode -ne 0) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.repositories")
         Show-GitHubNotificationsApiDiagnostics -Detail $repositoryResult.Output -EnvironmentTokenName $environmentTokenName -ExitCode $repositoryResult.ExitCode
+        $authenticationFailure = -not [string]::IsNullOrEmpty($environmentTokenName) -or
+            (Test-GitHubNotificationsApiAuthenticationFailure -Detail $repositoryResult.Output)
+        if (-not $RecoveryAttempted -and $authenticationFailure) {
+            $recovered = Invoke-GitHubNotificationsAuthenticationRecovery -EnvironmentTokenName $environmentTokenName -RecoveryAction "refresh"
+            if ($recovered) {
+                Invoke-GitHubNotificationsAudit -RecoveryAttempted
+                return
+            }
+        }
         $script:GitHubNotificationsLastExitCode = 1
         return
     }
@@ -361,6 +503,7 @@ query($endCursor: String) {
         }
 
         $repository = $parts[0]
+        $subscriptionState = if ($parts[3] -eq "null") { "UNREPRESENTED" } else { $parts[3] }
         if ($parts[1] -eq "true") {
             $archivedCount++
             continue
@@ -370,7 +513,7 @@ query($endCursor: String) {
             $privateCount++
         }
 
-        switch ($parts[3]) {
+        switch ($subscriptionState) {
             "SUBSCRIBED" {
                 $broadCount++
                 $broadRepositories.Add($repository)

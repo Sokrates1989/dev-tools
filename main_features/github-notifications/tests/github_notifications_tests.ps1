@@ -92,7 +92,7 @@ function Invoke-GitHubNotificationsGh {
 
     $joined = " " + ($Arguments -join " ") + " "
     if ($joined.Contains(" auth status ")) {
-        $exitCode = if ($script:MockGhScenario -eq "unauthenticated") { 1 } else { 0 }
+        $exitCode = if ($script:MockGhScenario -in @("unauthenticated", "recoverable-login")) { 1 } else { 0 }
         return [pscustomobject]@{ ExitCode = $exitCode; Output = "" }
     }
     if ($joined.Contains(" api graphql ")) {
@@ -101,15 +101,28 @@ function Invoke-GitHubNotificationsGh {
             -not $joined.Contains('$endCursor')) {
             return [pscustomobject]@{ ExitCode = 70; Output = "" }
         }
-        if ($script:MockGhScenario -eq "api-failure") {
+        if ($joined.Contains('"UNREPRESENTED"')) {
+            return [pscustomobject]@{ ExitCode = 71; Output = "PowerShell 5-incompatible jq string literal." }
+        }
+        if ($script:MockGhScenario -in @("api-failure", "recoverable-api-failure") -or
+            ($script:MockGhScenario -eq "environment-recoverable" -and -not [string]::IsNullOrEmpty($env:GITHUB_TOKEN))) {
             return [pscustomobject]@{ ExitCode = 75; Output = "gh: mock GraphQL access denied (HTTP 403)" }
+        }
+        if ($script:MockGhScenario -eq "client-failure") {
+            return [pscustomobject]@{ ExitCode = 1; Output = "function not defined: UNREPRESENTED/0" }
+        }
+        $errorState = if ($script:MockGhScenario -in @("recovered-audit", "environment-recoverable")) {
+            "SUBSCRIBED"
+        }
+        else {
+            "BROKEN"
         }
         $records = [System.Collections.Generic.List[string]]::new()
         $records.Add("audit-user/all-activity`tfalse`tfalse`tSUBSCRIBED`ttrue")
-        $records.Add("Sokrates1989/thunderbird-ai`tfalse`ttrue`tUNREPRESENTED`ttrue")
+        $records.Add("Sokrates1989/thunderbird-ai`tfalse`ttrue`tnull`ttrue")
         $records.Add("audit-user/participating`tfalse`tfalse`tUNSUBSCRIBED`ttrue")
         $records.Add("audit-user/ignored`tfalse`tfalse`tIGNORED`ttrue")
-        $records.Add("audit-user/api-error`tfalse`tfalse`tBROKEN`ttrue")
+        $records.Add("audit-user/api-error`tfalse`tfalse`t$errorState`ttrue")
         $records.Add("audit-user/archived`ttrue`ttrue`tSUBSCRIBED`ttrue")
         foreach ($index in 1..101) {
             $records.Add("audit-user/bulk-$($index.ToString('000'))`tfalse`tfalse`tSUBSCRIBED`ttrue")
@@ -120,6 +133,38 @@ function Invoke-GitHubNotificationsGh {
         return [pscustomobject]@{ ExitCode = 0; Output = "audit-user" }
     }
     return [pscustomobject]@{ ExitCode = 64; Output = "Unexpected fake gh invocation." }
+}
+
+$script:MockGitHubNotificationsInteractive = $false
+$script:MockGitHubNotificationsConfirm = $false
+
+function Test-GitHubNotificationsInteractive {
+    return $script:MockGitHubNotificationsInteractive
+}
+
+function Confirm-GitHubNotificationsRecovery {
+    param(
+        [string]$MessageKey,
+        [bool]$DefaultYes,
+        [string[]]$Arguments
+    )
+    return $script:MockGitHubNotificationsConfirm
+}
+
+function Invoke-GitHubNotificationsGhInteractive {
+    param([string[]]$Arguments)
+
+    if ($script:MockGhScenario -eq "recoverable-login" -and
+        ($Arguments -join " ") -eq "auth login --hostname github.com") {
+        $script:MockGhScenario = "recovered-audit"
+        return 0
+    }
+    if ($script:MockGhScenario -eq "recoverable-api-failure" -and
+        ($Arguments -join " ") -eq "auth refresh --hostname github.com") {
+        $script:MockGhScenario = "recovered-audit"
+        return 0
+    }
+    return 64
 }
 
 $previousLocale = $env:DEV_TOOLS_LOCALE
@@ -161,6 +206,37 @@ try {
     Assert-Contains -Expected "Keep GITHUB_TOKEN" -Actual $apiFailureOutput -Context "Environment-token replacement option is missing"
     Assert-NotContains -Unexpected "hidden-mock-token" -Actual $apiFailureOutput -Context "Environment-token value was exposed"
     Remove-Item Env:\GITHUB_TOKEN
+
+    $script:MockGitHubNotificationsInteractive = $true
+    $script:MockGitHubNotificationsConfirm = $true
+    $script:MockGhScenario = "client-failure"
+    $clientFailureOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
+    Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "A client-side gh failure did not fail the audit"
+    Assert-Contains -Expected "not being treated as an authentication problem" -Actual $clientFailureOutput -Context "Client-side failure was misclassified"
+    Assert-NotContains -Unexpected "gh auth refresh --hostname github.com" -Actual $clientFailureOutput -Context "Client-side failure suggested an authentication refresh"
+
+    $script:MockGhScenario = "recoverable-login"
+    $loginRecoveryOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
+    Assert-Equal -Expected 0 -Actual $script:GitHubNotificationsLastExitCode -Context "Login recovery did not complete successfully"
+    Assert-Equal -Expected 2 -Actual ([regex]::Matches($loginRecoveryOutput, "(?m)^GitHub Notification Audit\r?$").Count) -Context "Audit did not rerun after gh auth login"
+    Assert-Contains -Expected "Errors:                              0" -Actual $loginRecoveryOutput -Context "Login recovery retained an API error"
+
+    $script:MockGhScenario = "recoverable-api-failure"
+    $recoveryOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
+    Assert-Equal -Expected 0 -Actual $script:GitHubNotificationsLastExitCode -Context "Recovered audit did not complete successfully"
+    Assert-Equal -Expected 2 -Actual ([regex]::Matches($recoveryOutput, "(?m)^GitHub Notification Audit\r?$").Count) -Context "Audit did not rerun after gh auth refresh"
+    Assert-Contains -Expected "Errors:                              0" -Actual $recoveryOutput -Context "Recovered audit retained an API error"
+
+    $script:MockGhScenario = "environment-recoverable"
+    $env:GITHUB_TOKEN = "hidden-mock-token"
+    $environmentRecoveryOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
+    Assert-Equal -Expected 0 -Actual $script:GitHubNotificationsLastExitCode -Context "Environment-token recovery did not complete successfully"
+    Assert-Equal -Expected 2 -Actual ([regex]::Matches($environmentRecoveryOutput, "(?m)^GitHub Notification Audit\r?$").Count) -Context "Audit did not rerun after ignoring the environment token"
+    Assert-Contains -Expected "stored gh credentials (no environment-token override detected)" -Actual $environmentRecoveryOutput -Context "Stored credentials were not selected on retry"
+    Assert-Contains -Expected "Errors:                              0" -Actual $environmentRecoveryOutput -Context "Environment-token recovery retained an API error"
+    Remove-Item Env:\GITHUB_TOKEN -ErrorAction SilentlyContinue
+    $script:MockGitHubNotificationsInteractive = $false
+    $script:MockGitHubNotificationsConfirm = $false
 
     $script:MockGhScenario = "audit"
     $auditOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)

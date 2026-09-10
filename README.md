@@ -376,6 +376,9 @@ the complete workflow and recovery behavior.
 - Reports whether `gh` selected an environment token or stored credentials,
   without displaying token values, and offers shell-specific recovery when API
   access fails.
+- Interactive authentication recovery automatically reruns the selected audit
+  once after `gh auth login`, `gh auth refresh`, or an explicitly confirmed
+  process-local environment-token bypass.
 - Never changes notification settings in its default audit mode.
 - Clearly reports that GitHub's public API cannot inspect or set the individual
   **Watch → Custom** categories.

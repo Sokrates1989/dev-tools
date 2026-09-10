@@ -57,10 +57,20 @@ exit-code and HTTP-status diagnostics plus credential-specific mitigation:
 - Stored credentials can be repaired with
   `gh auth refresh --hostname github.com`.
 
-The audit does not automatically bypass an environment token because the
-stored `gh` credential may belong to a different account. These checks inspect
-only whether the variables are non-empty; they never retain, persist, or
-display a token value.
+In an interactive terminal, the audit offers to run the appropriate
+`gh auth login` or `gh auth refresh` flow itself. After successful
+authentication, it automatically reruns the previously selected audit. When an
+environment token is responsible, the audit can instead ignore `GH_TOKEN` and
+`GITHUB_TOKEN` for its own process after explicit confirmation, then retry
+with the stored credential. Environment-token bypass defaults to **No** because
+the stored login may belong to another account. Only one automatic retry is
+allowed, preventing recovery loops. Non-interactive runs never prompt and keep
+printing copyable recovery commands.
+
+The audit never silently bypasses an environment token because the stored
+`gh` credential may belong to a different account. These checks inspect only
+whether the variables are non-empty; they never retain, persist, or display a
+token value.
 
 ```bash
 # macOS
@@ -88,7 +98,11 @@ then run `gh auth login`.
 Repository discovery and classification use a paginated GraphQL
 `viewer.repositories` query with `affiliations: [OWNER]`, `viewerSubscription`,
 and `viewerCanSubscribe`. This retrieves more than 100 repositories when
-necessary and replaces one REST subscription request per repository.
+necessary and replaces one REST subscription request per repository. A null
+`viewerSubscription` is serialized as jq's unquoted `null` text and normalized
+inside each script. This avoids the quoted jq string literal that
+Windows PowerShell 5 would otherwise alter when invoking the native `gh`
+executable.
 
 The REST `GET /repos/{owner}/{repo}/subscription` endpoint is deliberately not
 used for classification. It returns the same HTTP 404 response for the known
@@ -157,4 +171,5 @@ pwsh -NoProfile -File main_features/github-notifications/tests/github_notificati
 Both suites fake GitHub CLI responses and make no real GitHub API changes. They
 cover all observable states, the Custom control, API errors, pagination beyond
 100 repositories, private repositories, archived repositories, credential
-source detection, token-value non-disclosure, and recovery guidance.
+source detection, token-value non-disclosure, recovery guidance, and automatic
+reruns after successful interactive recovery.

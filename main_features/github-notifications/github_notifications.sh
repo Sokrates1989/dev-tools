@@ -81,11 +81,84 @@ show_github_notifications_api_diagnostics() {
     fi
     if [ -n "$environment_token_name" ]; then
         show_github_notifications_environment_token_mitigation "$environment_token_name"
-    else
+    elif is_github_notifications_authentication_api_failure "$detail"; then
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.mitigation.refresh)"
         printf '  gh auth status --active --hostname github.com\n'
         printf '  gh auth refresh --hostname github.com\n'
+    else
+        printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.non_auth)"
     fi
+}
+
+# Reports whether gh returned an authentication or authorization HTTP status.
+is_github_notifications_authentication_api_failure() {
+    local detail="$1"
+    [[ "$detail" =~ HTTP[[:space:]]+(401|403) ]]
+}
+
+# Reports whether prompting is safe for the current terminal.
+is_github_notifications_interactive() {
+    [ -t 0 ] && [ -t 1 ]
+}
+
+# Requests a localized yes/no decision without exposing credential values.
+confirm_github_notifications_recovery() {
+    local message_key="$1" default_yes="$2" message response
+    shift 2
+
+    message=$(format_dev_tools_update_message "$message_key" "$@")
+    printf '%s ' "$message" >&2
+    IFS= read -r response || return 1
+    if [ -z "$response" ]; then
+        [ "$default_yes" = "true" ]
+        return
+    fi
+    case "$response" in
+        y|Y|j|J|yes|Yes|YES|ja|Ja|JA) return 0 ;;
+        *) return 1 ;;
+    esac
+}
+
+# Runs an interactive gh authentication command with live terminal output.
+run_github_notifications_gh_interactive() {
+    run_github_notifications_gh "$@"
+}
+
+# Applies one explicitly confirmed recovery step before a single audit retry.
+attempt_github_notifications_authentication_recovery() {
+    local environment_token_name="$1" recovery_action="$2"
+    local prompt_key running_key
+
+    is_github_notifications_interactive || return 1
+    if [ -n "$environment_token_name" ]; then
+        confirm_github_notifications_recovery \
+            github_notifications.auth.recovery.environment_prompt false \
+            "$environment_token_name" || return 1
+        unset GH_TOKEN GITHUB_TOKEN
+    else
+        case "$recovery_action" in
+            login)
+                prompt_key=github_notifications.auth.recovery.login_prompt
+                running_key=github_notifications.auth.recovery.login_running
+                ;;
+            refresh)
+                prompt_key=github_notifications.auth.recovery.refresh_prompt
+                running_key=github_notifications.auth.recovery.refresh_running
+                ;;
+            *) return 1 ;;
+        esac
+        confirm_github_notifications_recovery "$prompt_key" true || return 1
+        printf '%s\n' "$(get_dev_tools_update_message "$running_key")"
+        if ! run_github_notifications_gh_interactive \
+            auth "$recovery_action" --hostname github.com; then
+            printf '%s\n' "$(get_dev_tools_update_message \
+                github_notifications.auth.recovery.failed)" >&2
+            return 1
+        fi
+    fi
+
+    printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.recovery.retry)"
+    return 0
 }
 
 # Prints the platform-appropriate GitHub CLI installation guidance.
@@ -141,6 +214,7 @@ show_github_notifications_repository_list() {
 #   0 when the audit completed, including attention findings; 1 when a
 #   prerequisite or API error made the result incomplete.
 invoke_github_notifications_audit() {
+    local recovery_attempted="${1:-false}"
     local account_result account account_status
     local repository_result repository_query repository_status line
     local repository archived private state can_subscribe
@@ -175,6 +249,12 @@ invoke_github_notifications_audit() {
             printf '%s\n' "$(get_dev_tools_update_message github_notifications.authenticate_with)" >&2
             printf '  gh auth login\n' >&2
         fi
+        if [ "$recovery_attempted" = "false" ] &&
+            attempt_github_notifications_authentication_recovery \
+                "$environment_token_name" login; then
+            invoke_github_notifications_audit true
+            return $?
+        fi
         return 1
     fi
 
@@ -188,6 +268,14 @@ invoke_github_notifications_audit() {
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.account)" >&2
         show_github_notifications_api_diagnostics \
             "$account_result" "$environment_token_name" "$account_status" >&2
+        if [ "$recovery_attempted" = "false" ] &&
+            { [ -n "$environment_token_name" ] ||
+                is_github_notifications_authentication_api_failure "$account_result"; } &&
+            attempt_github_notifications_authentication_recovery \
+                "$environment_token_name" refresh; then
+            invoke_github_notifications_audit true
+            return $?
+        fi
         return 1
     fi
     account="${account_result%$'\r'}"
@@ -208,13 +296,21 @@ query(\$endCursor: String) {
 }"
     if repository_result=$(run_github_notifications_gh api graphql --paginate \
         -f "query=${repository_query}" \
-        --jq '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv' 2>&1); then
+        --jq '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription | tostring), (.viewerCanSubscribe | tostring)] | @tsv' 2>&1); then
         :
     else
         repository_status=$?
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.repositories)" >&2
         show_github_notifications_api_diagnostics \
             "$repository_result" "$environment_token_name" "$repository_status" >&2
+        if [ "$recovery_attempted" = "false" ] &&
+            { [ -n "$environment_token_name" ] ||
+                is_github_notifications_authentication_api_failure "$repository_result"; } &&
+            attempt_github_notifications_authentication_recovery \
+                "$environment_token_name" refresh; then
+            invoke_github_notifications_audit true
+            return $?
+        fi
         return 1
     fi
 
@@ -225,6 +321,7 @@ query(\$endCursor: String) {
         state="${state%$'\r'}"
         can_subscribe="${can_subscribe%$'\r'}"
         [ -n "$repository" ] || continue
+        [ "$state" != "null" ] || state="UNREPRESENTED"
         if { [ "$archived" != "true" ] && [ "$archived" != "false" ]; } ||
             { [ "$private" != "true" ] && [ "$private" != "false" ]; } ||
             { [ "$can_subscribe" != "true" ] && [ "$can_subscribe" != "false" ]; }; then
