@@ -373,6 +373,9 @@ the complete workflow and recovery behavior.
   Participating/@mentions, Ignored, and Custom/API-unrepresented states.
 - Follows pagination, skips archived repositories, and prints copyable URLs for
   every classified repository.
+- Reports whether `gh` selected an environment token or stored credentials,
+  without displaying token values, and offers shell-specific recovery when API
+  access fails.
 - Never changes notification settings in its default audit mode.
 - Clearly reports that GitHub's public API cannot inspect or set the individual
   **Watch → Custom** categories.
@@ -381,8 +384,10 @@ Normal Git credentials support clone, fetch, pull, and push but do not provide
 this account-level notification audit. Install `gh` only if you use this feature,
 authenticate with `gh auth login`, then run `dev-tools --github-notifications`
 (or `--gh-notifications` / `--gn`). On PowerShell, the audit detects a new
-winget installation without requiring a new terminal. For actively maintained
-repositories, manually review
+winget installation without requiring a new terminal. It also explains when
+`GH_TOKEN` or `GITHUB_TOKEN` is overriding the stored browser login and how
+to change that for the current terminal. For actively maintained repositories,
+manually review
 **Issues**, **Pull requests**, and **Security alerts** under **Watch → Custom**.
 The audit never equates a missing broad watch with disabled notifications. It
 links to <https://github.com/watching> for centralized subscription management.

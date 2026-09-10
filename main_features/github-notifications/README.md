@@ -21,7 +21,8 @@ Normal `git` authentication covers repository operations such as clone, fetch,
 pull, and push. Notification subscriptions are GitHub account-level API data,
 so Git credentials alone are not sufficient. This feature uses the authenticated
 GitHub CLI (`gh`) only for its own API requests; `gh` is not a global Dev Tools
-dependency and Dev Tools never reads or stores its access token.
+dependency. Dev Tools never requests the token from `gh` and never stores or
+displays its value.
 
 Install and authenticate GitHub CLI:
 
@@ -34,6 +35,32 @@ gh auth login
 The PowerShell audit refreshes its process PATH from the persisted Windows user
 and machine PATH before reporting `gh` as missing. This makes a new winget
 installation available immediately, without requiring a new terminal window.
+
+## Authentication source checks
+
+[GitHub CLI environment-variable precedence](https://cli.github.com/manual/gh_help_environment)
+gives `GH_TOKEN` and then `GITHUB_TOKEN` precedence over credentials saved by
+`gh auth login`. The audit reports which credential source `gh` will select,
+but prints only an environment-variable name and never its value.
+
+If authentication or an API request fails, the audit now includes safe
+exit-code and HTTP-status diagnostics plus credential-specific mitigation:
+
+- PowerShell can remove `GH_TOKEN` and `GITHUB_TOKEN` from the current
+  terminal with `Remove-Item`, then check the stored browser login with
+  `gh auth status --active --hostname github.com`.
+- Bash can use `unset GH_TOKEN GITHUB_TOKEN` for the same session-local
+  change.
+- An intentionally supplied environment token can instead be replaced with
+  one that supports GitHub GraphQL and can read every owned repository included
+  in the audit.
+- Stored credentials can be repaired with
+  `gh auth refresh --hostname github.com`.
+
+The audit does not automatically bypass an environment token because the
+stored `gh` credential may belong to a different account. These checks inspect
+only whether the variables are non-empty; they never retain, persist, or
+display a token value.
 
 ```bash
 # macOS
@@ -129,4 +156,5 @@ pwsh -NoProfile -File main_features/github-notifications/tests/github_notificati
 
 Both suites fake GitHub CLI responses and make no real GitHub API changes. They
 cover all observable states, the Custom control, API errors, pagination beyond
-100 repositories, private repositories, and archived repositories.
+100 repositories, private repositories, archived repositories, credential
+source detection, token-value non-disclosure, and recovery guidance.

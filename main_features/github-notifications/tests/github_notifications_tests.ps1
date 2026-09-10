@@ -15,6 +15,8 @@ $featureDirectory = Split-Path -Parent $testDirectory
 $repositoryRoot = Split-Path -Parent (Split-Path -Parent $featureDirectory)
 
 . "$featureDirectory\github_notifications.ps1"
+Remove-Item Env:\GH_TOKEN -ErrorAction SilentlyContinue
+Remove-Item Env:\GITHUB_TOKEN -ErrorAction SilentlyContinue
 
 function Assert-Equal {
     param([object]$Expected, [object]$Actual, [string]$Context)
@@ -100,7 +102,7 @@ function Invoke-GitHubNotificationsGh {
             return [pscustomobject]@{ ExitCode = 70; Output = "" }
         }
         if ($script:MockGhScenario -eq "api-failure") {
-            return [pscustomobject]@{ ExitCode = 75; Output = "GraphQL request failed." }
+            return [pscustomobject]@{ ExitCode = 75; Output = "gh: mock GraphQL access denied (HTTP 403)" }
         }
         $records = [System.Collections.Generic.List[string]]::new()
         $records.Add("audit-user/all-activity`tfalse`tfalse`tSUBSCRIBED`ttrue")
@@ -125,6 +127,12 @@ try {
     $env:DEV_TOOLS_LOCALE = "en"
     Initialize-GitHubNotificationsMessages
 
+    $env:GH_TOKEN = "hidden-primary-token"
+    $env:GITHUB_TOKEN = "hidden-secondary-token"
+    Assert-Equal -Expected "GH_TOKEN" -Actual (Get-GitHubNotificationsEnvironmentTokenName) -Context "GH_TOKEN precedence changed"
+    Remove-Item Env:\GH_TOKEN
+    Remove-Item Env:\GITHUB_TOKEN
+
     $script:MockGhAvailable = $false
     $missingOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
     Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "Missing gh did not fail cleanly"
@@ -139,13 +147,25 @@ try {
     Assert-Contains -Expected "gh auth login" -Actual $unauthenticatedOutput -Context "Authentication guidance is missing"
 
     $script:MockGhScenario = "api-failure"
+    $env:GITHUB_TOKEN = "hidden-mock-token"
     $apiFailureOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
     Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "A failed GraphQL request did not fail the audit"
     Assert-Contains -Expected "Owned repository watch states could not be retrieved" -Actual $apiFailureOutput -Context "GraphQL failure explanation is missing"
+    Assert-Contains -Expected "environment variable GITHUB_TOKEN (value hidden)" -Actual $apiFailureOutput -Context "Environment-token source was not detected"
+    Assert-Contains -Expected "GitHub CLI request failed with exit code 75." -Actual $apiFailureOutput -Context "GitHub CLI exit code is missing"
+    Assert-Contains -Expected "GitHub API HTTP status: 403." -Actual $apiFailureOutput -Context "GitHub API status is missing"
+    Assert-NotContains -Unexpected "mock GraphQL access denied" -Actual $apiFailureOutput -Context "Unfiltered GitHub CLI output was exposed"
+    Assert-Contains -Expected "GH_TOKEN and GITHUB_TOKEN take precedence" -Actual $apiFailureOutput -Context "Credential precedence explanation is missing"
+    Assert-Contains -Expected "Remove-Item Env:\GITHUB_TOKEN" -Actual $apiFailureOutput -Context "PowerShell environment-token mitigation is missing"
+    Assert-Contains -Expected "gh auth status --active --hostname github.com" -Actual $apiFailureOutput -Context "Stored-login check is missing"
+    Assert-Contains -Expected "Keep GITHUB_TOKEN" -Actual $apiFailureOutput -Context "Environment-token replacement option is missing"
+    Assert-NotContains -Unexpected "hidden-mock-token" -Actual $apiFailureOutput -Context "Environment-token value was exposed"
+    Remove-Item Env:\GITHUB_TOKEN
 
     $script:MockGhScenario = "audit"
     $auditOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
     Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "Per-repository API errors did not mark the audit incomplete"
+    Assert-Contains -Expected "stored gh credentials (no environment-token override detected)" -Actual $auditOutput -Context "Stored-credential source was not reported"
     Assert-Contains -Expected "Account: audit-user" -Actual $auditOutput -Context "Authenticated account is missing"
     Assert-Contains -Expected "Repositories checked:                106" -Actual $auditOutput -Context "Pagination beyond 100 repositories failed"
     Assert-Contains -Expected "All Activity / broad watch:          102" -Actual $auditOutput -Context "Broad-watch state changed"

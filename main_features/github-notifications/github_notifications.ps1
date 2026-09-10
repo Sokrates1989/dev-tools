@@ -119,6 +119,86 @@ function Invoke-GitHubNotificationsGh {
 
 <#
 .SYNOPSIS
+    Returns the highest-precedence GitHub.com environment-token variable name.
+
+.DESCRIPTION
+    GitHub CLI checks GH_TOKEN before GITHUB_TOKEN. This function inspects only
+    whether each variable is non-empty and never returns or prints its value.
+#>
+function Get-GitHubNotificationsEnvironmentTokenName {
+    if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable("GH_TOKEN", "Process"))) {
+        return "GH_TOKEN"
+    }
+    if (-not [string]::IsNullOrEmpty([Environment]::GetEnvironmentVariable("GITHUB_TOKEN", "Process"))) {
+        return "GITHUB_TOKEN"
+    }
+    return ""
+}
+
+<#
+.SYNOPSIS
+    Explains which documented GitHub CLI credential source will be selected.
+#>
+function Show-GitHubNotificationsAuthenticationSource {
+    param([string]$EnvironmentTokenName)
+
+    if ([string]::IsNullOrEmpty($EnvironmentTokenName)) {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.source.stored")
+    }
+    else {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.source.environment" -Arguments $EnvironmentTokenName)
+    }
+}
+
+<#
+.SYNOPSIS
+    Prints PowerShell-specific ways to stop an environment token overriding gh login.
+#>
+function Show-GitHubNotificationsEnvironmentTokenMitigation {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$EnvironmentTokenName
+    )
+
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.environment_override")
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.heading")
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.stored")
+    Write-Output "  Remove-Item Env:\GH_TOKEN -ErrorAction SilentlyContinue"
+    Write-Output "  Remove-Item Env:\GITHUB_TOKEN -ErrorAction SilentlyContinue"
+    Write-Output "  gh auth status --active --hostname github.com"
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.token" -Arguments $EnvironmentTokenName)
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.retry")
+    Write-Output "  dev-tools --gn"
+}
+
+<#
+.SYNOPSIS
+    Prints safe API failure metadata and credential-specific recovery guidance.
+#>
+function Show-GitHubNotificationsApiDiagnostics {
+    param(
+        [string]$Detail,
+        [string]$EnvironmentTokenName,
+        [int]$ExitCode
+    )
+
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.exit_code" -Arguments $ExitCode)
+    $httpStatusMatch = [regex]::Match($Detail, "HTTP\s+([0-9]{3})")
+    if ($httpStatusMatch.Success) {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.http_status" -Arguments $httpStatusMatch.Groups[1].Value)
+    }
+    if (-not [string]::IsNullOrEmpty($EnvironmentTokenName)) {
+        Show-GitHubNotificationsEnvironmentTokenMitigation -EnvironmentTokenName $EnvironmentTokenName
+    }
+    else {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.auth.mitigation.refresh")
+        Write-Output "  gh auth status --active --hostname github.com"
+        Write-Output "  gh auth refresh --hostname github.com"
+    }
+}
+
+<#
+.SYNOPSIS
     Prints the Windows GitHub CLI installation command.
 #>
 function Show-GitHubNotificationsInstallInstructions {
@@ -193,11 +273,20 @@ function Invoke-GitHubNotificationsAudit {
         return
     }
 
+    $environmentTokenName = Get-GitHubNotificationsEnvironmentTokenName
+    Show-GitHubNotificationsAuthenticationSource -EnvironmentTokenName $environmentTokenName
+    Write-Output ""
+
     $authResult = Invoke-GitHubNotificationsGh -Arguments @("auth", "status", "--active", "--hostname", "github.com")
     if ($authResult.ExitCode -ne 0) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.not_authenticated")
-        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.authenticate_with")
-        Write-Output "  gh auth login"
+        if ([string]::IsNullOrEmpty($environmentTokenName)) {
+            Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.authenticate_with")
+            Write-Output "  gh auth login"
+        }
+        else {
+            Show-GitHubNotificationsEnvironmentTokenMitigation -EnvironmentTokenName $environmentTokenName
+        }
         $script:GitHubNotificationsLastExitCode = 1
         return
     }
@@ -208,8 +297,14 @@ function Invoke-GitHubNotificationsAudit {
         "-H", "X-GitHub-Api-Version: $script:GitHubNotificationsApiVersion",
         "user",
         "--jq", ".login")
+    if ($accountResult.ExitCode -ne 0) {
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.account")
+        Show-GitHubNotificationsApiDiagnostics -Detail $accountResult.Output -EnvironmentTokenName $environmentTokenName -ExitCode $accountResult.ExitCode
+        $script:GitHubNotificationsLastExitCode = 1
+        return
+    }
     $account = $accountResult.Output.Trim()
-    if ($accountResult.ExitCode -ne 0 -or [string]::IsNullOrWhiteSpace($account) -or $account.Contains("`n")) {
+    if ([string]::IsNullOrWhiteSpace($account) -or $account.Contains("`n")) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.account")
         $script:GitHubNotificationsLastExitCode = 1
         return
@@ -234,6 +329,7 @@ query($endCursor: String) {
         "--jq", '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv')
     if ($repositoryResult.ExitCode -ne 0) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.repositories")
+        Show-GitHubNotificationsApiDiagnostics -Detail $repositoryResult.Output -EnvironmentTokenName $environmentTokenName -ExitCode $repositoryResult.ExitCode
         $script:GitHubNotificationsLastExitCode = 1
         return
     }

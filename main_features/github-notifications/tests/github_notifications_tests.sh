@@ -14,6 +14,7 @@ REPOSITORY_ROOT="$(cd "${FEATURE_DIRECTORY}/../.." && pwd)"
 # shellcheck source-path=SCRIPTDIR/..
 # shellcheck source=github_notifications.sh
 source "${FEATURE_DIRECTORY}/github_notifications.sh"
+unset GH_TOKEN GITHUB_TOKEN
 
 # Fails when two scalar values differ.
 assert_equal() {
@@ -59,6 +60,7 @@ gh() {
             return 70
         fi
         if [ "${GH_MOCK_SCENARIO:-}" = "api-failure" ]; then
+            printf 'gh: mock GraphQL access denied (HTTP 403)\n' >&2
             return 75
         fi
         printf '%s\t%s\t%s\t%s\t%s\n' \
@@ -83,6 +85,11 @@ gh() {
 export DEV_TOOLS_LOCALE=en
 initialize_github_notifications_messages
 
+GH_TOKEN=hidden-primary-token
+GITHUB_TOKEN=hidden-secondary-token
+assert_equal GH_TOKEN "$(get_github_notifications_environment_token_name)" 'GH_TOKEN precedence changed'
+unset GH_TOKEN GITHUB_TOKEN
+
 GITHUB_NOTIFICATIONS_GH_COMMAND=definitely-missing-gh-for-test
 set +e
 missing_output=$(invoke_github_notifications_audit 2>&1)
@@ -103,12 +110,23 @@ assert_equal 1 "$unauthenticated_status" 'Unauthenticated gh did not fail cleanl
 assert_contains 'gh auth login' "$unauthenticated_output" 'Authentication guidance is missing'
 
 GH_MOCK_SCENARIO=api-failure
+GITHUB_TOKEN=hidden-mock-token
 set +e
 api_failure_output=$(invoke_github_notifications_audit 2>&1)
 api_failure_status=$?
 set -e
 assert_equal 1 "$api_failure_status" 'A failed GraphQL request did not fail the audit'
 assert_contains 'Owned repository watch states could not be retrieved' "$api_failure_output" 'GraphQL failure explanation is missing'
+assert_contains 'environment variable GITHUB_TOKEN (value hidden)' "$api_failure_output" 'Environment-token source was not detected'
+assert_contains 'GitHub CLI request failed with exit code 75.' "$api_failure_output" 'GitHub CLI exit code is missing'
+assert_contains 'GitHub API HTTP status: 403.' "$api_failure_output" 'GitHub API status is missing'
+assert_not_contains 'mock GraphQL access denied' "$api_failure_output" 'Unfiltered GitHub CLI output was exposed'
+assert_contains 'GH_TOKEN and GITHUB_TOKEN take precedence' "$api_failure_output" 'Credential precedence explanation is missing'
+assert_contains 'unset GH_TOKEN GITHUB_TOKEN' "$api_failure_output" 'Bash environment-token mitigation is missing'
+assert_contains 'gh auth status --active --hostname github.com' "$api_failure_output" 'Stored-login check is missing'
+assert_contains 'Keep GITHUB_TOKEN' "$api_failure_output" 'Environment-token replacement option is missing'
+assert_not_contains 'hidden-mock-token' "$api_failure_output" 'Environment-token value was exposed'
+unset GITHUB_TOKEN
 
 GH_MOCK_SCENARIO=audit
 set +e
@@ -116,6 +134,7 @@ audit_output=$(invoke_github_notifications_audit 2>&1)
 audit_status=$?
 set -e
 assert_equal 1 "$audit_status" 'Per-repository API errors did not mark the audit incomplete'
+assert_contains 'stored gh credentials (no environment-token override detected)' "$audit_output" 'Stored-credential source was not reported'
 assert_contains 'Account: audit-user' "$audit_output" 'Authenticated account is missing'
 assert_contains 'Repositories checked:                106' "$audit_output" 'Pagination beyond 100 repositories failed'
 assert_contains 'All Activity / broad watch:          102' "$audit_output" 'Broad-watch state changed'

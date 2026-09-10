@@ -28,6 +28,66 @@ run_github_notifications_gh() {
     "$GITHUB_NOTIFICATIONS_GH_COMMAND" "$@"
 }
 
+# Reports the highest-precedence GitHub.com environment-token variable by name.
+# Only presence is inspected; token values are never returned or printed.
+get_github_notifications_environment_token_name() {
+    if [ -n "${GH_TOKEN:-}" ]; then
+        printf 'GH_TOKEN\n'
+    elif [ -n "${GITHUB_TOKEN:-}" ]; then
+        printf 'GITHUB_TOKEN\n'
+    fi
+}
+
+# Explains which documented GitHub CLI credential source will be selected.
+show_github_notifications_authentication_source() {
+    local environment_token_name="$1"
+
+    if [ -n "$environment_token_name" ]; then
+        printf '%s\n' "$(format_dev_tools_update_message \
+            github_notifications.auth.source.environment "$environment_token_name")"
+    else
+        printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.source.stored)"
+    fi
+}
+
+# Prints Bash-specific ways to stop an environment token overriding gh login.
+show_github_notifications_environment_token_mitigation() {
+    local environment_token_name="$1"
+
+    printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.environment_override)"
+    printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.mitigation.heading)"
+    printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.mitigation.stored)"
+    printf '  unset GH_TOKEN GITHUB_TOKEN\n'
+    printf '  gh auth status --active --hostname github.com\n'
+    printf '%s\n' "$(format_dev_tools_update_message \
+        github_notifications.auth.mitigation.token "$environment_token_name")"
+    printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.mitigation.retry)"
+    printf '  dev-tools --gn\n'
+}
+
+# Prints safe API failure metadata and credential-specific recovery guidance.
+show_github_notifications_api_diagnostics() {
+    local detail="$1" environment_token_name="$2" exit_code="$3"
+    local http_status=""
+
+    printf '%s\n' "$(format_dev_tools_update_message \
+        github_notifications.error.exit_code "$exit_code")"
+    if [[ "$detail" =~ HTTP[[:space:]]+([0-9][0-9][0-9]) ]]; then
+        http_status="${BASH_REMATCH[1]}"
+    fi
+    if [ -n "$http_status" ]; then
+        printf '%s\n' "$(format_dev_tools_update_message \
+            github_notifications.error.http_status "$http_status")"
+    fi
+    if [ -n "$environment_token_name" ]; then
+        show_github_notifications_environment_token_mitigation "$environment_token_name"
+    else
+        printf '%s\n' "$(get_dev_tools_update_message github_notifications.auth.mitigation.refresh)"
+        printf '  gh auth status --active --hostname github.com\n'
+        printf '  gh auth refresh --hostname github.com\n'
+    fi
+}
+
 # Prints the platform-appropriate GitHub CLI installation guidance.
 show_github_notifications_install_instructions() {
     local operating_system
@@ -81,8 +141,10 @@ show_github_notifications_repository_list() {
 #   0 when the audit completed, including attention findings; 1 when a
 #   prerequisite or API error made the result incomplete.
 invoke_github_notifications_audit() {
-    local account_result account repository_result repository_query line
+    local account_result account account_status
+    local repository_result repository_query repository_status line
     local repository archived private state can_subscribe
+    local environment_token_name
     local checked=0 broad_count=0 custom_unknown_count=0 participating_count=0
     local archived_count=0 private_count=0 error_count=0
     local -a broad_repositories=()
@@ -101,18 +163,31 @@ invoke_github_notifications_audit() {
         return 1
     fi
 
+    environment_token_name=$(get_github_notifications_environment_token_name)
+    show_github_notifications_authentication_source "$environment_token_name"
+    printf '\n'
+
     if ! run_github_notifications_gh auth status --active --hostname github.com >/dev/null 2>&1; then
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.not_authenticated)" >&2
-        printf '%s\n' "$(get_dev_tools_update_message github_notifications.authenticate_with)" >&2
-        printf '  gh auth login\n' >&2
+        if [ -n "$environment_token_name" ]; then
+            show_github_notifications_environment_token_mitigation "$environment_token_name" >&2
+        else
+            printf '%s\n' "$(get_dev_tools_update_message github_notifications.authenticate_with)" >&2
+            printf '  gh auth login\n' >&2
+        fi
         return 1
     fi
 
-    if ! account_result=$(run_github_notifications_gh api \
+    if account_result=$(run_github_notifications_gh api \
         -H 'Accept: application/vnd.github+json' \
         -H "X-GitHub-Api-Version: ${GITHUB_NOTIFICATIONS_API_VERSION}" \
         user --jq '.login' 2>&1); then
+        :
+    else
+        account_status=$?
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.account)" >&2
+        show_github_notifications_api_diagnostics \
+            "$account_result" "$environment_token_name" "$account_status" >&2
         return 1
     fi
     account="${account_result%$'\r'}"
@@ -131,10 +206,15 @@ query(\$endCursor: String) {
     }
   }
 }"
-    if ! repository_result=$(run_github_notifications_gh api graphql --paginate \
+    if repository_result=$(run_github_notifications_gh api graphql --paginate \
         -f "query=${repository_query}" \
         --jq '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv' 2>&1); then
+        :
+    else
+        repository_status=$?
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.repositories)" >&2
+        show_github_notifications_api_diagnostics \
+            "$repository_result" "$environment_token_name" "$repository_status" >&2
         return 1
     fi
 
