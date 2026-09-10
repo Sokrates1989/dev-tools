@@ -1,11 +1,10 @@
 # GitHub Notification Audit
 
-GitHub Notification Audit checks repository-level subscription state for every
-active repository owned by the authenticated GitHub account. It includes public
-and private repositories returned by the account, follows pagination, and skips
-archived repositories while reporting their count. Completed audits list both
-subscribed and non-subscribed repositories with copyable links, then provide
-GitHub's watched-repository management page at <https://github.com/watching>.
+GitHub Notification Audit checks the public API watch state for every active
+repository owned by the authenticated GitHub account. It includes public and
+private repositories, follows pagination, skips archived repositories while
+reporting their count, and links to GitHub's watched-repository management page
+at <https://github.com/watching>.
 
 Run it from either Dev Tools launcher:
 
@@ -48,27 +47,38 @@ then run `gh auth login`.
 
 ## Audit States
 
-- **Subscribed**: GitHub returned an active repository subscription. The API
-  does not reveal which Custom event categories are selected.
-- **Not subscribed**: the documented subscription endpoint returned HTTP 404,
-  meaning the authenticated user has no repository subscription.
-- **Ignored**: the subscription response explicitly returned `ignored=true`,
-  meaning repository notifications are blocked.
+- **All Activity / broad watch**: GraphQL returns `SUBSCRIBED`, documented as
+  notifications for all conversations.
+- **Custom / API-unrepresented**: GraphQL returns `null`. A known Custom control
+  appears in this state, but GitHub does not document `null` as exclusively
+  Custom and does not expose the selected event categories.
+- **Participating / @mentions only**: GraphQL returns `UNSUBSCRIBED`, documented
+  as notifications only when participating or mentioned.
+- **Ignored**: GraphQL returns `IGNORED`, documented as never notified.
 - **Error**: authentication, permission, transport, or unexpected API response
-  prevented a reliable classification. Errors are not treated as unsubscribed.
+  prevented a reliable classification.
 
-Repository discovery uses the authenticated-user endpoint with
-`affiliation=owner` and `visibility=all`; `gh api --paginate` retrieves more than
-100 repositories when necessary. Subscription checks use the documented
-`GET /repos/{owner}/{repo}/subscription` endpoint and REST API version
-`2026-03-10`.
+Repository discovery and classification use a paginated GraphQL
+`viewer.repositories` query with `affiliations: [OWNER]`, `viewerSubscription`,
+and `viewerCanSubscribe`. This retrieves more than 100 repositories when
+necessary and replaces one REST subscription request per repository.
+
+The REST `GET /repos/{owner}/{repo}/subscription` endpoint is deliberately not
+used for classification. It returns the same HTTP 404 response for the known
+Custom control and a repository GraphQL identifies as Participating/@mentions.
+Likewise, the observed `GET /user/subscriptions` result exactly matched the
+GraphQL `SUBSCRIBED` set and omitted the Custom control, so it represents broad
+watches in this observed account rather than every repository configured in the
+web Watch menu.
 
 ## Custom Notification Limitation
 
-GitHub's public repository subscription API exposes broad `subscribed` and
-`ignored` state. It cannot inspect or configure the individual categories under
-**Watch → Custom**, so the audit never claims that Issues, Pull requests, or
-Security alerts are enabled.
+GitHub's public GraphQL schema exposes only `SUBSCRIBED`, `UNSUBSCRIBED`, and
+`IGNORED` repository subscription values. The schema contains no repository
+preference fields for Issues, pull requests, releases, discussions, or security
+alerts. REST notification endpoints return historical notification threads and
+reasons, not current repository-level preferences, so the audit never uses
+thread history to infer configuration.
 
 For actively maintained repositories, review the repository page manually and
 prefer:
@@ -80,8 +90,30 @@ Watch → Custom
 [x] Security alerts
 ```
 
-The first implementation intentionally omits the broad “watch all activity”
-write operation to avoid accidental notification spam.
+The audit intentionally performs no subscription mutation and uses no browser
+cookies, authenticated HTML scraping, private endpoints, extensions, or local
+token storage.
+
+## Real-world regression control
+
+`Sokrates1989/thunderbird-ai` was manually configured in the GitHub web UI as
+Custom with Issues, pull requests, releases, discussions, and security alerts.
+On 2026-09-10, the supported APIs returned:
+
+- REST repository subscription: HTTP 404.
+- Authenticated watched-repository list: absent.
+- GraphQL `viewerSubscription`: `null` with `viewerCanSubscribe=true`.
+
+The audit therefore places this repository under **Custom /
+API-unrepresented**, never under a “not subscribed” heading. Automated tests
+mock this control and do not access the live account.
+
+Official references:
+
+- [Configuring notifications](https://docs.github.com/en/subscriptions-and-notifications/get-started/configuring-notifications)
+- [REST API endpoints for watching](https://docs.github.com/en/rest/activity/watching?apiVersion=2026-03-10)
+- [GraphQL activity and `SubscriptionState`](https://docs.github.com/en/graphql/reference/activity)
+- [REST API endpoints for notifications](https://docs.github.com/en/rest/activity/notifications?apiVersion=2026-03-10)
 
 ## Tests
 
@@ -95,4 +127,6 @@ bash main_features/github-notifications/tests/github_notifications_tests.sh
 pwsh -NoProfile -File main_features/github-notifications/tests/github_notifications_tests.ps1
 ```
 
-Both suites fake GitHub CLI responses and make no real GitHub API changes.
+Both suites fake GitHub CLI responses and make no real GitHub API changes. They
+cover all observable states, the Custom control, API errors, pagination beyond
+100 repositories, private repositories, and archived repositories.

@@ -3,8 +3,8 @@
     Audits repository notification subscriptions for the authenticated GitHub account.
 
 .DESCRIPTION
-    Uses GitHub CLI authentication and documented REST endpoints. The workflow
-    is read-only and never infers granular Custom notification categories.
+    Uses GitHub CLI authentication and the documented public GraphQL API. The
+    workflow is read-only and never infers granular Custom categories.
 #>
 
 param(
@@ -145,76 +145,6 @@ function Show-GitHubNotificationsHelp {
 
 <#
 .SYNOPSIS
-    Returns the last HTTP status included in GitHub CLI API output.
-
-.PARAMETER Output
-    Combined response output produced by gh api --include.
-#>
-function Get-GitHubNotificationsHttpStatus {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Output
-    )
-
-    $matches = [regex]::Matches($Output, "(?m)^HTTP/[0-9.]+\s+([0-9]{3})")
-    if ($matches.Count -gt 0) {
-        return $matches[$matches.Count - 1].Groups[1].Value
-    }
-
-    $fallback = [regex]::Match($Output, "HTTP\s+([0-9]{3})")
-    if ($fallback.Success) {
-        return $fallback.Groups[1].Value
-    }
-    return ""
-}
-
-<#
-.SYNOPSIS
-    Classifies one documented repository-subscription response.
-
-.PARAMETER Repository
-    Owner/name identity returned by the authenticated repositories endpoint.
-
-.OUTPUTS
-    System.String. subscribed, not-subscribed, ignored, or error.
-#>
-function Get-GitHubNotificationsSubscriptionState {
-    param(
-        [Parameter(Mandatory = $true)]
-        [string]$Repository
-    )
-
-    $response = Invoke-GitHubNotificationsGh -Arguments @(
-        "api",
-        "--include",
-        "-H", "Accept: application/vnd.github+json",
-        "-H", "X-GitHub-Api-Version: $script:GitHubNotificationsApiVersion",
-        "repos/$Repository/subscription",
-        "--jq", "[.subscribed, .ignored] | @tsv")
-    $status = Get-GitHubNotificationsHttpStatus -Output $response.Output
-
-    if ($status -eq "404") {
-        return "not-subscribed"
-    }
-    if ($response.ExitCode -ne 0 -or $status -ne "200") {
-        return "error"
-    }
-
-    $tuple = [regex]::Match($response.Output, "(?m)^(true|false)\t(true|false)\r?$")
-    if (-not $tuple.Success) {
-        return "error"
-    }
-    if ($tuple.Groups[2].Value -eq "true") {
-        return "ignored"
-    }
-    if ($tuple.Groups[1].Value -eq "true" -and $tuple.Groups[2].Value -eq "false") {
-        return "subscribed"
-    }
-    return "error"
-}
-
-<#
-.SYNOPSIS
     Prints repositories in one attention category with copyable GitHub URLs.
 
 .PARAMETER HeadingKey
@@ -286,25 +216,37 @@ function Invoke-GitHubNotificationsAudit {
     }
 
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.audit_progress" -Arguments $account)
+    $repositoryQuery = @'
+query($endCursor: String) {
+  viewer {
+    repositories(first: 100, after: $endCursor, affiliations: [OWNER], orderBy: {field: NAME, direction: ASC}) {
+      nodes { nameWithOwner isArchived isPrivate viewerSubscription viewerCanSubscribe }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}
+'@
     $repositoryResult = Invoke-GitHubNotificationsGh -Arguments @(
         "api",
+        "graphql",
         "--paginate",
-        "-H", "Accept: application/vnd.github+json",
-        "-H", "X-GitHub-Api-Version: $script:GitHubNotificationsApiVersion",
-        "user/repos?affiliation=owner&visibility=all&per_page=100&sort=full_name&direction=asc",
-        "--jq", ".[] | [.full_name, (.archived | tostring), (.private | tostring)] | @tsv")
+        "-f", "query=$repositoryQuery",
+        "--jq", '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv')
     if ($repositoryResult.ExitCode -ne 0) {
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.repositories")
         $script:GitHubNotificationsLastExitCode = 1
         return
     }
 
-    $subscribedRepositories = [System.Collections.Generic.List[string]]::new()
-    $notSubscribed = [System.Collections.Generic.List[string]]::new()
+    $broadRepositories = [System.Collections.Generic.List[string]]::new()
+    $customUnknownRepositories = [System.Collections.Generic.List[string]]::new()
+    $participatingRepositories = [System.Collections.Generic.List[string]]::new()
     $ignoredRepositories = [System.Collections.Generic.List[string]]::new()
     $errorRepositories = [System.Collections.Generic.List[string]]::new()
     $checked = 0
-    $subscribedCount = 0
+    $broadCount = 0
+    $customUnknownCount = 0
+    $participatingCount = 0
     $archivedCount = 0
     $privateCount = 0
 
@@ -312,8 +254,11 @@ function Invoke-GitHubNotificationsAudit {
         if ([string]::IsNullOrWhiteSpace($record)) {
             continue
         }
-        $parts = $record -split "`t", 3
-        if ($parts.Count -ne 3 -or $parts[1] -notin @("true", "false") -or $parts[2] -notin @("true", "false")) {
+        $parts = $record -split "`t", 5
+        if ($parts.Count -ne 5 -or
+            $parts[1] -notin @("true", "false") -or
+            $parts[2] -notin @("true", "false") -or
+            $parts[4] -notin @("true", "false")) {
             Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.error.repositories")
             $script:GitHubNotificationsLastExitCode = 1
             return
@@ -329,13 +274,25 @@ function Invoke-GitHubNotificationsAudit {
             $privateCount++
         }
 
-        switch (Get-GitHubNotificationsSubscriptionState -Repository $repository) {
-            "subscribed" {
-                $subscribedCount++
-                $subscribedRepositories.Add($repository)
+        switch ($parts[3]) {
+            "SUBSCRIBED" {
+                $broadCount++
+                $broadRepositories.Add($repository)
             }
-            "not-subscribed" { $notSubscribed.Add($repository) }
-            "ignored" { $ignoredRepositories.Add($repository) }
+            "UNSUBSCRIBED" {
+                $participatingCount++
+                $participatingRepositories.Add($repository)
+            }
+            "IGNORED" { $ignoredRepositories.Add($repository) }
+            "UNREPRESENTED" {
+                if ($parts[4] -eq "true") {
+                    $customUnknownCount++
+                    $customUnknownRepositories.Add($repository)
+                }
+                else {
+                    $errorRepositories.Add($repository)
+                }
+            }
             default { $errorRepositories.Add($repository) }
         }
     }
@@ -344,20 +301,28 @@ function Invoke-GitHubNotificationsAudit {
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.account" -Arguments $account)
     Write-Output ""
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.checked" -Arguments $checked)
-    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.subscribed" -Arguments $subscribedCount)
-    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.not_subscribed" -Arguments $notSubscribed.Count)
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.broad" -Arguments $broadCount)
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.custom_unknown" -Arguments $customUnknownCount)
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.participating" -Arguments $participatingCount)
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.ignored" -Arguments $ignoredRepositories.Count)
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.private" -Arguments $privateCount)
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.archived" -Arguments $archivedCount)
     Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.summary.errors" -Arguments $errorRepositories.Count)
 
-    if ($subscribedCount -gt 0) {
+    if ($broadCount -gt 0) {
         Write-Output ""
-        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.subscribed_note")
-        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.subscribed" -Repositories $subscribedRepositories.ToArray()
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.broad_note")
+        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.broad" -Repositories $broadRepositories.ToArray()
     }
-    if ($notSubscribed.Count -gt 0) {
-        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.not_subscribed" -Repositories $notSubscribed.ToArray()
+    if ($customUnknownCount -gt 0) {
+        Write-Output ""
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.custom_unknown_note")
+        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.custom_unknown" -Repositories $customUnknownRepositories.ToArray()
+    }
+    if ($participatingCount -gt 0) {
+        Write-Output ""
+        Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.participating_note")
+        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.participating" -Repositories $participatingRepositories.ToArray()
     }
     if ($ignoredRepositories.Count -gt 0) {
         Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.ignored" -Repositories $ignoredRepositories.ToArray()

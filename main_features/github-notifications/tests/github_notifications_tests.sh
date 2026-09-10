@@ -42,9 +42,9 @@ assert_not_contains() {
     fi
 }
 
-# Fakes the gh command for authentication, pagination, and subscription states.
+# Fakes the gh command for authentication and paginated GraphQL watch states.
 gh() {
-    local joined=" $* " argument endpoint=""
+    local joined=" $* " index literal_end_cursor=\$endCursor
     if [ "${GH_MOCK_SCENARIO:-}" = "unauthenticated" ] &&
         [[ "$joined" == *" auth status "* ]]; then
         return 1
@@ -52,52 +52,31 @@ gh() {
     if [[ "$joined" == *" auth status "* ]]; then
         return 0
     fi
-    if [[ "$joined" == *" user/repos?"* ]]; then
-        if [[ "$joined" != *" --paginate "* ]]; then
+    if [[ "$joined" == *" api graphql "* ]]; then
+        if [[ "$joined" != *" --paginate "* ]] ||
+            [[ "$joined" != *'pageInfo'* ]] ||
+            [[ "$joined" != *"$literal_end_cursor"* ]]; then
             return 70
         fi
-        printf '%s\t%s\t%s\n' \
-            'audit-user/subscribed' false false \
-            'audit-user/not-subscribed' false false \
-            'audit-user/ignored' false true \
-            'audit-user/api-error' false false \
-            'audit-user/archived' true true
+        if [ "${GH_MOCK_SCENARIO:-}" = "api-failure" ]; then
+            return 75
+        fi
+        printf '%s\t%s\t%s\t%s\t%s\n' \
+            'audit-user/all-activity' false false SUBSCRIBED true \
+            'Sokrates1989/thunderbird-ai' false true UNREPRESENTED true \
+            'audit-user/participating' false false UNSUBSCRIBED true \
+            'audit-user/ignored' false false IGNORED true \
+            'audit-user/api-error' false false BROKEN true \
+            'audit-user/archived' true true SUBSCRIBED true
+        for ((index = 1; index <= 101; index++)); do
+            printf 'audit-user/bulk-%03d\tfalse\tfalse\tSUBSCRIBED\ttrue\n' "$index"
+        done
         return 0
     fi
     if [[ "$joined" == *" api "* && "$joined" == *" user "* ]]; then
         printf 'audit-user\n'
         return 0
     fi
-
-    for argument in "$@"; do
-        case "$argument" in
-            repos/*/subscription) endpoint="$argument" ;;
-        esac
-    done
-    case "$endpoint" in
-        repos/audit-user/subscribed/subscription)
-            printf 'HTTP/2.0 200 OK\n\ntrue\tfalse\n'
-            return 0
-            ;;
-        repos/audit-user/not-subscribed/subscription)
-            printf 'HTTP/2.0 404 Not Found\n'
-            printf 'gh: Not Found (HTTP 404)\n' >&2
-            return 1
-            ;;
-        repos/audit-user/ignored/subscription)
-            printf 'HTTP/2.0 200 OK\n\nfalse\ttrue\n'
-            return 0
-            ;;
-        repos/audit-user/api-error/subscription)
-            printf 'HTTP/2.0 403 Forbidden\n'
-            printf 'gh: Forbidden (HTTP 403)\n' >&2
-            return 1
-            ;;
-        repos/audit-user/archived/subscription)
-            printf 'Archived repositories must not be checked.\n' >&2
-            return 99
-            ;;
-    esac
     return 64
 }
 
@@ -123,6 +102,14 @@ set -e
 assert_equal 1 "$unauthenticated_status" 'Unauthenticated gh did not fail cleanly'
 assert_contains 'gh auth login' "$unauthenticated_output" 'Authentication guidance is missing'
 
+GH_MOCK_SCENARIO=api-failure
+set +e
+api_failure_output=$(invoke_github_notifications_audit 2>&1)
+api_failure_status=$?
+set -e
+assert_equal 1 "$api_failure_status" 'A failed GraphQL request did not fail the audit'
+assert_contains 'Owned repository watch states could not be retrieved' "$api_failure_output" 'GraphQL failure explanation is missing'
+
 GH_MOCK_SCENARIO=audit
 set +e
 audit_output=$(invoke_github_notifications_audit 2>&1)
@@ -130,20 +117,25 @@ audit_status=$?
 set -e
 assert_equal 1 "$audit_status" 'Per-repository API errors did not mark the audit incomplete'
 assert_contains 'Account: audit-user' "$audit_output" 'Authenticated account is missing'
-assert_contains 'Repositories checked: 4' "$audit_output" 'Active repository count changed'
-assert_contains 'Subscribed:           1' "$audit_output" 'Subscribed state changed'
-assert_contains 'Not subscribed:       1' "$audit_output" 'HTTP 404 classification changed'
-assert_contains 'Ignored:              1' "$audit_output" 'Ignored state changed'
-assert_contains 'Private (included):   1' "$audit_output" 'Private repository inclusion changed'
-assert_contains 'Archived/skipped:     1' "$audit_output" 'Archived skip count changed'
-assert_contains 'Errors:               1' "$audit_output" 'API error count changed'
-assert_contains 'Subscribed — exact Custom event categories cannot be verified via the GitHub API.' "$audit_output" 'Custom-category limitation is missing'
-assert_contains 'SUBSCRIBED' "$audit_output" 'Subscribed repository heading is missing'
-assert_contains 'https://github.com/audit-user/subscribed' "$audit_output" 'Subscribed repository URL is missing'
-assert_contains 'https://github.com/audit-user/not-subscribed' "$audit_output" 'Not-subscribed URL is missing'
+assert_contains 'Repositories checked:                106' "$audit_output" 'Pagination beyond 100 repositories failed'
+assert_contains 'All Activity / broad watch:          102' "$audit_output" 'Broad-watch state changed'
+assert_contains 'Custom / API-unrepresented:          1' "$audit_output" 'Custom control state changed'
+assert_contains 'Participating / @mentions only:      1' "$audit_output" 'Participating state changed'
+assert_contains 'Ignored:                             1' "$audit_output" 'Ignored state changed'
+assert_contains 'Private (included):                  1' "$audit_output" 'Private repository inclusion changed'
+assert_contains 'Archived/skipped:                    1' "$audit_output" 'Archived skip count changed'
+assert_contains 'Errors:                              1' "$audit_output" 'API error count changed'
+assert_contains 'ALL ACTIVITY / BROAD WATCH' "$audit_output" 'Broad-watch heading is missing'
+assert_contains 'https://github.com/audit-user/all-activity' "$audit_output" 'Broad-watch repository URL is missing'
+assert_contains 'CUSTOM / API-UNREPRESENTED' "$audit_output" 'Custom heading is missing'
+assert_contains 'https://github.com/Sokrates1989/thunderbird-ai' "$audit_output" 'Custom control repository is missing'
+assert_contains 'PARTICIPATING / @MENTIONS ONLY' "$audit_output" 'Participating heading is missing'
+assert_contains 'https://github.com/audit-user/participating' "$audit_output" 'Participating repository URL is missing'
 assert_contains 'https://github.com/audit-user/ignored' "$audit_output" 'Ignored URL is missing'
 assert_contains 'https://github.com/audit-user/api-error' "$audit_output" 'API-error URL is missing'
 assert_not_contains 'https://github.com/audit-user/archived' "$audit_output" 'Archived repository was not skipped'
+assert_not_contains 'Not subscribed' "$audit_output" 'Custom-capable repositories were labelled not subscribed'
+assert_not_contains 'NOT SUBSCRIBED' "$audit_output" 'Legacy not-subscribed heading remains'
 assert_contains '[x] Issues' "$audit_output" 'Recommended Issues configuration is missing'
 assert_contains '[x] Pull requests' "$audit_output" 'Recommended Pull requests configuration is missing'
 assert_contains '[x] Security alerts' "$audit_output" 'Recommended Security alerts configuration is missing'

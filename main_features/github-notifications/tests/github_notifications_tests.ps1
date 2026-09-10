@@ -93,43 +93,31 @@ function Invoke-GitHubNotificationsGh {
         $exitCode = if ($script:MockGhScenario -eq "unauthenticated") { 1 } else { 0 }
         return [pscustomobject]@{ ExitCode = $exitCode; Output = "" }
     }
-    if ($joined.Contains(" user/repos?")) {
-        if (-not $joined.Contains(" --paginate ")) {
+    if ($joined.Contains(" api graphql ")) {
+        if (-not $joined.Contains(" --paginate ") -or
+            -not $joined.Contains("pageInfo") -or
+            -not $joined.Contains('$endCursor')) {
             return [pscustomobject]@{ ExitCode = 70; Output = "" }
         }
-        $records = @(
-            "audit-user/subscribed`tfalse`tfalse",
-            "audit-user/not-subscribed`tfalse`tfalse",
-            "audit-user/ignored`tfalse`ttrue",
-            "audit-user/api-error`tfalse`tfalse",
-            "audit-user/archived`ttrue`ttrue") -join "`n"
-        return [pscustomobject]@{ ExitCode = 0; Output = $records }
+        if ($script:MockGhScenario -eq "api-failure") {
+            return [pscustomobject]@{ ExitCode = 75; Output = "GraphQL request failed." }
+        }
+        $records = [System.Collections.Generic.List[string]]::new()
+        $records.Add("audit-user/all-activity`tfalse`tfalse`tSUBSCRIBED`ttrue")
+        $records.Add("Sokrates1989/thunderbird-ai`tfalse`ttrue`tUNREPRESENTED`ttrue")
+        $records.Add("audit-user/participating`tfalse`tfalse`tUNSUBSCRIBED`ttrue")
+        $records.Add("audit-user/ignored`tfalse`tfalse`tIGNORED`ttrue")
+        $records.Add("audit-user/api-error`tfalse`tfalse`tBROKEN`ttrue")
+        $records.Add("audit-user/archived`ttrue`ttrue`tSUBSCRIBED`ttrue")
+        foreach ($index in 1..101) {
+            $records.Add("audit-user/bulk-$($index.ToString('000'))`tfalse`tfalse`tSUBSCRIBED`ttrue")
+        }
+        return [pscustomobject]@{ ExitCode = 0; Output = ($records -join "`n") }
     }
     if ($joined.Contains(" api ") -and $joined.Contains(" user ")) {
         return [pscustomobject]@{ ExitCode = 0; Output = "audit-user" }
     }
-
-    $endpoint = $Arguments | Where-Object { $_ -like "repos/*/subscription" } | Select-Object -First 1
-    switch ($endpoint) {
-        "repos/audit-user/subscribed/subscription" {
-            return [pscustomobject]@{ ExitCode = 0; Output = "HTTP/2.0 200 OK`n`ntrue`tfalse" }
-        }
-        "repos/audit-user/not-subscribed/subscription" {
-            return [pscustomobject]@{ ExitCode = 1; Output = "HTTP/2.0 404 Not Found`ngh: Not Found (HTTP 404)" }
-        }
-        "repos/audit-user/ignored/subscription" {
-            return [pscustomobject]@{ ExitCode = 0; Output = "HTTP/2.0 200 OK`n`nfalse`ttrue" }
-        }
-        "repos/audit-user/api-error/subscription" {
-            return [pscustomobject]@{ ExitCode = 1; Output = "HTTP/2.0 403 Forbidden`ngh: Forbidden (HTTP 403)" }
-        }
-        "repos/audit-user/archived/subscription" {
-            return [pscustomobject]@{ ExitCode = 99; Output = "Archived repositories must not be checked." }
-        }
-        default {
-            return [pscustomobject]@{ ExitCode = 64; Output = "Unexpected fake gh invocation." }
-        }
-    }
+    return [pscustomobject]@{ ExitCode = 64; Output = "Unexpected fake gh invocation." }
 }
 
 $previousLocale = $env:DEV_TOOLS_LOCALE
@@ -150,24 +138,34 @@ try {
     Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "Unauthenticated gh did not fail cleanly"
     Assert-Contains -Expected "gh auth login" -Actual $unauthenticatedOutput -Context "Authentication guidance is missing"
 
+    $script:MockGhScenario = "api-failure"
+    $apiFailureOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
+    Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "A failed GraphQL request did not fail the audit"
+    Assert-Contains -Expected "Owned repository watch states could not be retrieved" -Actual $apiFailureOutput -Context "GraphQL failure explanation is missing"
+
     $script:MockGhScenario = "audit"
     $auditOutput = (& { Invoke-GitHubNotificationsAudit } | Out-String)
     Assert-Equal -Expected 1 -Actual $script:GitHubNotificationsLastExitCode -Context "Per-repository API errors did not mark the audit incomplete"
     Assert-Contains -Expected "Account: audit-user" -Actual $auditOutput -Context "Authenticated account is missing"
-    Assert-Contains -Expected "Repositories checked: 4" -Actual $auditOutput -Context "Active repository count changed"
-    Assert-Contains -Expected "Subscribed:           1" -Actual $auditOutput -Context "Subscribed state changed"
-    Assert-Contains -Expected "Not subscribed:       1" -Actual $auditOutput -Context "HTTP 404 classification changed"
-    Assert-Contains -Expected "Ignored:              1" -Actual $auditOutput -Context "Ignored state changed"
-    Assert-Contains -Expected "Private (included):   1" -Actual $auditOutput -Context "Private repository inclusion changed"
-    Assert-Contains -Expected "Archived/skipped:     1" -Actual $auditOutput -Context "Archived skip count changed"
-    Assert-Contains -Expected "Errors:               1" -Actual $auditOutput -Context "API error count changed"
-    Assert-Contains -Expected "exact Custom event categories cannot be verified via the GitHub API." -Actual $auditOutput -Context "Custom-category limitation is missing"
-    Assert-Contains -Expected "SUBSCRIBED" -Actual $auditOutput -Context "Subscribed repository heading is missing"
-    Assert-Contains -Expected "https://github.com/audit-user/subscribed" -Actual $auditOutput -Context "Subscribed repository URL is missing"
-    Assert-Contains -Expected "https://github.com/audit-user/not-subscribed" -Actual $auditOutput -Context "Not-subscribed URL is missing"
+    Assert-Contains -Expected "Repositories checked:                106" -Actual $auditOutput -Context "Pagination beyond 100 repositories failed"
+    Assert-Contains -Expected "All Activity / broad watch:          102" -Actual $auditOutput -Context "Broad-watch state changed"
+    Assert-Contains -Expected "Custom / API-unrepresented:          1" -Actual $auditOutput -Context "Custom control state changed"
+    Assert-Contains -Expected "Participating / @mentions only:      1" -Actual $auditOutput -Context "Participating state changed"
+    Assert-Contains -Expected "Ignored:                             1" -Actual $auditOutput -Context "Ignored state changed"
+    Assert-Contains -Expected "Private (included):                  1" -Actual $auditOutput -Context "Private repository inclusion changed"
+    Assert-Contains -Expected "Archived/skipped:                    1" -Actual $auditOutput -Context "Archived skip count changed"
+    Assert-Contains -Expected "Errors:                              1" -Actual $auditOutput -Context "API error count changed"
+    Assert-Contains -Expected "ALL ACTIVITY / BROAD WATCH" -Actual $auditOutput -Context "Broad-watch heading is missing"
+    Assert-Contains -Expected "https://github.com/audit-user/all-activity" -Actual $auditOutput -Context "Broad-watch repository URL is missing"
+    Assert-Contains -Expected "CUSTOM / API-UNREPRESENTED" -Actual $auditOutput -Context "Custom heading is missing"
+    Assert-Contains -Expected "https://github.com/Sokrates1989/thunderbird-ai" -Actual $auditOutput -Context "Custom control repository is missing"
+    Assert-Contains -Expected "PARTICIPATING / @MENTIONS ONLY" -Actual $auditOutput -Context "Participating heading is missing"
+    Assert-Contains -Expected "https://github.com/audit-user/participating" -Actual $auditOutput -Context "Participating repository URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/ignored" -Actual $auditOutput -Context "Ignored URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/api-error" -Actual $auditOutput -Context "API-error URL is missing"
     Assert-NotContains -Unexpected "https://github.com/audit-user/archived" -Actual $auditOutput -Context "Archived repository was not skipped"
+    Assert-NotContains -Unexpected "Not subscribed" -Actual $auditOutput -Context "Custom-capable repositories were labelled not subscribed"
+    Assert-NotContains -Unexpected "NOT SUBSCRIBED" -Actual $auditOutput -Context "Legacy not-subscribed heading remains"
     Assert-Contains -Expected "[x] Issues" -Actual $auditOutput -Context "Recommended Issues configuration is missing"
     Assert-Contains -Expected "[x] Pull requests" -Actual $auditOutput -Context "Recommended Pull requests configuration is missing"
     Assert-Contains -Expected "[x] Security alerts" -Actual $auditOutput -Context "Recommended Security alerts configuration is missing"

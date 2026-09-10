@@ -2,7 +2,7 @@
 #
 # Audits the authenticated GitHub account's owned repository subscriptions.
 #
-# GitHub CLI owns authentication and REST transport. This script remains
+# GitHub CLI owns authentication and supported API transport. This script remains
 # read-only and never attempts to infer granular Custom notification choices.
 #
 
@@ -17,7 +17,6 @@ source "${REPOSITORY_ROOT}/global_functions/update_manager.sh"
 
 GITHUB_NOTIFICATIONS_API_VERSION="2026-03-10"
 GITHUB_NOTIFICATIONS_GH_COMMAND="${GITHUB_NOTIFICATIONS_GH_COMMAND:-gh}"
-GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE="error"
 
 # Loads GitHub Notification Audit messages from the shared root catalog.
 initialize_github_notifications_messages() {
@@ -60,63 +59,6 @@ show_github_notifications_help() {
     printf '%s\n' "$(get_dev_tools_update_message github_notifications.help.custom_limit)"
 }
 
-# Classifies one documented repository-subscription response.
-#
-# Arguments:
-#   $1 - repository: owner/name identity returned by the authenticated API.
-#
-# Global state:
-#   Sets GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE to subscribed,
-#   not-subscribed, ignored, or error.
-#
-# Returns:
-#   0 for a recognized subscription state; 1 for transport or response errors.
-get_github_notifications_subscription_state() {
-    local repository="$1"
-    local response exit_code status="" subscribed="" ignored="" line
-
-    GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE="error"
-    if response=$(run_github_notifications_gh api --include \
-        -H 'Accept: application/vnd.github+json' \
-        -H "X-GitHub-Api-Version: ${GITHUB_NOTIFICATIONS_API_VERSION}" \
-        "repos/${repository}/subscription" \
-        --jq '[.subscribed, .ignored] | @tsv' 2>&1); then
-        exit_code=0
-    else
-        exit_code=$?
-    fi
-
-    while IFS= read -r line || [ -n "$line" ]; do
-        line="${line%$'\r'}"
-        if [[ "$line" =~ ^HTTP/[0-9.]+[[:space:]]+([0-9]{3}) ]]; then
-            status="${BASH_REMATCH[1]}"
-        elif [ -z "$status" ] && [[ "$line" =~ HTTP[[:space:]]+([0-9]{3}) ]]; then
-            status="${BASH_REMATCH[1]}"
-        elif [[ "$line" =~ ^(true|false)$'\t'(true|false)$ ]]; then
-            subscribed="${BASH_REMATCH[1]}"
-            ignored="${BASH_REMATCH[2]}"
-        fi
-    done <<< "$response"
-
-    if [ "$status" = "404" ]; then
-        GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE="not-subscribed"
-        return 0
-    fi
-    if [ "$exit_code" -ne 0 ] || [ "$status" != "200" ]; then
-        return 1
-    fi
-    if [ "$ignored" = "true" ]; then
-        GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE="ignored"
-        return 0
-    fi
-    if [ "$subscribed" = "true" ] && [ "$ignored" = "false" ]; then
-        GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE="subscribed"
-        return 0
-    fi
-
-    return 1
-}
-
 # Prints repositories in one attention category with copyable GitHub URLs.
 #
 # Arguments:
@@ -139,11 +81,13 @@ show_github_notifications_repository_list() {
 #   0 when the audit completed, including attention findings; 1 when a
 #   prerequisite or API error made the result incomplete.
 invoke_github_notifications_audit() {
-    local account_result account repository_result line
-    local repository archived private state
-    local checked=0 subscribed_count=0 archived_count=0 private_count=0 error_count=0
-    local -a subscribed_repositories=()
-    local -a not_subscribed_repositories=()
+    local account_result account repository_result repository_query line
+    local repository archived private state can_subscribe
+    local checked=0 broad_count=0 custom_unknown_count=0 participating_count=0
+    local archived_count=0 private_count=0 error_count=0
+    local -a broad_repositories=()
+    local -a custom_unknown_repositories=()
+    local -a participating_repositories=()
     local -a ignored_repositories=()
     local -a error_repositories=()
 
@@ -178,22 +122,32 @@ invoke_github_notifications_audit() {
     fi
 
     printf '%s\n' "$(format_dev_tools_update_message github_notifications.audit_progress "$account")"
-    if ! repository_result=$(run_github_notifications_gh api --paginate \
-        -H 'Accept: application/vnd.github+json' \
-        -H "X-GitHub-Api-Version: ${GITHUB_NOTIFICATIONS_API_VERSION}" \
-        'user/repos?affiliation=owner&visibility=all&per_page=100&sort=full_name&direction=asc' \
-        --jq '.[] | [.full_name, (.archived | tostring), (.private | tostring)] | @tsv' 2>&1); then
+    repository_query="
+query(\$endCursor: String) {
+  viewer {
+    repositories(first: 100, after: \$endCursor, affiliations: [OWNER], orderBy: {field: NAME, direction: ASC}) {
+      nodes { nameWithOwner isArchived isPrivate viewerSubscription viewerCanSubscribe }
+      pageInfo { hasNextPage endCursor }
+    }
+  }
+}"
+    if ! repository_result=$(run_github_notifications_gh api graphql --paginate \
+        -f "query=${repository_query}" \
+        --jq '.data.viewer.repositories.nodes[] | [.nameWithOwner, (.isArchived | tostring), (.isPrivate | tostring), (.viewerSubscription // "UNREPRESENTED"), (.viewerCanSubscribe | tostring)] | @tsv' 2>&1); then
         printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.repositories)" >&2
         return 1
     fi
 
-    while IFS=$'\t' read -r repository archived private || [ -n "$repository" ]; do
+    while IFS=$'\t' read -r repository archived private state can_subscribe || [ -n "$repository" ]; do
         repository="${repository%$'\r'}"
         archived="${archived%$'\r'}"
         private="${private%$'\r'}"
+        state="${state%$'\r'}"
+        can_subscribe="${can_subscribe%$'\r'}"
         [ -n "$repository" ] || continue
         if { [ "$archived" != "true" ] && [ "$archived" != "false" ]; } ||
-            { [ "$private" != "true" ] && [ "$private" != "false" ]; }; then
+            { [ "$private" != "true" ] && [ "$private" != "false" ]; } ||
+            { [ "$can_subscribe" != "true" ] && [ "$can_subscribe" != "false" ]; }; then
             printf '%s\n' "$(get_dev_tools_update_message github_notifications.error.repositories)" >&2
             return 1
         fi
@@ -207,18 +161,25 @@ invoke_github_notifications_audit() {
             private_count=$((private_count + 1))
         fi
 
-        if get_github_notifications_subscription_state "$repository"; then
-            state="$GITHUB_NOTIFICATIONS_SUBSCRIPTION_STATE"
-        else
-            state="error"
-        fi
         case "$state" in
-            subscribed)
-                subscribed_count=$((subscribed_count + 1))
-                subscribed_repositories+=("$repository")
+            SUBSCRIBED)
+                broad_count=$((broad_count + 1))
+                broad_repositories+=("$repository")
                 ;;
-            not-subscribed) not_subscribed_repositories+=("$repository") ;;
-            ignored) ignored_repositories+=("$repository") ;;
+            UNSUBSCRIBED)
+                participating_count=$((participating_count + 1))
+                participating_repositories+=("$repository")
+                ;;
+            IGNORED) ignored_repositories+=("$repository") ;;
+            UNREPRESENTED)
+                if [ "$can_subscribe" = "true" ]; then
+                    custom_unknown_count=$((custom_unknown_count + 1))
+                    custom_unknown_repositories+=("$repository")
+                else
+                    error_count=$((error_count + 1))
+                    error_repositories+=("$repository")
+                fi
+                ;;
             *)
                 error_count=$((error_count + 1))
                 error_repositories+=("$repository")
@@ -228,23 +189,31 @@ invoke_github_notifications_audit() {
 
     printf '\n%s\n' "$(format_dev_tools_update_message github_notifications.summary.account "$account")"
     printf '\n%s\n' "$(format_dev_tools_update_message github_notifications.summary.checked "$checked")"
-    printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.subscribed "$subscribed_count")"
-    printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.not_subscribed "${#not_subscribed_repositories[@]}")"
+    printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.broad "$broad_count")"
+    printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.custom_unknown "$custom_unknown_count")"
+    printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.participating "$participating_count")"
     printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.ignored "${#ignored_repositories[@]}")"
     printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.private "$private_count")"
     printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.archived "$archived_count")"
     printf '%s\n' "$(format_dev_tools_update_message github_notifications.summary.errors "$error_count")"
 
-    if [ "$subscribed_count" -gt 0 ]; then
-        printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.subscribed_note)"
+    if [ "$broad_count" -gt 0 ]; then
+        printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.broad_note)"
         show_github_notifications_repository_list \
-            github_notifications.heading.subscribed \
-            "${subscribed_repositories[@]}"
+            github_notifications.heading.broad \
+            "${broad_repositories[@]}"
     fi
-    if [ "${#not_subscribed_repositories[@]}" -gt 0 ]; then
+    if [ "$custom_unknown_count" -gt 0 ]; then
+        printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.custom_unknown_note)"
         show_github_notifications_repository_list \
-            github_notifications.heading.not_subscribed \
-            "${not_subscribed_repositories[@]}"
+            github_notifications.heading.custom_unknown \
+            "${custom_unknown_repositories[@]}"
+    fi
+    if [ "$participating_count" -gt 0 ]; then
+        printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.participating_note)"
+        show_github_notifications_repository_list \
+            github_notifications.heading.participating \
+            "${participating_repositories[@]}"
     fi
     if [ "${#ignored_repositories[@]}" -gt 0 ]; then
         show_github_notifications_repository_list \

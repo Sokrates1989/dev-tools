@@ -369,9 +369,10 @@ the complete workflow and recovery behavior.
 
 - Uses authenticated GitHub CLI API requests to audit active repositories owned
   by the current account, including public and private repositories.
-- Follows pagination, skips archived repositories, and distinguishes subscribed,
-  not subscribed, ignored, and API-error states.
-- Prints copyable repository URLs for items requiring attention.
+- Uses the public GraphQL subscription state to distinguish All Activity,
+  Participating/@mentions, Ignored, and Custom/API-unrepresented states.
+- Follows pagination, skips archived repositories, and prints copyable URLs for
+  every classified repository.
 - Never changes notification settings in its default audit mode.
 - Clearly reports that GitHub's public API cannot inspect or set the individual
   **Watch → Custom** categories.
@@ -383,7 +384,7 @@ authenticate with `gh auth login`, then run `dev-tools --github-notifications`
 winget installation without requiring a new terminal. For actively maintained
 repositories, manually review
 **Issues**, **Pull requests**, and **Security alerts** under **Watch → Custom**.
-The audit lists repositories in both subscribed and non-subscribed states and
+The audit never equates a missing broad watch with disabled notifications. It
 links to <https://github.com/watching> for centralized subscription management.
 
 See
