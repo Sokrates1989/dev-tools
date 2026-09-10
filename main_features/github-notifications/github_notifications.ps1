@@ -101,8 +101,18 @@ function Invoke-GitHubNotificationsGh {
         [string[]]$Arguments
     )
 
-    $outputItems = @(& $script:GitHubNotificationsGhCommand @Arguments 2>&1)
-    $exitCode = $LASTEXITCODE
+    $previousErrorActionPreference = $ErrorActionPreference
+    try {
+        # Windows PowerShell represents redirected native stderr as error
+        # records. gh writes normal auth status details there even on success.
+        $ErrorActionPreference = "Continue"
+        $outputItems = @(& $script:GitHubNotificationsGhCommand @Arguments 2>&1)
+        $exitCode = $LASTEXITCODE
+    }
+    finally {
+        $ErrorActionPreference = $previousErrorActionPreference
+    }
+
     $output = ($outputItems | ForEach-Object { $_.ToString() }) -join "`n"
     return [pscustomobject]@{ ExitCode = $exitCode; Output = $output }
 }

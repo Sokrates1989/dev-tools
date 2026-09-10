@@ -61,6 +61,21 @@ if ($isWindowsPlatform) {
     finally {
         $env:Path = $previousPath
     }
+
+    $previousGhCommand = $script:GitHubNotificationsGhCommand
+    try {
+        $script:GitHubNotificationsGhCommand = $env:ComSpec
+        $stderrResult = Invoke-GitHubNotificationsGh -Arguments @("/d", "/c", "echo github.com 1>&2")
+        Assert-Equal -Expected 0 -Actual $stderrResult.ExitCode -Context "Successful native stderr changed the exit code"
+        Assert-Contains -Expected "github.com" -Actual $stderrResult.Output -Context "Native stderr was not captured"
+
+        $failureResult = Invoke-GitHubNotificationsGh -Arguments @("/d", "/c", "echo auth-failed 1>&2 & exit /b 7")
+        Assert-Equal -Expected 7 -Actual $failureResult.ExitCode -Context "Native command failure exit code was lost"
+        Assert-Contains -Expected "auth-failed" -Actual $failureResult.Output -Context "Failed native stderr was not captured"
+    }
+    finally {
+        $script:GitHubNotificationsGhCommand = $previousGhCommand
+    }
 }
 
 $script:MockGhAvailable = $true
@@ -146,7 +161,7 @@ try {
     Assert-Contains -Expected "Private (included):   1" -Actual $auditOutput -Context "Private repository inclusion changed"
     Assert-Contains -Expected "Archived/skipped:     1" -Actual $auditOutput -Context "Archived skip count changed"
     Assert-Contains -Expected "Errors:               1" -Actual $auditOutput -Context "API error count changed"
-    Assert-Contains -Expected "Subscribed — exact Custom event categories cannot be verified via the GitHub API." -Actual $auditOutput -Context "Custom-category limitation is missing"
+    Assert-Contains -Expected "exact Custom event categories cannot be verified via the GitHub API." -Actual $auditOutput -Context "Custom-category limitation is missing"
     Assert-Contains -Expected "https://github.com/audit-user/not-subscribed" -Actual $auditOutput -Context "Not-subscribed URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/ignored" -Actual $auditOutput -Context "Ignored URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/api-error" -Actual $auditOutput -Context "API-error URL is missing"
