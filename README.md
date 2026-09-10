@@ -383,6 +383,8 @@ authenticate with `gh auth login`, then run `dev-tools --github-notifications`
 winget installation without requiring a new terminal. For actively maintained
 repositories, manually review
 **Issues**, **Pull requests**, and **Security alerts** under **Watch → Custom**.
+The audit lists repositories in both subscribed and non-subscribed states and
+links to <https://github.com/watching> for centralized subscription management.
 
 See
 [main_features/github-notifications/README.md](main_features/github-notifications/README.md)

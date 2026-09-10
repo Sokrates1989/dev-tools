@@ -142,6 +142,7 @@ invoke_github_notifications_audit() {
     local account_result account repository_result line
     local repository archived private state
     local checked=0 subscribed_count=0 archived_count=0 private_count=0 error_count=0
+    local -a subscribed_repositories=()
     local -a not_subscribed_repositories=()
     local -a ignored_repositories=()
     local -a error_repositories=()
@@ -212,7 +213,10 @@ invoke_github_notifications_audit() {
             state="error"
         fi
         case "$state" in
-            subscribed) subscribed_count=$((subscribed_count + 1)) ;;
+            subscribed)
+                subscribed_count=$((subscribed_count + 1))
+                subscribed_repositories+=("$repository")
+                ;;
             not-subscribed) not_subscribed_repositories+=("$repository") ;;
             ignored) ignored_repositories+=("$repository") ;;
             *)
@@ -233,6 +237,9 @@ invoke_github_notifications_audit() {
 
     if [ "$subscribed_count" -gt 0 ]; then
         printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.subscribed_note)"
+        show_github_notifications_repository_list \
+            github_notifications.heading.subscribed \
+            "${subscribed_repositories[@]}"
     fi
     if [ "${#not_subscribed_repositories[@]}" -gt 0 ]; then
         show_github_notifications_repository_list \
@@ -256,6 +263,9 @@ invoke_github_notifications_audit() {
     printf '%s\n' "$(get_dev_tools_update_message github_notifications.recommendation.pull_requests)"
     printf '%s\n' "$(get_dev_tools_update_message github_notifications.recommendation.security_alerts)"
     printf '%s\n' "$(get_dev_tools_update_message github_notifications.recommendation.limit)"
+
+    printf '\n%s\n' "$(get_dev_tools_update_message github_notifications.management.heading)"
+    printf 'https://github.com/watching\n'
 
     [ "$error_count" -eq 0 ]
 }

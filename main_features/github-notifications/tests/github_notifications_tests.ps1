@@ -162,6 +162,8 @@ try {
     Assert-Contains -Expected "Archived/skipped:     1" -Actual $auditOutput -Context "Archived skip count changed"
     Assert-Contains -Expected "Errors:               1" -Actual $auditOutput -Context "API error count changed"
     Assert-Contains -Expected "exact Custom event categories cannot be verified via the GitHub API." -Actual $auditOutput -Context "Custom-category limitation is missing"
+    Assert-Contains -Expected "SUBSCRIBED" -Actual $auditOutput -Context "Subscribed repository heading is missing"
+    Assert-Contains -Expected "https://github.com/audit-user/subscribed" -Actual $auditOutput -Context "Subscribed repository URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/not-subscribed" -Actual $auditOutput -Context "Not-subscribed URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/ignored" -Actual $auditOutput -Context "Ignored URL is missing"
     Assert-Contains -Expected "https://github.com/audit-user/api-error" -Actual $auditOutput -Context "API-error URL is missing"
@@ -169,6 +171,8 @@ try {
     Assert-Contains -Expected "[x] Issues" -Actual $auditOutput -Context "Recommended Issues configuration is missing"
     Assert-Contains -Expected "[x] Pull requests" -Actual $auditOutput -Context "Recommended Pull requests configuration is missing"
     Assert-Contains -Expected "[x] Security alerts" -Actual $auditOutput -Context "Recommended Security alerts configuration is missing"
+    Assert-Contains -Expected "Manage watched repositories:" -Actual $auditOutput -Context "Watching management guidance is missing"
+    Assert-Contains -Expected "https://github.com/watching" -Actual $auditOutput -Context "Watching management URL is missing"
 
     $launcherContent = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot "start.ps1"))
     Assert-Contains -Expected '"--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell quick-command routing is missing"

@@ -299,6 +299,7 @@ function Invoke-GitHubNotificationsAudit {
         return
     }
 
+    $subscribedRepositories = [System.Collections.Generic.List[string]]::new()
     $notSubscribed = [System.Collections.Generic.List[string]]::new()
     $ignoredRepositories = [System.Collections.Generic.List[string]]::new()
     $errorRepositories = [System.Collections.Generic.List[string]]::new()
@@ -329,7 +330,10 @@ function Invoke-GitHubNotificationsAudit {
         }
 
         switch (Get-GitHubNotificationsSubscriptionState -Repository $repository) {
-            "subscribed" { $subscribedCount++ }
+            "subscribed" {
+                $subscribedCount++
+                $subscribedRepositories.Add($repository)
+            }
             "not-subscribed" { $notSubscribed.Add($repository) }
             "ignored" { $ignoredRepositories.Add($repository) }
             default { $errorRepositories.Add($repository) }
@@ -350,6 +354,7 @@ function Invoke-GitHubNotificationsAudit {
     if ($subscribedCount -gt 0) {
         Write-Output ""
         Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.subscribed_note")
+        Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.subscribed" -Repositories $subscribedRepositories.ToArray()
     }
     if ($notSubscribed.Count -gt 0) {
         Show-GitHubNotificationsRepositoryList -HeadingKey "github_notifications.heading.not_subscribed" -Repositories $notSubscribed.ToArray()
@@ -372,6 +377,10 @@ function Invoke-GitHubNotificationsAudit {
             "github_notifications.recommendation.limit")) {
         Write-Output (Get-DevToolsUpdateMessage -Key $key)
     }
+
+    Write-Output ""
+    Write-Output (Get-DevToolsUpdateMessage -Key "github_notifications.management.heading")
+    Write-Output "https://github.com/watching"
 }
 
 if ($MyInvocation.InvocationName -ne ".") {

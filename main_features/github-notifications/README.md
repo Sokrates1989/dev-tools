@@ -3,7 +3,9 @@
 GitHub Notification Audit checks repository-level subscription state for every
 active repository owned by the authenticated GitHub account. It includes public
 and private repositories returned by the account, follows pagination, and skips
-archived repositories while reporting their count.
+archived repositories while reporting their count. Completed audits list both
+subscribed and non-subscribed repositories with copyable links, then provide
+GitHub's watched-repository management page at <https://github.com/watching>.
 
 Run it from either Dev Tools launcher:
 

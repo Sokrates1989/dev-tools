@@ -138,6 +138,8 @@ assert_contains 'Private (included):   1' "$audit_output" 'Private repository in
 assert_contains 'Archived/skipped:     1' "$audit_output" 'Archived skip count changed'
 assert_contains 'Errors:               1' "$audit_output" 'API error count changed'
 assert_contains 'Subscribed — exact Custom event categories cannot be verified via the GitHub API.' "$audit_output" 'Custom-category limitation is missing'
+assert_contains 'SUBSCRIBED' "$audit_output" 'Subscribed repository heading is missing'
+assert_contains 'https://github.com/audit-user/subscribed' "$audit_output" 'Subscribed repository URL is missing'
 assert_contains 'https://github.com/audit-user/not-subscribed' "$audit_output" 'Not-subscribed URL is missing'
 assert_contains 'https://github.com/audit-user/ignored' "$audit_output" 'Ignored URL is missing'
 assert_contains 'https://github.com/audit-user/api-error' "$audit_output" 'API-error URL is missing'
@@ -145,6 +147,8 @@ assert_not_contains 'https://github.com/audit-user/archived' "$audit_output" 'Ar
 assert_contains '[x] Issues' "$audit_output" 'Recommended Issues configuration is missing'
 assert_contains '[x] Pull requests' "$audit_output" 'Recommended Pull requests configuration is missing'
 assert_contains '[x] Security alerts' "$audit_output" 'Recommended Security alerts configuration is missing'
+assert_contains 'Manage watched repositories:' "$audit_output" 'Watching management guidance is missing'
+assert_contains 'https://github.com/watching' "$audit_output" 'Watching management URL is missing'
 
 launcher_content=$(<"${REPOSITORY_ROOT}/start.sh")
 assert_contains '--github-notifications|--gh-notifications|--gn)' "$launcher_content" 'Bash quick-command routing is missing'
