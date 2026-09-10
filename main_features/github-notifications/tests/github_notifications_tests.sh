@@ -147,7 +147,7 @@ assert_contains '[x] Pull requests' "$audit_output" 'Recommended Pull requests c
 assert_contains '[x] Security alerts' "$audit_output" 'Recommended Security alerts configuration is missing'
 
 launcher_content=$(<"${REPOSITORY_ROOT}/start.sh")
-assert_contains '--github-notifications|--gh-notifications)' "$launcher_content" 'Bash quick-command routing is missing'
+assert_contains '--github-notifications|--gh-notifications|--gn)' "$launcher_content" 'Bash quick-command routing is missing'
 assert_contains 'main_features/github-notifications/github_notifications.sh' "$launcher_content" 'Bash feature path is missing'
 assert_contains '17|"cls"|"--cls")' "$launcher_content" 'Bash interactive menu numbering changed unexpectedly'
 

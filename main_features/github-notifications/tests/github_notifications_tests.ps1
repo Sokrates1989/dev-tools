@@ -37,6 +37,32 @@ function Assert-NotContains {
     }
 }
 
+$isWindowsPlatform = [Environment]::OSVersion.Platform -eq [PlatformID]::Win32NT
+if ($isWindowsPlatform) {
+    $previousPath = $env:Path
+    try {
+        $separator = [System.IO.Path]::PathSeparator
+        $env:Path = "C:\Existing${separator}C:\Duplicate${separator}C:\Duplicate"
+        Update-GitHubNotificationsProcessPath
+        Assert-Contains -Expected "C:\Existing" -Actual $env:Path -Context "Current process PATH entries were discarded"
+        Assert-Equal -Expected 1 -Actual (@($env:Path.Split($separator) | Where-Object { $_ -eq "C:\Duplicate" }).Count) -Context "PATH refresh retained duplicate entries"
+
+        $persistedPath = @(
+            [Environment]::GetEnvironmentVariable("Path", "User"),
+            [Environment]::GetEnvironmentVariable("Path", "Machine")
+        ) | Where-Object { -not [string]::IsNullOrWhiteSpace($_) } | Select-Object -First 1
+        if ($null -ne $persistedPath) {
+            $firstPersistedEntry = $persistedPath.Split($separator) |
+                Where-Object { -not [string]::IsNullOrWhiteSpace($_) } |
+                Select-Object -First 1
+            Assert-Contains -Expected $firstPersistedEntry -Actual $env:Path -Context "Persisted Windows PATH entries were not refreshed"
+        }
+    }
+    finally {
+        $env:Path = $previousPath
+    }
+}
+
 $script:MockGhAvailable = $true
 $script:MockGhScenario = "audit"
 
@@ -131,6 +157,7 @@ try {
 
     $launcherContent = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot "start.ps1"))
     Assert-Contains -Expected '"--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell quick-command routing is missing"
+    Assert-Contains -Expected '"--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell --gn routing is missing"
     Assert-Contains -Expected '"^(16|cls|--cls)$"' -Actual $launcherContent -Context "PowerShell interactive menu numbering changed unexpectedly"
 
     $englishKeys = Get-Content (Join-Path $repositoryRoot "locales\en.properties") |

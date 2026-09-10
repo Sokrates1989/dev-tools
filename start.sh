@@ -136,7 +136,7 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh" "${@:2}"
             exit 0
             ;;
-        --github-notifications|--gh-notifications)
+        --github-notifications|--gh-notifications|--gn)
             bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh" "${@:2}"
             exit $?
             ;;
@@ -269,7 +269,7 @@ case "$choice_lower" in
   15|"deploy-key"|"--deploy-key"|"dk"|"--dk")
     bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh"
     ;;
-  "gn"|"github-notifications"|"--github-notifications"|"gh-notifications"|"--gh-notifications")
+  "gn"|"--gn"|"github-notifications"|"--github-notifications"|"gh-notifications"|"--gh-notifications")
     bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh"
     ;;
   16|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")

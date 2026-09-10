@@ -11,8 +11,8 @@ Run it from either Dev Tools launcher:
 dev-tools --github-notifications
 ```
 
-`--gh-notifications` is also accepted as a shorter alias. The default audit is
-read-only and never changes GitHub settings.
+`--gh-notifications` and `--gn` are also accepted as shorter aliases. The
+default audit is read-only and never changes GitHub settings.
 
 ## Why GitHub CLI Is Required
 
@@ -29,6 +29,10 @@ Install and authenticate GitHub CLI:
 winget install --id GitHub.cli --source winget
 gh auth login
 ```
+
+The PowerShell audit refreshes its process PATH from the persisted Windows user
+and machine PATH before reporting `gh` as missing. This makes a new winget
+installation available immediately, without requiring a new terminal window.
 
 ```bash
 # macOS

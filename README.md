@@ -143,7 +143,7 @@ dev-tools --cc       # quick launch: show commit style instructions for external
 dev-tools --log      # quick launch: Git log explorer
 dev-tools --password # quick launch: generate safe passwords
 dev-tools --deploy-key # quick launch: create or show a server deploy key
-dev-tools --github-notifications # audit owned repository subscriptions
+dev-tools --gn       # audit owned repository subscriptions
 dev-tools --cls      # install the persistent cls terminal cleaner
 ```
 
@@ -159,7 +159,7 @@ dev-tools         # launch the toolbox
 dev-tools -c      # quick export of staged Git commit
 dev-tools -cc     # show commit style instructions for external AI
 dev-tools --pw    # generate safe passwords
-dev-tools --github-notifications # audit owned repository subscriptions
+dev-tools --gn       # audit owned repository subscriptions
 dev-tools --cls   # install the persistent cls terminal cleaner
 ```
 
@@ -173,7 +173,7 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
 dev-tools -pw    # generate safe passwords
-dev-tools --github-notifications # audit owned repository subscriptions
+dev-tools --gn      # audit owned repository subscriptions
 dev-tools --cls  # install the persistent cls terminal cleaner
 open .           # open current folder in Explorer
 open C:\anywhere
@@ -379,7 +379,9 @@ the complete workflow and recovery behavior.
 Normal Git credentials support clone, fetch, pull, and push but do not provide
 this account-level notification audit. Install `gh` only if you use this feature,
 authenticate with `gh auth login`, then run `dev-tools --github-notifications`
-(or `--gh-notifications`). For actively maintained repositories, manually review
+(or `--gh-notifications` / `--gn`). On PowerShell, the audit detects a new
+winget installation without requiring a new terminal. For actively maintained
+repositories, manually review
 **Issues**, **Pull requests**, and **Security alerts** under **Watch → Custom**.
 
 See

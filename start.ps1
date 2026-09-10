@@ -191,6 +191,7 @@ if ($gnuStyleArgument) {
         "--password" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
         "--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
         "--gh-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
+        "--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
         "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1"; return }
         "--help" { Show-DevToolsHelp; return }
         "-h" { Show-DevToolsHelp; return }
@@ -347,7 +348,7 @@ switch ($choiceLower) {
     { $_ -match "^(12|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
     { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
-    { $_ -match "^(gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
+    { $_ -match "^(gn|--gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
     { $_ -match "^(15|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
     { $_ -match "^(16|cls|--cls)$" } { & "$RootDir\main_features\cls\cls_installer.ps1" }
     { $_ -match "^(u|update|--update|-u)$" } {

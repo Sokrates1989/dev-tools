@@ -32,9 +32,59 @@ function Initialize-GitHubNotificationsMessages {
 
 <#
 .SYNOPSIS
+    Adds newly persisted user and machine PATH entries to this process.
+
+.DESCRIPTION
+    Windows installers such as winget update the persisted PATH without
+    changing an already running PowerShell process. Existing process entries
+    remain first so temporary command overrides keep their precedence.
+#>
+function Update-GitHubNotificationsProcessPath {
+    if ([Environment]::OSVersion.Platform -ne [PlatformID]::Win32NT) {
+        return
+    }
+
+    $separator = [System.IO.Path]::PathSeparator
+    $pathValues = @(
+        $env:Path,
+        [Environment]::GetEnvironmentVariable("Path", "User"),
+        [Environment]::GetEnvironmentVariable("Path", "Machine")
+    )
+    $entries = [System.Collections.Generic.List[string]]::new()
+    $seen = [System.Collections.Generic.HashSet[string]]::new([System.StringComparer]::OrdinalIgnoreCase)
+
+    foreach ($pathValue in $pathValues) {
+        if ([string]::IsNullOrWhiteSpace($pathValue)) {
+            continue
+        }
+        foreach ($entry in $pathValue.Split($separator)) {
+            $trimmedEntry = $entry.Trim()
+            if (-not [string]::IsNullOrWhiteSpace($trimmedEntry) -and $seen.Add($trimmedEntry)) {
+                $entries.Add($trimmedEntry)
+            }
+        }
+    }
+
+    $env:Path = $entries -join $separator
+}
+
+<#
+.SYNOPSIS
     Reports whether the configured GitHub CLI command is available.
+
+.DESCRIPTION
+    Retries the default gh lookup after refreshing this process from the
+    persisted PATH. Explicit test or user command overrides are never changed.
 #>
 function Test-GitHubNotificationsGhAvailable {
+    if ($null -ne (Get-Command -Name $script:GitHubNotificationsGhCommand -ErrorAction SilentlyContinue)) {
+        return $true
+    }
+    if ($script:GitHubNotificationsGhCommand -ne "gh") {
+        return $false
+    }
+
+    Update-GitHubNotificationsProcessPath
     return $null -ne (Get-Command -Name $script:GitHubNotificationsGhCommand -ErrorAction SilentlyContinue)
 }
 
