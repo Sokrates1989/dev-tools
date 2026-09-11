@@ -114,7 +114,7 @@ The tool exports your staged changes to a structured format:
    - src/components/UserProfile.js
    - src/utils/old-helper.js (deleted)
 
-📝 Diff summary saved to: diff_output.txt
+📝 Diff summary saved to: git_export_staged/last_staged_commit_diff.txt
 ```
 
 ### Step 3: AI Message Generation
@@ -186,7 +186,7 @@ The tool executes the commit with your chosen message:
    - src/components/UserProfile.js
    - src/utils/old-helper.js (deleted)
 
-📝 Diff summary saved to: diff_output.txt
+📝 Diff summary saved to: git_export_staged/last_staged_commit_diff.txt
 
 🤖 Generating commit message using AI...
 
@@ -221,15 +221,15 @@ The tool executes the commit with your chosen message:
 The tool creates a structured export of your changes:
 
 ```
-changed_files/
-├── src/
-│   ├── components/
-│   │   ├── Dashboard.js          # Modified file
-│   │   └── UserProfile.js        # Added file
-│   └── utils/
-│       └── old-helper.js         # Deleted file (marked)
-├── diff_output.txt               # Complete diff summary
-└── export_info.txt               # Export metadata
+git_export_staged/
+├── changed_files/
+│   ├── Dashboard.js              # Modified file
+│   ├── UserProfile.js            # Added file
+│   └── old-helper.js             # Deleted file (marked)
+├── last_staged_commit_diff.txt     # Complete diff summary
+├── commit_message_prompt.txt       # Commit style instructions
+└── all_in_one/
+    └── ai_message.txt               # AI-ready prompt and staged context
 ```
 
 ## Version Management Workflows
@@ -382,4 +382,4 @@ The tool works with any file type in your repository:
 - **Comprehensive diffs** - Shows all changes in detail
 - **Context lines** - Includes surrounding code for context
 - **File headers** - Clear file identification in diff output
-- **Change statistics** - Summary of additions and deletions 
+- **Change statistics** - Summary of additions and deletions

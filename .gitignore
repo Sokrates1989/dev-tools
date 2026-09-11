@@ -1,6 +1,7 @@
-# Exclude the changed_files, git_export_staged and last_staged_commit_diff.txt within the commit directory.
+# Exclude generated commit-export artifacts.
 main_features/commit/git_export_staged/
 main_features/commit/last_staged_commit_diff.txt
+main_features/commit/diff_output.txt
 main_features/commit/changed_files/
 
 # Exclude merge cache files and folder.
