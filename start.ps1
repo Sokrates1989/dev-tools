@@ -82,45 +82,120 @@ function Show-DevToolsHelp {
             "launcher.help.commit",
             "launcher.help.cc",
             "launcher.help.merge",
-            "launcher.help.readme",
+            "launcher.help.amend",
             "launcher.help.stash",
             "launcher.help.branch_heading",
-            "launcher.help.branch_cleanup",
-            "launcher.help.sync_branches",
-            "launcher.help.track_remote",
             "launcher.help.create_branch",
-            "launcher.help.debug_heading",
-            "launcher.help.log",
-            "launcher.help.amend",
+            "launcher.help.track_remote",
+            "launcher.help.sync_branches",
+            "launcher.help.branch_cleanup",
             "launcher.help.cleanup_heading",
+            "launcher.help.log",
             "launcher.help.remove_gitignored",
             "launcher.help.reset",
-            "launcher.help.maintenance_heading",
             "launcher.help.repair",
-            "launcher.help.update",
             "launcher.help.security_heading",
             "launcher.help.password",
             "launcher.help.github_notifications",
             "launcher.help.configuration_heading",
             "launcher.help.settings",
             "launcher.help.cls",
+            "launcher.help.readme",
             "launcher.help.general_heading",
+            "launcher.help.update",
             "launcher.help.help",
+            "launcher.help.quit",
             "launcher.help.examples_heading",
             "launcher.help.example_menu",
-            "launcher.help.example_cls",
+            "launcher.help.example_shortcut",
             "launcher.help.cls_note")) {
         Write-Host (Get-DevToolsUpdateMessage -Key $key)
         if ($key -in @(
                 "launcher.help.stash",
-                "launcher.help.create_branch",
-                "launcher.help.amend",
-                "launcher.help.reset",
-                "launcher.help.update",
+                "launcher.help.branch_cleanup",
+                "launcher.help.repair",
                 "launcher.help.github_notifications",
-                "launcher.help.cls",
-                "launcher.help.help")) {
+                "launcher.help.readme",
+                "launcher.help.quit")) {
             Write-Host ""
+        }
+    }
+}
+
+<#
+.SYNOPSIS
+    Formats one localized menu heading or structured action row.
+
+.PARAMETER Key
+    Locale-catalog key whose action rows use number;mnemonic;label;flags.
+
+.OUTPUTS
+    System.String containing an aligned menu line.
+#>
+function Format-DevToolsMenuLine {
+    param(
+        [Parameter(Mandatory = $true)]
+        [string]$Key
+    )
+
+    $message = Get-DevToolsUpdateMessage -Key $Key
+    $parts = $message -split ";", 4
+    if ($parts.Count -ne 4 -or $parts[0] -notmatch "^\d+$") {
+        return $message
+    }
+
+    $selector = "{0,2} | {1})" -f $parts[0], $parts[1]
+    $description = "$selector $($parts[2])"
+    return "$($description.PadRight(62))[$($parts[3])]"
+}
+
+<#
+.SYNOPSIS
+    Prints the localized PowerShell launcher menu.
+#>
+function Show-DevToolsMenu {
+    foreach ($key in @(
+            "launcher.menu.title",
+            "launcher.menu.divider",
+            "launcher.menu.description",
+            "",
+            "launcher.menu.git_heading",
+            "launcher.menu.commit",
+            "launcher.menu.commit_external",
+            "launcher.menu.merge",
+            "launcher.menu.amend",
+            "launcher.menu.stash",
+            "",
+            "launcher.menu.branch_heading",
+            "launcher.menu.create_branch",
+            "launcher.menu.track_remote",
+            "launcher.menu.sync_branches",
+            "launcher.menu.branch_cleanup",
+            "",
+            "launcher.menu.recovery_heading",
+            "launcher.menu.log",
+            "launcher.menu.remove_gitignored",
+            "launcher.menu.reset",
+            "launcher.menu.repair",
+            "",
+            "launcher.powershell.menu.security_heading",
+            "launcher.menu.password",
+            "launcher.powershell.menu.github_notifications",
+            "",
+            "launcher.powershell.menu.setup_heading",
+            "launcher.powershell.menu.settings",
+            "launcher.powershell.menu.cls",
+            "launcher.powershell.menu.readme",
+            "",
+            "launcher.powershell.menu.general_heading",
+            "launcher.powershell.menu.update",
+            "launcher.powershell.menu.help",
+            "launcher.menu.exit")) {
+        if ([string]::IsNullOrEmpty($key)) {
+            Write-Host ""
+        }
+        else {
+            Write-Host (Format-DevToolsMenuLine -Key $key)
         }
     }
 }
@@ -187,6 +262,7 @@ if ($gnuStyleArgument) {
         "--f" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--fix" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
+        "--rp" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--pw" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
         "--password" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
         "--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
@@ -194,8 +270,11 @@ if ($gnuStyleArgument) {
         "--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
         "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1"; return }
         "--help" { Show-DevToolsHelp; return }
+        "--h" { Show-DevToolsHelp; return }
         "-h" { Show-DevToolsHelp; return }
         "help" { Show-DevToolsHelp; return }
+        "--quit" { Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message"); return }
+        "--q" { Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message"); return }
         "--cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "-cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "--settings" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
@@ -286,72 +365,34 @@ if ($cfg -or $settings -or $config) {
 
 # === Interactive Menu ===
 Write-Host ""
-Write-Host "Dev Tools Launcher"
-Write-Host "==================="
-Write-Host "Choose a tool to run:"
-Write-Host ""
-Write-Host "Core Operations (1-4):"
-Write-Host "1) Commit Message Helper"
-Write-Host "cc) Commit style instructions for external AI    [--cc | -cc]"
-Write-Host "2) Merge commit assistant"
-Write-Host "3) Show README creation instructions"
-Write-Host "4) Git Stash Manager                 [--stash | -st]"
-Write-Host ""
-Write-Host "Branch Management (5-8):"
-Write-Host "5) Clean Up Merged Branches"
-Write-Host "6) Sync All Branches"
-Write-Host "7) Track Remote Branches             [--track-remote | -t]"
-Write-Host "8) Create New Branch                  [--create-branch | -n]"
-Write-Host ""
-Write-Host "Debug & Investigation (9-10):"
-Write-Host "9) Git log explorer                  [--log    | -l]"
-Write-Host "10) Amend Last Commit                 [--amend  | -a]"
-Write-Host ""
-Write-Host "Cleanup & Reset (11-12):"
-Write-Host "11) Remove Gitignored Files"
-Write-Host "12) Reset Local Git Changes"
-Write-Host ""
-Write-Host "Repair & Maintenance (13):"
-Write-Host "13) Repair Corrupted Git Repository  [--repair | --fix | -f]"
-Write-Host ""
-Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.security_heading")
-Write-Host "14) Generate Safe Passwords          [--password | --pw]"
-Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.github_notifications_menu")
-Write-Host ""
-Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.configuration_heading")
-Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.settings_menu")
-Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.cls_menu")
-if ($updateAvailable) {
-    Write-Host "u) Update Dev Tools now"
-}
-Write-Host "q) Exit"
+Show-DevToolsMenu
 Write-Host ""
 
-$choice = Read-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.choice_prompt")
+$choice = [string](Read-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.menu.choice_prompt"))
 
 # Convert choice to lowercase for easier matching
 $choiceLower = $choice.ToLower()
 
 switch ($choiceLower) {
-    { $_ -match "^(1|commit|--commit|-c|c)$" } { & "$RootDir\main_features\commit\git_export_staged.ps1" }
-    { $_ -match "^(cc|--cc|-cc|commit-external|external-commit)$" } { & "$RootDir\main_features\commit\create_commit_with_external_ai.ps1" }
-    { $_ -match "^(2|merge|--merge|-m|m)$" } { & "$RootDir\main_features\merge\git_export_merge.ps1" }
-    { $_ -match "^(3|readme|--readme|-r|r)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
-    { $_ -match "^(4|stash|--stash|-st|st)$" } { & "$RootDir\main_features\stash\stash_manager.ps1" }
-    { $_ -match "^(5|branch-cleanup|--branch-cleanup|-b|b|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
-    { $_ -match "^(6|sync-branches|--sync-branches|-s|s|sync|--sync)$" } { & "$RootDir\main_features\sync-branches\sync_branches.ps1" }
-    { $_ -match "^(7|track-remote|--track-remote|-t|t|track|--track)$" } { & "$RootDir\main_features\track-remote\track_remote.ps1" }
-    { $_ -match "^(8|create-branch|--create-branch|-n|n|new-branch|newbranch)$" } { & "$RootDir\main_features\create-branch\create_branch.ps1" }
-    { $_ -match "^(9|log|--log|-l|l)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
-    { $_ -match "^(10|amend|--amend|-a|a)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
-    { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
-    { $_ -match "^(12|reset|--reset|-x|x|revert|--revert)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
-    { $_ -match "^(13|repair|--repair|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
+    { $_ -match "^(1|commit|--commit|-c|c|cm|--cm)$" } { & "$RootDir\main_features\commit\git_export_staged.ps1" }
+    { $_ -match "^(2|cc|--cc|-cc|commit-external|external-commit)$" } { & "$RootDir\main_features\commit\create_commit_with_external_ai.ps1" }
+    { $_ -match "^(3|merge|--merge|-m|m|me|--me)$" } { & "$RootDir\main_features\merge\git_export_merge.ps1" }
+    { $_ -match "^(4|amend|--amend|-a|a|am|--am)$" } { & "$RootDir\main_features\amend\git_amend.ps1" }
+    { $_ -match "^(5|stash|--stash|-st|st|--st)$" } { & "$RootDir\main_features\stash\stash_manager.ps1" }
+    { $_ -match "^(6|create-branch|--create-branch|-n|n|nb|--nb|cnb|--cnb|new-branch|newbranch)$" } { & "$RootDir\main_features\create-branch\create_branch.ps1" }
+    { $_ -match "^(7|track-remote|--track-remote|-t|t|tr|--tr|track|--track)$" } { & "$RootDir\main_features\track-remote\track_remote.ps1" }
+    { $_ -match "^(8|sync-branches|--sync-branches|-s|s|sb|--sb|sync|--sync)$" } { & "$RootDir\main_features\sync-branches\sync_branches.ps1" }
+    { $_ -match "^(9|branch-cleanup|--branch-cleanup|-b|b|bc|--bc|cleanup|--cleanup)$" } { & "$RootDir\main_features\branch-cleanup\branch_cleanup.ps1" }
+    { $_ -match "^(10|log|--log|-l|l|lg|--lg)$" } { & "$RootDir\main_features\git\git_log_explorer.ps1" }
+    { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|rg|--rg|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
+    { $_ -match "^(12|reset|--reset|-x|x|revert|--revert|re|--re)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
+    { $_ -match "^(13|repair|--repair|rp|--rp|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
     { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
-    { $_ -match "^(gn|--gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
-    { $_ -match "^(15|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
-    { $_ -match "^(16|cls|--cls)$" } { & "$RootDir\main_features\cls\cls_installer.ps1" }
-    { $_ -match "^(u|update|--update|-u)$" } {
+    { $_ -match "^(15|gn|--gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
+    { $_ -match "^(16|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
+    { $_ -match "^(17|cls|--cls)$" } { & "$RootDir\main_features\cls\cls_installer.ps1" }
+    { $_ -match "^(18|readme|--readme|-r|r|rd|--rd)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
+    { $_ -match "^(19|u|update|--update|-u|--u)$" } {
         if ($updateAvailable) {
             if (Invoke-DevToolsUpdate -RootDir $RootDir) {
                 & "$RootDir\start.ps1"
@@ -360,9 +401,13 @@ switch ($choiceLower) {
             Write-Host (Get-DevToolsUpdateMessage -Key "updates.current")
         }
     }
-    { $_ -match "^(q|quit|exit)$" } { Write-Host "Goodbye."; exit }
-    default { 
-        Write-Host "Invalid choice: $choice"
-        Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.invalid_choices")
+    { $_ -match "^(20|h|help|--help|-h|--h)$" } { Show-DevToolsHelp }
+    { $_ -match "^(0|q|quit|--quit|--q|exit)$" } {
+        Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message")
+        exit
+    }
+    default {
+        Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.invalid_choice" -Arguments @($choice))
+        Write-Host (Get-DevToolsUpdateMessage -Key "launcher.powershell.menu.invalid_choices")
     }
 }

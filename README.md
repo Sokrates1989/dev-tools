@@ -132,6 +132,12 @@ OPENAI_API_KEY=sk-xxxxxx-your-key-here
 
 ## 🧑‍💻 Usage
 
+The interactive launcher groups related tools and shows every action as
+`number | mnemonic)`. Enter either value in the menu, or run the same mnemonic
+directly with a double dash. For example, `14` and `pw` select the password
+generator in the menu, while `dev-tools --pw` launches it directly. Existing
+long and legacy short options remain supported.
+
 ### 🐧 Linux Usage
 
 Installed to `/tools/dev-tools`:
@@ -172,8 +178,8 @@ dev-tools --cls   # install the persistent cls terminal cleaner
 dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
-dev-tools -pw    # generate safe passwords
-dev-tools --gn      # audit owned repository subscriptions
+dev-tools --pw   # generate safe passwords
+dev-tools --gn   # audit owned repository subscriptions
 dev-tools --cls  # install the persistent cls terminal cleaner
 open .           # open current folder in Explorer
 open C:\anywhere

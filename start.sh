@@ -19,7 +19,7 @@ fi
 
 IS_EXPLICIT_UPDATE="false"
 case "${1:-}" in
-    --update|-u) IS_EXPLICIT_UPDATE="true" ;;
+    --update|--u|-u) IS_EXPLICIT_UPDATE="true" ;;
 esac
 
 if [ "$SKIP_UPDATE_GUARD" = "false" ] && [ "$IS_EXPLICIT_UPDATE" = "false" ]; then
@@ -38,35 +38,109 @@ show_dev_tools_help() {
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.commit)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.cc)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.merge)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.readme)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.amend)"
     printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.stash)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.branch_heading)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.branch_cleanup)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.sync_branches)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.create_branch)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.track_remote)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.create_branch)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.debug_heading)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.log)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.amend)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.sync_branches)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.branch_cleanup)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.cleanup_heading)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.log)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.remove_gitignored)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.reset)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.maintenance_heading)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.repair)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.update)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.reset)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.repair)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.security_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.password)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.deploy_key)"
     printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.github_notifications)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.configuration_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.settings)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.cls)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.cls)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.readme)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.general_heading)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.help)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.update)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.help)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.quit)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.examples_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_menu)"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_cls)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_shortcut)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.cls_note)"
+}
+
+# print_dev_tools_menu_line
+#
+# Prints one localized heading or an aligned number;mnemonic;label;flags row.
+#
+# Arguments:
+#   $1 - key: locale-catalog key to render.
+print_dev_tools_menu_line() {
+    local key="$1"
+    local message number mnemonic label flags selector description
+
+    message=$(get_dev_tools_update_message "$key") || return 1
+    IFS=';' read -r number mnemonic label flags <<< "$message"
+    if [[ "$number" =~ ^[0-9]+$ && -n "$mnemonic" && -n "$label" && -n "$flags" ]]; then
+        printf -v selector '%2s | %s)' "$number" "$mnemonic"
+        description="${selector} ${label}"
+        printf '%-62s[%s]\n' "$description" "$flags"
+    else
+        printf '%s\n' "$message"
+    fi
+}
+
+# show_dev_tools_menu
+#
+# Prints every Bash launcher action with its numeric and mnemonic selectors.
+show_dev_tools_menu() {
+    local key
+    local menu_keys=(
+        launcher.menu.title
+        launcher.menu.divider
+        launcher.menu.description
+        ""
+        launcher.menu.git_heading
+        launcher.menu.commit
+        launcher.menu.commit_external
+        launcher.menu.merge
+        launcher.menu.amend
+        launcher.menu.stash
+        ""
+        launcher.menu.branch_heading
+        launcher.menu.create_branch
+        launcher.menu.track_remote
+        launcher.menu.sync_branches
+        launcher.menu.branch_cleanup
+        ""
+        launcher.menu.recovery_heading
+        launcher.menu.log
+        launcher.menu.remove_gitignored
+        launcher.menu.reset
+        launcher.menu.repair
+        ""
+        launcher.menu.security_heading
+        launcher.menu.password
+        launcher.menu.deploy_key
+        launcher.menu.github_notifications
+        ""
+        launcher.menu.setup_heading
+        launcher.menu.settings
+        launcher.menu.cls
+        launcher.menu.readme
+        ""
+        launcher.menu.general_heading
+        launcher.menu.update
+        launcher.menu.help
+        launcher.menu.exit
+    )
+
+    for key in "${menu_keys[@]}"; do
+        if [ -z "$key" ]; then
+            printf '\n'
+        else
+            print_dev_tools_menu_line "$key"
+        fi
+    done
 }
 
 # --- Argument-based quick start ---
@@ -124,7 +198,7 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
             exit 0
             ;;
-        --repair|--fix|-f)
+        --repair|--rp|--fix|-f)
             bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
             exit 0
             ;;
@@ -148,15 +222,19 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
             exit 0
             ;;
-        --help|-h|help)
+        --help|--h|-h|help)
             show_dev_tools_help
             exit 0
             ;;
-        --update|-u)
+        --update|--u|-u)
             if invoke_dev_tools_update "$ROOT_DIR"; then
                 DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh"
             fi
             exit 1
+            ;;
+        --quit|--q)
+            printf '%s\n' "$(get_dev_tools_update_message launcher.menu.exit_message)"
+            exit 0
             ;;
 
         *)
@@ -172,87 +250,44 @@ fi
 
 # --- Interactive Menu ---
 echo ""
-echo "🛠️  Dev Tools Launcher"
-echo "======================"
-echo "Choose a tool to run (you can also use these flags directly):"
-echo ""
-echo "🔄 Core Operations (1-4):"
-echo "1) 📤 Commit Message Helper             [--commit | -c | --cm]"
-echo "cc) 🤖 Commit style instructions for external AI [--cc | -cc]"
-echo "2) 🔀 Merge commit assistant            [--merge  | -m | --me]"
-echo "3) 📘 Show README creation instructions [--readme | -r | --rd]"
-echo "4) 📦 Git Stash Manager                 [--stash | -st | --st]"
-echo ""
-echo "🔄 Branch Management (5-8):"
-echo "5) 🌿 Clean Up Merged Branches          [--branch-cleanup | -b | --bc]"
-echo "6) 🔄 Sync All Branches                 [--sync-branches | -s | --sb]"
-echo "7) 📡 Track Remote Branches             [--track-remote | -t | --tr]"
-echo "8) 🌱 Create New Branch                  [--create-branch | -n | --nb | --cnb]"
-echo ""
-echo "🔍 Debug & Investigation (9-10):"
-echo "9) 📜 Git log explorer                  [--log    | -l | --lg]"
-echo "10) 🔄 Amend Last Commit                 [--amend  | -a | --am]"
-echo ""
-echo "🧹 Cleanup & Reset (11-12):"
-echo "11) 🧹 Remove Gitignored Files           [--remove-gitignored | -i | --rg]"
-echo "12) 🧹 Reset Local Git Changes          [--reset  | -x | --re]"
-echo ""
-echo "🔧 Repair & Maintenance (13):"
-echo "13) 🔧 Repair Corrupted Git Repository  [--repair | --fix | -f]"
-echo ""
-printf '%s\n' "$(get_dev_tools_update_message launcher.security_heading)"
-echo "14) Generate Safe Passwords              [--password | --pw]"
-printf '%s\n' "$(get_dev_tools_update_message launcher.deploy_key_menu)"
-printf '%s\n' "$(get_dev_tools_update_message launcher.github_notifications_menu)"
-echo ""
-printf '⚙️  %s\n' "$(get_dev_tools_update_message launcher.configuration_heading)"
-printf '%s\n' "$(get_dev_tools_update_message launcher.settings_menu)"
-printf '%s\n' "$(get_dev_tools_update_message launcher.cls_menu)"
-echo ""
-if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
-    echo "u) 🔄 Update Dev Tools now            [--update | -u]"
-fi
-echo "q) ❌ Exit"
+show_dev_tools_menu
 echo ""
 
-read -r -p "$(get_dev_tools_update_message launcher.choice_prompt) " choice
+read -r -p "$(get_dev_tools_update_message launcher.menu.choice_prompt) " choice
 
 # Convert choice to lowercase for easier matching
 choice_lower=$(echo "$choice" | tr '[:upper:]' '[:lower:]')
 
 case "$choice_lower" in
-  1|"commit"|"--commit"|"-c"|"c"|"cm")
+  1|"commit"|"--commit"|"-c"|"c"|"cm"|"--cm")
     bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
     ;;
-  "cc"|"--cc"|"-cc"|"commit-external"|"external-commit")
+  2|"cc"|"--cc"|"-cc"|"commit-external"|"external-commit")
     bash "$ROOT_DIR/main_features/commit/create_commit_with_external_ai.sh"
     ;;
-  2|"merge"|"--merge"|"-m"|"m"|"me")
+  3|"merge"|"--merge"|"-m"|"m"|"me"|"--me")
     bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
     ;;
-  3|"readme"|"--readme"|"-r"|"r"|"rd")
-    bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
+  4|"amend"|"--amend"|"-a"|"a"|"am"|"--am")
+    bash "$ROOT_DIR/main_features/amend/git_amend.sh"
     ;;
-  4|"stash"|"--stash"|"-st"|"st"|"--st")
+  5|"stash"|"--stash"|"-st"|"st"|"--st")
     bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
     ;;
-  5|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"bc"|"--bc")
-    bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
-    ;;
-  6|"sync-branches"|"--sync-branches"|"-s"|"s"|"sb"|"--sb")
-    bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
+  6|"create-branch"|"--create-branch"|"-n"|"n"|"nb"|"--nb"|"cnb"|"--cnb")
+    bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
     ;;
   7|"track-remote"|"--track-remote"|"-t"|"t"|"tr"|"--tr")
     bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
     ;;
-  8|"create-branch"|"--create-branch"|"-n"|"n"|"nb"|"--nb"|"cnb"|"--cnb")
-    bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
+  8|"sync-branches"|"--sync-branches"|"-s"|"s"|"sb"|"--sb")
+    bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
     ;;
-  9|"log"|"--log"|"-l"|"l"|"lg"|"--lg")
+  9|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"bc"|"--bc")
+    bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
+    ;;
+  10|"log"|"--log"|"-l"|"l"|"lg"|"--lg")
     bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
-    ;;
-  10|"amend"|"--amend"|"-a"|"a" |"am"|"--am")
-    bash "$ROOT_DIR/main_features/amend/git_amend.sh"
     ;;
   11|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"rg"|"--rg")
     bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
@@ -260,7 +295,7 @@ case "$choice_lower" in
   12|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert"|"re"|"--re")
     bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
     ;;
-  13|"repair"|"--repair"|"fix"|"--fix"|"-f"|"f")
+  13|"repair"|"--repair"|"rp"|"--rp"|"fix"|"--fix"|"-f"|"f")
     bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
     ;;
   14|"password"|"--password"|"pw"|"--pw")
@@ -269,16 +304,19 @@ case "$choice_lower" in
   15|"deploy-key"|"--deploy-key"|"dk"|"--dk")
     bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh"
     ;;
-  "gn"|"--gn"|"github-notifications"|"--github-notifications"|"gh-notifications"|"--gh-notifications")
+  16|"gn"|"--gn"|"github-notifications"|"--github-notifications"|"gh-notifications"|"--gh-notifications")
     bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh"
     ;;
-  16|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
+  17|"settings"|"--settings"|"cfg"|"--cfg"|"-cfg"|"config"|"--config")
     bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
     ;;
-  17|"cls"|"--cls")
+  18|"cls"|"--cls")
     bash "$ROOT_DIR/main_features/cls/cls_installer.sh"
     ;;
-  "u"|"update"|"--update"|"-u")
+  19|"readme"|"--readme"|"-r"|"r"|"rd"|"--rd")
+    bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
+    ;;
+  20|"u"|"update"|"--update"|"-u"|"--u")
     if [[ "$DEVTOOLS_UPDATE_AVAILABLE" == "1" ]]; then
       if invoke_dev_tools_update "$ROOT_DIR"; then
         DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh"
@@ -287,12 +325,15 @@ case "$choice_lower" in
       printf '%s\n' "$(get_dev_tools_update_message updates.current)"
     fi
     ;;
-  "q"|"quit"|"exit")
-    echo "👋 Bye!"
+  21|"h"|"help"|"--help"|"-h"|"--h")
+    show_dev_tools_help
+    ;;
+  0|"q"|"quit"|"--quit"|"--q"|"exit")
+    printf '%s\n' "$(get_dev_tools_update_message launcher.menu.exit_message)"
     exit 0
     ;;
   *)
-    echo "❌ Invalid choice: $choice"
-    printf '%s\n' "$(get_dev_tools_update_message launcher.invalid_choices)"
+    format_dev_tools_update_message launcher.menu.invalid_choice "$choice"
+    printf '\n%s\n' "$(get_dev_tools_update_message launcher.menu.invalid_choices)"
     ;;
 esac

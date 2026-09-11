@@ -125,7 +125,7 @@ after
 
     $launcherContent = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot "start.ps1"))
     Assert-Contains -Expected '"--cls" { & "$RootDir\main_features\cls\cls_installer.ps1"; return }' -Actual $launcherContent -Context "--cls argument routing is missing"
-    Assert-Contains -Expected '"^(16|cls|--cls)$"' -Actual $launcherContent -Context "Interactive cls menu routing is missing"
+    Assert-Contains -Expected '"^(17|cls|--cls)$"' -Actual $launcherContent -Context "Interactive cls menu routing is missing"
     Assert-Equal -Expected 3 -Actual ([regex]::Matches($launcherContent, [regex]::Escape('"$RootDir\main_features\cls\cls_installer.ps1"')).Count) -Context "PowerShell launcher routes do not share one cls implementation"
     Assert-Contains -Expected 'Show-DevToolsHelp' -Actual $launcherContent -Context "PowerShell help routing is missing"
 

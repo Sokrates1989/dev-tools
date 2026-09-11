@@ -271,7 +271,8 @@ try {
     $launcherContent = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot "start.ps1"))
     Assert-Contains -Expected '"--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell quick-command routing is missing"
     Assert-Contains -Expected '"--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell --gn routing is missing"
-    Assert-Contains -Expected '"^(16|cls|--cls)$"' -Actual $launcherContent -Context "PowerShell interactive menu numbering changed unexpectedly"
+    Assert-Contains -Expected '"^(15|gn|--gn|github-notifications|' -Actual $launcherContent -Context "PowerShell interactive notification routing is missing"
+    Assert-Contains -Expected '"^(17|cls|--cls)$"' -Actual $launcherContent -Context "PowerShell interactive menu numbering changed unexpectedly"
 
     $englishKeys = Get-Content (Join-Path $repositoryRoot "locales\en.properties") |
         Where-Object { $_ -match "^[^#].*=" } | ForEach-Object { ($_ -split "=", 2)[0] }

@@ -185,7 +185,7 @@ launcher_content=$(cat -- "$REPOSITORY_ROOT/start.sh")
 assert_contains 'bash "$ROOT_DIR/main_features/cls/cls_installer.sh" "${@:2}"' "$launcher_content" '--cls argument routing is missing'
 assert_contains 'bash "$ROOT_DIR/main_features/cls/cls_installer.sh"' "$launcher_content" 'Interactive cls menu routing is missing'
 assert_equal 2 "$(grep -Fc 'bash "$ROOT_DIR/main_features/cls/cls_installer.sh"' "$REPOSITORY_ROOT/start.sh")" 'Bash launcher routes do not share one cls implementation'
-assert_contains '--help|-h|help)' "$launcher_content" 'Bash help routing is missing'
+assert_contains '--help|--h|-h|help)' "$launcher_content" 'Bash help routing is missing'
 
 english_keys=$(grep -E '^[^#].*=' "$FEATURE_DIRECTORY/locales/en.properties" | cut -d= -f1)
 german_keys=$(grep -E '^[^#].*=' "$FEATURE_DIRECTORY/locales/de.properties" | cut -d= -f1)

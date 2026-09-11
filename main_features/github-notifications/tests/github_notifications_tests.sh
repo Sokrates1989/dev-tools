@@ -240,7 +240,8 @@ assert_contains 'https://github.com/watching' "$audit_output" 'Watching manageme
 launcher_content=$(<"${REPOSITORY_ROOT}/start.sh")
 assert_contains '--github-notifications|--gh-notifications|--gn)' "$launcher_content" 'Bash quick-command routing is missing'
 assert_contains 'main_features/github-notifications/github_notifications.sh' "$launcher_content" 'Bash feature path is missing'
-assert_contains '17|"cls"|"--cls")' "$launcher_content" 'Bash interactive menu numbering changed unexpectedly'
+assert_contains '16|"gn"|"--gn"|"github-notifications"' "$launcher_content" 'Bash interactive notification routing is missing'
+assert_contains '18|"cls"|"--cls")' "$launcher_content" 'Bash interactive menu numbering changed unexpectedly'
 
 english_keys=$(grep -E '^[^#].*=' "${REPOSITORY_ROOT}/locales/en.properties" | cut -d= -f1)
 german_keys=$(grep -E '^[^#].*=' "${REPOSITORY_ROOT}/locales/de.properties" | cut -d= -f1)
