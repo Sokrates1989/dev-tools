@@ -27,7 +27,7 @@ source "${SCRIPT_DIR}/password_core.sh"
 source "${SCRIPT_DIR}/password_ui.sh"
 
 case "${1:-}" in
-    --help|-h)
+    --help|--h|-help|-h|help)
         show_password_generator_help
         exit 0
         ;;

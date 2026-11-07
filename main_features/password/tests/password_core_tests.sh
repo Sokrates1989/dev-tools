@@ -76,8 +76,18 @@ for ((index = 0; index < ${#presets[@]}; index++)); do
     assert_password_policy "$preset"
 done
 
-mapfile -t password_set < <(new_safe_password_set 24 3 balanced)
+password_set=()
+generated_passwords=$(new_safe_password_set 24 3 balanced)
+while IFS= read -r password; do
+    password_set+=("$password")
+done <<< "$generated_passwords"
 assert_equal "3" "${#password_set[@]}" "Password set count changed"
+
+terminal_output=$(printf '3\n16\n2\n3\n' | invoke_safe_password_generator 2>/dev/null)
+terminal_count=$(awk '/^Generated password\(s\):$/ { found = 1; next }
+    found && length($0) == 16 { count++ }
+    END { print count + 0 }' <<< "$terminal_output")
+assert_equal '2' "$terminal_count" 'Terminal delivery did not preserve both passwords'
 
 menu_answers=("" 1 n none 2 m minimum 3 b balanced 4 h high 5 a all)
 menu_presets=(balanced none none none minimum minimum minimum balanced balanced balanced high high high all all all)

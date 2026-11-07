@@ -11,6 +11,11 @@ set -euo pipefail
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 REPOSITORY_ROOT="$(cd "${SCRIPT_DIR}/../.." && pwd)"
 
+# Prefer the tools bundled with Git Bash over Windows executables on PATH.
+if [[ "$OSTYPE" == msys* ]]; then
+    PATH="/usr/bin:$PATH"
+fi
+
 # shellcheck source-path=SCRIPTDIR
 # shellcheck source=deploy_key_core.sh
 source "${SCRIPT_DIR}/deploy_key_core.sh"
@@ -23,7 +28,7 @@ source "${SCRIPT_DIR}/deploy_key_instructions.sh"
 initialize_deploy_key_messages "$REPOSITORY_ROOT"
 
 case "${1:-}" in
-    --help|-h|help)
+    --help|--h|-help|-h|help)
         show_deploy_key_help
         ;;
     "")

@@ -10,7 +10,7 @@
 #   - Optional clipboard tool: pbcopy, wl-copy, xclip, xsel, clip.exe, or clip.
 #
 
-declare -A PASSWORD_MESSAGES=()
+PASSWORD_MESSAGE_FILE=""
 
 # load_password_messages
 #
@@ -19,27 +19,17 @@ declare -A PASSWORD_MESSAGES=()
 # locale detection with en or de for deterministic CLI use and testing.
 #
 # Returns:
-#   0 after populating the global PASSWORD_MESSAGES catalog.
+#   0 after selecting the global PASSWORD_MESSAGE_FILE catalog.
 load_password_messages() {
-    local requested_locale locale_file line key value
+    local requested_locale locale_file
     requested_locale="${PASSWORD_GENERATOR_LOCALE:-${LC_ALL:-${LC_MESSAGES:-${LANG:-en}}}}"
 
-    case "${requested_locale,,}" in
-        de|de[_-]*) locale_file="de.properties" ;;
+    case "$requested_locale" in
+        [Dd][Ee]|[Dd][Ee][_-]*) locale_file="de.properties" ;;
         *) locale_file="en.properties" ;;
     esac
 
-    PASSWORD_MESSAGES=()
-    while IFS= read -r line || [ -n "$line" ]; do
-        line="${line%$'\r'}"
-        if [ -z "$line" ] || [[ "$line" == \#* ]]; then
-            continue
-        fi
-
-        key="${line%%=*}"
-        value="${line#*=}"
-        PASSWORD_MESSAGES["$key"]="$value"
-    done < "$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/locales/${locale_file}"
+    PASSWORD_MESSAGE_FILE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)/locales/${locale_file}"
 }
 
 # get_password_message
@@ -55,13 +45,17 @@ load_password_messages() {
 # Returns:
 #   0 when the key exists; 1 otherwise.
 get_password_message() {
-    local key="$1"
-    if [ -z "${PASSWORD_MESSAGES[$key]+present}" ]; then
-        printf 'Missing password message key: %s\n' "$key" >&2
-        return 1
-    fi
+    local key="$1" line
+    while IFS= read -r line || [ -n "$line" ]; do
+        if [[ "$line" == "$key="* ]]; then
+            line="${line%$'\r'}"
+            printf '%s' "${line#*=}"
+            return 0
+        fi
+    done < "$PASSWORD_MESSAGE_FILE"
 
-    printf '%s' "${PASSWORD_MESSAGES[$key]}"
+    printf 'Missing password message key: %s\n' "$key" >&2
+    return 1
 }
 
 # format_password_message
@@ -156,7 +150,7 @@ read_yes_no_choice() {
 
     while true; do
         read -r -p "$(format_password_message prompt_with_default "$prompt" "$suffix"): " answer
-        answer="${answer,,}"
+        answer=$(LC_ALL=C tr '[:upper:]' '[:lower:]' <<< "$answer")
 
         if [ -z "$answer" ]; then
             echo "$default_yes"
@@ -235,7 +229,7 @@ read_special_character_preset() {
         printf '%s\n' "$(get_password_message special_option_all)" >&2
         read -r -p "$(get_password_message special_prompt): " answer
 
-        answer="${answer,,}"
+        answer=$(LC_ALL=C tr '[:upper:]' '[:lower:]' <<< "$answer")
         case "${answer:-$DEFAULT_SPECIAL_CHARACTER_PRESET}" in
             1|n|none) printf '%s' "none"; return 0 ;;
             2|m|minimum) printf '%s' "minimum"; return 0 ;;
@@ -447,11 +441,15 @@ invoke_safe_password_generator() {
     printf '%s\n' "$(get_password_message title_divider)"
     printf '\n'
 
-    local special_character_preset password_length password_count passwords delivery
+    local special_character_preset password_length password_count generated_passwords password delivery
+    local -a passwords=()
     special_character_preset=$(read_special_character_preset)
     password_length=$(read_integer_choice "$(get_password_message password_length)" "$DEFAULT_PASSWORD_LENGTH" "$MINIMUM_PASSWORD_LENGTH" 4096)
     password_count=$(read_integer_choice "$(get_password_message password_count)" "$DEFAULT_PASSWORD_COUNT" 1 100)
-    mapfile -t passwords < <(new_safe_password_set "$password_length" "$password_count" "$special_character_preset")
+    generated_passwords=$(new_safe_password_set "$password_length" "$password_count" "$special_character_preset") || return 1
+    while IFS= read -r password; do
+        passwords+=("$password")
+    done <<< "$generated_passwords"
 
     while true; do
         delivery=$(read_delivery_choice)

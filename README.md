@@ -135,8 +135,10 @@ OPENAI_API_KEY=sk-xxxxxx-your-key-here
 The interactive launcher groups related tools and shows every action as
 `number | mnemonic)`. Enter either value in the menu, or run the same mnemonic
 directly with a double dash. For example, `14` and `pw` select the password
-generator in the menu, while `dev-tools --pw` launches it directly. Existing
-long and legacy short options remain supported.
+generator in the menu, while `dev-tools --pw` launches it directly. Commands and
+documented flag aliases work in both launchers. Run `dev-tools --help` for the
+command list. Add `--help` or `-h` after `--pw`, `--cls`, `--gn`, or `--dk` to
+see help for that tool.
 
 ### 🐧 Linux Usage
 
@@ -179,6 +181,7 @@ dev-tools        # launch the toolbox
 dev-tools -c     # quick export of staged Git commit
 dev-tools -cc    # show commit style instructions for external AI
 dev-tools --pw   # generate safe passwords
+dev-tools --dk   # create or show a repository deploy key
 dev-tools --gn   # audit owned repository subscriptions
 dev-tools --cls  # install the persistent cls terminal cleaner
 open .           # open current folder in Explorer
@@ -364,7 +367,8 @@ conflict, and recovery details.
 - Leaves GitHub write access disabled by default and never edits
   `~/.ssh/config`.
 
-Quick command: `--deploy-key` or `--dk` on the Bash launcher.
+Quick command: `--deploy-key` or `--dk`. On Windows, the PowerShell launcher
+uses the Bash bundled with Git for Windows for this feature.
 
 See [main_features/deploy-key/README.md](main_features/deploy-key/README.md) for
 the complete workflow and recovery behavior.
@@ -412,8 +416,6 @@ for installation, state semantics, tests, and the API limitation.
 ### 🖥️ Linux / macOS
 
 Use the `start.sh` entry point. Scripts auto-detect X11/Wayland GUI or terminal-only environments.
-The Deploy Key Manager is available through this Bash entry point for
-server-side repository access.
 
 ::: tip
 Use `Ctrl + H` to show hidden files (e.g., `.gitignore`) in most Linux file managers.

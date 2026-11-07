@@ -18,7 +18,7 @@ initialize_cls_messages "$SCRIPT_DIRECTORY" || {
 }
 
 case "${1:-}" in
-    --help|-h|help)
+    --help|--h|-help|-h|help)
         show_cls_help
         ;;
     "")

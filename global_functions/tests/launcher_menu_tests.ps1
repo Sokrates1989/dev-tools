@@ -3,8 +3,8 @@
     Validates launcher menu numbering, mnemonics, and direct shortcut parity.
 
 .DESCRIPTION
-    Checks both locale catalogs plus the PowerShell and Bash dispatch tables
-    without invoking any feature that could modify a repository or user state.
+    Checks both locale catalogs and dispatch tables. Uses disposable feature
+    stubs to verify PowerShell help routing without running feature workflows.
 #>
 
 Set-StrictMode -Version Latest
@@ -111,6 +111,7 @@ $powerShellRows = @(
     [pscustomobject]@{ Key = "launcher.powershell.menu.readme"; Number = "18"; Mnemonic = "rd"; Flag = "--rd" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.update"; Number = "19"; Mnemonic = "u"; Flag = "--u" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.help"; Number = "20"; Mnemonic = "h"; Flag = "--h" }
+    [pscustomobject]@{ Key = "launcher.powershell.menu.deploy_key"; Number = "21"; Mnemonic = "dk"; Flag = "--dk" }
 )
 $bashRows = @(
     [pscustomobject]@{ Key = "launcher.menu.deploy_key"; Number = "15"; Mnemonic = "dk"; Flag = "--dk" }
@@ -166,6 +167,23 @@ foreach ($row in @($commonRows + $bashRows)) {
     }
 }
 
+$bashDirectRoutes = [regex]::Match($bashLauncher,
+    '(?ms)^if \[\[ \$# -gt 0 \]\]; then.*?^fi\s*$').Value
+$powerShellDirectRoutes = [regex]::Match($powerShellLauncher,
+    '(?ms)^if \(\$gnuStyleArgument\) \{.*?^\}\s*$').Value
+$bashFlags = @([regex]::Matches($bashDirectRoutes, '(?m)^        (--[^\r\n]+)\)\r?$') |
+    ForEach-Object { $_.Groups[1].Value -split '\|' } |
+    Where-Object { $_ -like '--*' } | Sort-Object -Unique)
+$powerShellFlags = @([regex]::Matches($powerShellDirectRoutes, '"(--[a-z][\w-]*)"') |
+    ForEach-Object { $_.Groups[1].Value } | Sort-Object -Unique)
+if ($bashFlags.Count -eq 0 -or $powerShellFlags.Count -eq 0) {
+    throw 'Could not read both direct dispatch tables.'
+}
+$flagDifferences = Compare-Object $bashFlags $powerShellFlags
+if ($flagDifferences) {
+    throw "Direct aliases differ between launchers: $($flagDifferences.InputObject -join ', ')"
+}
+
 $englishKeys = @($englishMessages.Keys | Sort-Object)
 $germanKeys = @($germanMessages.Keys | Sort-Object)
 $separator = [Environment]::NewLine
@@ -173,4 +191,59 @@ if (($englishKeys -join $separator) -cne ($germanKeys -join $separator)) {
     throw "English and German launcher locale key sets differ."
 }
 
-Write-Output "Launcher menu contract tests passed."
+$fixtureParent = [System.IO.Path]::GetFullPath([System.IO.Path]::GetTempPath())
+$fixtureRoot = Join-Path $fixtureParent ('dev-tools-launcher-tests-' + [guid]::NewGuid())
+$oldReplayMarker = $env:DEV_TOOLS_UPDATE_REPLAYED
+try {
+    $fixtureLauncher = Join-Path $fixtureRoot 'start.ps1'
+    $null = New-Item -ItemType Directory -Path (Join-Path $fixtureRoot 'global_functions')
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'start.ps1') -Destination $fixtureLauncher
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'locales') -Destination $fixtureRoot -Recurse
+    Copy-Item -LiteralPath (Join-Path $repositoryRoot 'global_functions\update_manager.ps1') `
+        -Destination (Join-Path $fixtureRoot 'global_functions')
+
+    foreach ($feature in @(
+            @{ Path = 'password\generate_safe_passwords.ps1'; Flags = @('--password', '--pw', '-pw') },
+            @{ Path = 'cls\cls_installer.ps1'; Flags = @('--cls', '-cls') },
+            @{ Path = 'github-notifications\github_notifications.ps1'; Flags = @('--gn', '--gh-notifications', '--github-notifications') },
+            @{ Path = 'deploy-key\deploy_key_manager.ps1'; Flags = @('--deploy-key', '--dk') })) {
+        $stubPath = Join-Path $fixtureRoot "main_features\$($feature.Path)"
+        $null = New-Item -ItemType Directory -Path (Split-Path -Parent $stubPath)
+        Set-Content -LiteralPath $stubPath -Value @'
+param([switch]$Help)
+if (-not $Help -and ($args.Count -ne 1 -or $args[0] -cne '--help')) {
+    throw 'The launcher failed to pass feature help.'
+}
+Write-Output $MyInvocation.MyCommand.Name
+exit 0
+'@
+
+        foreach ($flag in $feature.Flags) {
+            foreach ($helpFlag in @('--help', '--h', '-help', '-h', 'help')) {
+                $env:DEV_TOOLS_UPDATE_REPLAYED = '1'
+                $result = & $fixtureLauncher $flag $helpFlag
+                if ($result -cne (Split-Path -Leaf $stubPath)) {
+                    throw "$flag $helpFlag did not show feature help."
+                }
+            }
+        }
+    }
+
+    $env:DEV_TOOLS_UPDATE_REPLAYED = '1'
+    if ((& $fixtureLauncher -pw --help) -cne 'generate_safe_passwords.ps1') {
+        throw 'A bound password switch followed by --help did not show feature help.'
+    }
+    $env:DEV_TOOLS_UPDATE_REPLAYED = '1'
+    if ((& $fixtureLauncher --pw -h) -cne 'generate_safe_passwords.ps1') {
+        throw 'A bound help switch did not show password help.'
+    }
+}
+finally {
+    $env:DEV_TOOLS_UPDATE_REPLAYED = $oldReplayMarker
+    $resolvedFixture = Resolve-Path -LiteralPath $fixtureRoot -ErrorAction SilentlyContinue
+    if ($resolvedFixture -and $resolvedFixture.ProviderPath -eq $fixtureRoot) {
+        Remove-Item -LiteralPath $resolvedFixture.ProviderPath -Recurse -Force
+    }
+}
+
+Write-Output "Launcher menu and help contract tests passed."

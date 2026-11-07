@@ -423,7 +423,7 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
     }
 
     case "${1:-}" in
-        --help|-h|help)
+        --help|--h|-help|-h|help)
             show_github_notifications_help
             ;;
         "")

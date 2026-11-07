@@ -51,14 +51,27 @@ Get-ChildItem -Path "$RootDir" -Recurse -Filter *.ps1 -ErrorAction SilentlyConti
     }
 }
 
-$gnuStyleArgument = if ($args.Count -gt 0) { $args[0].ToLower() } else { $null }
+$gnuStyleArgument = if ($args.Count -gt 0) { $args[0].ToLowerInvariant() } else { $null }
 $originalArguments = @($args)
-if ($originalArguments.Count -eq 0) {
-    foreach ($parameterName in $PSBoundParameters.Keys) {
-        if ($PSBoundParameters[$parameterName]) {
-            $originalArguments += "-$parameterName"
-        }
-    }
+$singleDashAliases = @(
+    "-c", "-commit", "-cc", "-m", "-merge", "-a", "-amend", "-st", "-stash",
+    "-n", "-create_branch", "-t", "-track_remote", "-s", "-sync_branches",
+    "-b", "-branch_cleanup", "-l", "-log", "-i", "-remove_gitignored",
+    "-x", "-reset", "-revert", "-f", "-fix", "-repair", "-pw", "-password",
+    "-cfg", "-settings", "-config", "-cls", "-r", "-readme", "-u", "-update", "-h", "-help"
+)
+if ($gnuStyleArgument -in $singleDashAliases) {
+    $gnuStyleArgument = "-" + $gnuStyleArgument.Replace("_", "-")
+}
+$helpArguments = @("--help", "--h", "-help", "-h", "help")
+$featureArguments = @($args | Select-Object -Skip 1)
+$featureHelp = $help -or ($featureArguments.Count -gt 0 -and $featureArguments[0] -in $helpArguments)
+
+# PowerShell binds single-dash switches before putting the remaining arguments
+# in $args. A help token following a bound feature switch belongs to the feature.
+if (($pw -or $password -or $cls) -and $gnuStyleArgument -in $helpArguments) {
+    $featureHelp = $true
+    $gnuStyleArgument = $null
 }
 
 #
@@ -96,6 +109,7 @@ function Show-DevToolsHelp {
             "launcher.help.repair",
             "launcher.help.security_heading",
             "launcher.help.password",
+            "launcher.help.deploy_key",
             "launcher.help.github_notifications",
             "launcher.help.configuration_heading",
             "launcher.help.settings",
@@ -108,6 +122,7 @@ function Show-DevToolsHelp {
             "launcher.help.examples_heading",
             "launcher.help.example_menu",
             "launcher.help.example_shortcut",
+            "launcher.help.example_feature_help",
             "launcher.help.cls_note")) {
         Write-Host (Get-DevToolsUpdateMessage -Key $key)
         if ($key -in @(
@@ -181,6 +196,7 @@ function Show-DevToolsMenu {
             "launcher.powershell.menu.security_heading",
             "launcher.menu.password",
             "launcher.powershell.menu.github_notifications",
+            "launcher.powershell.menu.deploy_key",
             "",
             "launcher.powershell.menu.setup_heading",
             "launcher.powershell.menu.settings",
@@ -212,7 +228,7 @@ if (-not $skipUpdateGuard -and -not $isExplicitUpdate) {
 
     if ($updateResult.Updated) {
         $env:DEV_TOOLS_UPDATE_REPLAYED = "1"
-        & "$RootDir\start.ps1" @originalArguments
+        & "$RootDir\start.ps1" @PSBoundParameters @originalArguments
         return
     }
 }
@@ -263,20 +279,26 @@ if ($gnuStyleArgument) {
         "--fix" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--repair" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
         "--rp" { & "$RootDir\main_features\git-repair\git_repair.ps1"; return }
-        "--pw" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
-        "--password" { & "$RootDir\main_features\password\generate_safe_passwords.ps1"; return }
-        "--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
-        "--gh-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
-        "--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }
-        "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1"; return }
+        { $_ -in @("--pw", "--password") } {
+            & "$RootDir\main_features\password\generate_safe_passwords.ps1" -Help:$featureHelp
+            return
+        }
+        { $_ -in @("--dk", "--deploy-key") } {
+            if ($featureHelp) { $featureArguments = @("--help") }
+            & "$RootDir\main_features\deploy-key\deploy_key_manager.ps1" @featureArguments
+            exit $LASTEXITCODE
+        }
+        { $_ -in @("--github-notifications", "--gh-notifications", "--gn") } {
+            & "$RootDir\main_features\github-notifications\github_notifications.ps1" -Help:$featureHelp
+            exit $LASTEXITCODE
+        }
+        "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1" -Help:$featureHelp; return }
         "--help" { Show-DevToolsHelp; return }
         "--h" { Show-DevToolsHelp; return }
-        "-h" { Show-DevToolsHelp; return }
         "help" { Show-DevToolsHelp; return }
         "--quit" { Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message"); return }
         "--q" { Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message"); return }
         "--cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
-        "-cfg" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "--settings" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
         "--config" { & "$RootDir\main_features\settings\edit_settings.ps1"; return }
     }
@@ -347,11 +369,11 @@ if ($f -or $fix -or $repair) {
     return
 }
 if ($pw -or $password) {
-    & "$RootDir\main_features\password\generate_safe_passwords.ps1"
+    & "$RootDir\main_features\password\generate_safe_passwords.ps1" -Help:$featureHelp
     return
 }
 if ($cls) {
-    & "$RootDir\main_features\cls\cls_installer.ps1"
+    & "$RootDir\main_features\cls\cls_installer.ps1" -Help:$featureHelp
     return
 }
 if ($help) {
@@ -402,6 +424,10 @@ switch ($choiceLower) {
         }
     }
     { $_ -match "^(20|h|help|--help|-h|--h)$" } { Show-DevToolsHelp }
+    { $_ -match "^(21|dk|--dk|deploy-key|--deploy-key)$" } {
+        & "$RootDir\main_features\deploy-key\deploy_key_manager.ps1"
+        exit $LASTEXITCODE
+    }
     { $_ -match "^(0|q|quit|--quit|--q|exit)$" } {
         Write-Host (Get-DevToolsUpdateMessage -Key "launcher.menu.exit_message")
         exit

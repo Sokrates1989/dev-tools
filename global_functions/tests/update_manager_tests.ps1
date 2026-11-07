@@ -20,8 +20,8 @@ $dispatchIndex = $launcherContent.IndexOf('if ($gnuStyleArgument)', [System.Stri
 if ($guardIndex -lt 0 -or $dispatchIndex -lt 0 -or $guardIndex -ge $dispatchIndex) {
     throw "PowerShell launcher must run its update guard before argument dispatch."
 }
-if (-not $launcherContent.Contains('& "$RootDir\start.ps1" @originalArguments')) {
-    throw "PowerShell launcher must replay the original argument array after updating."
+if (-not $launcherContent.Contains('& "$RootDir\start.ps1" @PSBoundParameters @originalArguments')) {
+    throw "PowerShell launcher must replay both bound switches and the original argument array after updating."
 }
 
 function Assert-UpdateTestEqual {

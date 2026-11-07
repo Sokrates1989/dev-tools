@@ -4,19 +4,22 @@ The Deploy Key Manager creates one unattended ED25519 SSH key for exactly one
 repository on the current hostname. Re-running it for the same pair reuses the
 same private key and prints the same public key.
 
-This feature is intended for Linux and macOS servers through the Bash launcher.
-It does not edit `~/.ssh/config` or enable write access on a Git provider.
+The feature is available on Linux, macOS, and Windows. Windows PowerShell
+uses the Bash bundled with Git for Windows. The tool leaves `~/.ssh/config`
+and the provider's write-access settings untouched.
 
 ## Usage
 
-Run it from the Bash launcher:
+Run either alias from your platform's launcher:
 
 ```bash
 dev-tools --deploy-key
 dev-tools --dk
+dev-tools --dk --help
 ```
 
-Or choose `15) Deploy Key Manager` from the interactive `dev-tools` menu.
+Or choose `dk` from the interactive menu. The numeric choice is `15` in Bash
+and `21` in PowerShell.
 
 The prompt accepts a browser URL, an HTTPS or SSH Git remote, or the complete
 output from `git remote -v`. For example:
@@ -44,8 +47,11 @@ github.com__my-user__server-info__netcup-server
 github.com__my-user__server-info__netcup-server.pub
 ```
 
-The SSH directories use mode `700`, private keys use `600`, and public keys use
-`644`. The private key is never printed or copied outside this directory.
+On macOS and Linux, SSH directories use mode `700`, private keys use `600`,
+and public keys use `644`. On Windows, new managed directories use inheritable
+ACLs restricted to the current user. Existing paths must have trusted owners
+and access rules. The tool leaves existing ACLs intact and stops if it cannot
+verify the storage. The private key stays in the managed directory.
 
 ## Guided Setup Stages
 
@@ -104,6 +110,8 @@ New-clone instructions use `GIT_SSH_COMMAND` for the clone and then persist the
 same repository-local `core.sshCommand`. Previously printed deterministic SSH
 aliases remain accepted as repository input so an affected checkout can be
 migrated by rerunning the helper.
+
+On Windows, run the generated SSH and Git command blocks in Git Bash.
 
 ## Supported Remotes
 

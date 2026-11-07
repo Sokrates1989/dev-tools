@@ -14,6 +14,11 @@ DEPLOY_KEY_REPOSITORY_ID=""
 DEPLOY_KEY_STATUS=""
 DEPLOY_KEY_PUBLIC_RECOVERED="false"
 
+# Lowercases ASCII identity components on both stock macOS Bash and newer Bash.
+lowercase_deploy_key_value() {
+    LC_ALL=C tr '[:upper:]' '[:lower:]' <<< "$1"
+}
+
 # Parses a supported HTTPS, SSH URI, or SCP-style Git repository URL.
 #
 # Arguments:
@@ -86,21 +91,18 @@ normalize_deploy_key_repository_url() {
         return 1
     fi
 
-    host="${host,,}"
+    host=$(lowercase_deploy_key_value "$host")
+    if [[ "$host" == github.com || "$host" == github.com-* ]]; then
+        owner=$(lowercase_deploy_key_value "$owner")
+        repository=$(lowercase_deploy_key_value "$repository")
+    fi
     if [[ "$host" == github.com-* ]]; then
-        owner="${owner,,}"
-        repository="${repository,,}"
         expected_legacy_alias=$(get_deploy_key_ssh_alias \
             github.com "$owner" "$repository") || return 1
         if [ "$host" = "$expected_legacy_alias" ]; then
             host="github.com"
         fi
     fi
-    if [ "$host" = "github.com" ]; then
-        owner="${owner,,}"
-        repository="${repository,,}"
-    fi
-
     DEPLOY_KEY_PROVIDER="$host"
     DEPLOY_KEY_OWNER="$owner"
     DEPLOY_KEY_REPOSITORY="$repository"
@@ -125,7 +127,7 @@ extract_deploy_key_repository() {
     while IFS= read -r line || [ -n "$line" ]; do
         fields=()
         read -r -a fields <<< "$line"
-        for token in "${fields[@]}"; do
+        for token in "${fields[@]-}"; do
             if normalize_deploy_key_repository_url "$token"; then
                 return 0
             fi
@@ -162,7 +164,7 @@ encode_deploy_key_filename_component() {
         character="${value:index:1}"
         case "$character" in
             [a-z0-9.-]) output+="$character" ;;
-            [A-Z]) output+="_c${character,,}" ;;
+            [A-Z]) output+="_c$(lowercase_deploy_key_value "$character")" ;;
             _) output+="_u" ;;
             *)
                 printf -v hex '%02x' "'$character"
@@ -243,6 +245,25 @@ get_managed_deploy_key_directory() {
     printf '%s/dev-tools/deploy-keys' "$1"
 }
 
+# Checks or prepares Windows storage using NTFS ACLs before key material is used.
+# $1 selects the directory or key-pair check. $2 is the Git Bash filesystem path.
+check_deploy_key_windows_storage() {
+    local parameter="$1" path="$2" helper windows_helper windows_path
+    helper="$(dirname "${BASH_SOURCE[0]}")/deploy_key_windows_storage.ps1"
+    windows_helper=$(cygpath -aw "$helper") || return 1
+    windows_path=$(cygpath -aw "$path") || return 1
+    MSYS2_ARG_CONV_EXCL='*' powershell.exe -NoProfile -NonInteractive \
+        -File "$windows_helper" "$parameter" "$windows_path"
+}
+
+# Applies POSIX modes where supported. Windows keys inherit verified ACLs.
+set_deploy_key_file_mode() {
+    if [[ "$OSTYPE" == msys* ]]; then
+        return 0
+    fi
+    chmod "$1" "$2"
+}
+
 # Creates the managed directory hierarchy with restrictive permissions.
 #
 # Arguments:
@@ -254,6 +275,10 @@ prepare_managed_deploy_key_directory() {
     local ssh_directory="$1"
     local dev_tools_directory="${ssh_directory}/dev-tools"
     local deploy_key_directory
+    if [[ "$OSTYPE" == msys* ]]; then
+        check_deploy_key_windows_storage -SshDirectory "$ssh_directory"
+        return $?
+    fi
     deploy_key_directory=$(get_managed_deploy_key_directory "$ssh_directory")
 
     if [ -L "$dev_tools_directory" ] || [ -L "$deploy_key_directory" ]; then
@@ -330,7 +355,7 @@ recover_deploy_key_public_file() {
         umask 077
         printf '%s %s\n' "$public_material" "$key_comment" > "$public_key_path"
     ) || return 1
-    chmod 644 "$public_key_path"
+    set_deploy_key_file_mode 644 "$public_key_path"
 }
 
 # Ensures one deterministic managed deploy key exists without overwriting it.
@@ -359,6 +384,11 @@ ensure_managed_deploy_key() {
     DEPLOY_KEY_STATUS=""
     DEPLOY_KEY_PUBLIC_RECOVERED="false"
 
+    if [[ "$OSTYPE" == msys* ]] &&
+        ! check_deploy_key_windows_storage -PrivateKeyPath "$private_key_path"; then
+        return 11
+    fi
+
     if [ -e "$private_key_path" ] || [ -L "$private_key_path" ]; then
         private_exists="true"
     fi
@@ -379,8 +409,8 @@ ensure_managed_deploy_key() {
         if ! deploy_key_pair_matches "$private_key_path" "$public_key_path"; then
             return 12
         fi
-        chmod 600 "$private_key_path" || return 11
-        chmod 644 "$public_key_path" || return 11
+        set_deploy_key_file_mode 600 "$private_key_path" || return 11
+        set_deploy_key_file_mode 644 "$public_key_path" || return 11
         DEPLOY_KEY_STATUS="ALREADY EXISTS"
         return 0
     fi
@@ -389,7 +419,7 @@ ensure_managed_deploy_key() {
         if ! recover_deploy_key_public_file "$private_key_path" "$public_key_path" "$key_comment"; then
             return 14
         fi
-        chmod 600 "$private_key_path" || return 11
+        set_deploy_key_file_mode 600 "$private_key_path" || return 11
         DEPLOY_KEY_STATUS="ALREADY EXISTS"
         DEPLOY_KEY_PUBLIC_RECOVERED="true"
         return 0
@@ -402,7 +432,7 @@ ensure_managed_deploy_key() {
         return 13
     fi
 
-    chmod 600 "$private_key_path" || return 13
-    chmod 644 "$public_key_path" || return 13
+    set_deploy_key_file_mode 600 "$private_key_path" || return 13
+    set_deploy_key_file_mode 644 "$public_key_path" || return 13
     DEPLOY_KEY_STATUS="CREATED"
 }

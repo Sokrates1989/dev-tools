@@ -19,7 +19,7 @@ fi
 
 IS_EXPLICIT_UPDATE="false"
 case "${1:-}" in
-    --update|--u|-u) IS_EXPLICIT_UPDATE="true" ;;
+    --update|--u|-update|-u) IS_EXPLICIT_UPDATE="true" ;;
 esac
 
 if [ "$SKIP_UPDATE_GUARD" = "false" ] && [ "$IS_EXPLICIT_UPDATE" = "false" ]; then
@@ -65,6 +65,7 @@ show_dev_tools_help() {
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.examples_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_menu)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_shortcut)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.example_feature_help)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.cls_note)"
 }
 
@@ -146,7 +147,7 @@ show_dev_tools_menu() {
 # --- Argument-based quick start ---
 if [[ $# -gt 0 ]]; then
     case "$1" in
-        --commit|-c|--cm)
+        --commit|--c|-commit|-c|--cm)
             bash "$ROOT_DIR/main_features/commit/git_export_staged.sh"
             exit 0
             ;;
@@ -154,57 +155,57 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/commit/create_commit_with_external_ai.sh"
             exit 0
             ;;
-        --merge|-m|--me)
+        --merge|--m|-merge|-m|--me)
             bash "$ROOT_DIR/main_features/merge/git_export_merge.sh"
             exit 0
             ;;
-        --log|-l|--lg)
+        --log|--l|-log|-l|--lg)
             bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
             exit 0
             ;;
-        --readme|-r|--rd)
+        --readme|--r|-readme|-r|--rd)
             bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"
             exit 0
             ;;
-        --reset|-x|--re)
+        --reset|--re|--revert|--x|-reset|-revert|-x)
             bash "$ROOT_DIR/main_features/git/reset_local_changes.sh"
             exit 0
             ;;
-        --amend|-a|--am)
+        --amend|--a|-amend|-a|--am)
             bash "$ROOT_DIR/main_features/amend/git_amend.sh"
             exit 0
             ;;
-        --remove-gitignored|-i|--rg)
+        --remove-gitignored|--i|-remove_gitignored|-i|--rg)
             bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
             exit 0
             ;;
-        --branch-cleanup|-b|--bc)
+        --branch-cleanup|--b|-branch_cleanup|-b|--bc)
             bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
             exit 0
             ;;
-        --sync-branches|-s|--sb)
+        --sync-branches|--s|-sync_branches|-s|--sb)
             bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
             exit 0
             ;;
-        --track-remote|-t|--tr)
+        --track-remote|--t|-track_remote|-t|--tr)
             bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
             exit 0
             ;;
-        --create-branch|-n|--nb|--cnb)
+        --create-branch|--n|-create_branch|-n|--nb|--cnb)
             bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
             exit 0
             ;;
-        --stash|--st)
+        --stash|--st|-stash|-st)
             bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
             exit 0
             ;;
-        --repair|--rp|--fix|-f)
+        --repair|--rp|--fix|--f|-repair|-fix|-f)
             bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
             exit 0
             ;;
-        --password|--pw)
+        --password|--pw|-password|-pw)
             bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh" "${@:2}"
-            exit 0
+            exit $?
             ;;
         --deploy-key|--dk)
             bash "$ROOT_DIR/main_features/deploy-key/deploy_key_manager.sh" "${@:2}"
@@ -214,19 +215,19 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/github-notifications/github_notifications.sh" "${@:2}"
             exit $?
             ;;
-        --cls)
+        --cls|-cls)
             bash "$ROOT_DIR/main_features/cls/cls_installer.sh" "${@:2}"
             exit $?
             ;;
-        --settings|--cfg|-cfg|--config)
+        --settings|--cfg|-settings|-cfg|--config|-config)
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
             exit 0
             ;;
-        --help|--h|-h|help)
+        --help|--h|-help|-h|help)
             show_dev_tools_help
             exit 0
             ;;
-        --update|--u|-u)
+        --update|--u|-update|-u)
             if invoke_dev_tools_update "$ROOT_DIR"; then
                 DEV_TOOLS_UPDATE_REPLAYED=1 exec bash "$ROOT_DIR/start.sh"
             fi
@@ -274,22 +275,22 @@ case "$choice_lower" in
   5|"stash"|"--stash"|"-st"|"st"|"--st")
     bash "$ROOT_DIR/main_features/stash/stash_manager.sh"
     ;;
-  6|"create-branch"|"--create-branch"|"-n"|"n"|"nb"|"--nb"|"cnb"|"--cnb")
+  6|"create-branch"|"--create-branch"|"-n"|"n"|"nb"|"--nb"|"cnb"|"--cnb"|"new-branch"|"newbranch")
     bash "$ROOT_DIR/main_features/create-branch/create_branch.sh"
     ;;
-  7|"track-remote"|"--track-remote"|"-t"|"t"|"tr"|"--tr")
+  7|"track-remote"|"--track-remote"|"-t"|"t"|"tr"|"--tr"|"track"|"--track")
     bash "$ROOT_DIR/main_features/track-remote/track_remote.sh"
     ;;
-  8|"sync-branches"|"--sync-branches"|"-s"|"s"|"sb"|"--sb")
+  8|"sync-branches"|"--sync-branches"|"-s"|"s"|"sb"|"--sb"|"sync"|"--sync")
     bash "$ROOT_DIR/main_features/sync-branches/sync_branches.sh"
     ;;
-  9|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"bc"|"--bc")
+  9|"branch-cleanup"|"--branch-cleanup"|"-b"|"b"|"bc"|"--bc"|"cleanup"|"--cleanup")
     bash "$ROOT_DIR/main_features/branch-cleanup/branch_cleanup.sh"
     ;;
   10|"log"|"--log"|"-l"|"l"|"lg"|"--lg")
     bash "$ROOT_DIR/main_features/git/git_log_explorer.sh"
     ;;
-  11|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"rg"|"--rg")
+  11|"remove-gitignored"|"--remove-gitignored"|"-i"|"i"|"rg"|"--rg"|"gitignored"|"--gitignored")
     bash "$ROOT_DIR/main_features/remove-gitignored/remove_gitignored.sh"
     ;;
   12|"reset"|"--reset"|"-x"|"x"|"revert"|"--revert"|"re"|"--re")

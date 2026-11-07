@@ -192,6 +192,12 @@ assert_contains 'ssh-ed25519 ' "$original_public_material" 'Generated key is not
 
 case "$(uname -s)" in
     MINGW*|MSYS*|CYGWIN*) ;;
+    Darwin)
+        assert_equal '700' "$(stat -f '%Lp' "$TEST_SSH_DIRECTORY")" 'SSH directory permissions changed'
+        assert_equal '700' "$(stat -f '%Lp' "$managed_directory")" 'Managed directory permissions changed'
+        assert_equal '600' "$(stat -f '%Lp' "$private_key_path")" 'Private key permissions changed'
+        assert_equal '644' "$(stat -f '%Lp' "${private_key_path}.pub")" 'Public key permissions changed'
+        ;;
     *)
         assert_equal '700' "$(stat -c '%a' "$TEST_SSH_DIRECTORY")" 'SSH directory permissions changed'
         assert_equal '700' "$(stat -c '%a' "$managed_directory")" 'Managed directory permissions changed'
@@ -229,6 +235,19 @@ assert_equal '10' "$orphan_status" 'Public-key-only state returned the wrong sta
 if [ -e "$orphan_path" ]; then
     printf 'A private key was created for an incomplete managed state.\n' >&2
     exit 1
+fi
+
+if [[ "$OSTYPE" == msys* ]]; then
+    unsafe_key_path="${managed_directory}/unsafe-test-key"
+    printf '%s\n' 'not an SSH key' > "$unsafe_key_path"
+    MSYS2_ARG_CONV_EXCL='*' icacls.exe "$(cygpath -aw "$unsafe_key_path")" \
+        /grant '*S-1-1-0:(R)' >/dev/null
+    if ensure_managed_deploy_key "$unsafe_key_path" "$key_comment"; then
+        printf 'A key path with an unsafe Windows ACL was accepted.\n' >&2
+        exit 1
+    else
+        assert_equal '11' "$?" 'An unsafe Windows ACL returned the wrong status'
+    fi
 fi
 
 invocation_home="${TEST_ROOT}/invocation-home"
@@ -349,6 +368,15 @@ launcher_output=$(printf '%s\n%s\n%s\n' \
 assert_contains 'Repository detected:' "$launcher_output" 'Interactive launcher did not dispatch the manager'
 assert_contains 'github.com/my-user/server-info' "$launcher_output" 'Launcher paste lost the repository identity'
 assert_contains 'Status     : CREATED' "$launcher_output" 'Launcher flow did not create the deploy key'
+
+if [[ "$OSTYPE" == msys* ]]; then
+    windows_launcher=$(cygpath -aw "${REPOSITORY_ROOT}/start.ps1")
+    windows_output=$(printf '%s\n' 'https://github.com/my-user/windows-deploy-test.git' | \
+        HOME="${TEST_ROOT}/windows-launcher-home" DEV_TOOLS_LOCALE=en DEV_TOOLS_UPDATE_REPLAYED=1 \
+        MSYS2_ARG_CONV_EXCL='*' powershell.exe -NoProfile -NonInteractive -File "$windows_launcher" --dk)
+    assert_contains 'github.com/my-user/windows-deploy-test' "$windows_output" 'PowerShell launcher lost repository input'
+    assert_contains 'Status     : CREATED' "$windows_output" 'PowerShell launcher did not create the deploy key'
+fi
 
 english_keys=$(grep -E '^deploy_key\.' "$REPOSITORY_ROOT/locales/en.properties" | cut -d= -f1)
 german_keys=$(grep -E '^deploy_key\.' "$REPOSITORY_ROOT/locales/de.properties" | cut -d= -f1)

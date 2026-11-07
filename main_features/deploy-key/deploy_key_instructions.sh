@@ -119,7 +119,7 @@ select_deploy_key_instruction_mode() {
     local answer=""
 
     if [ -n "$configured_mode" ]; then
-        case "${configured_mode,,}" in
+        case "$(lowercase_deploy_key_value "$configured_mode")" in
             1|provider) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="provider" ;;
             2|ssh|server) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="ssh" ;;
             3|both) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="both" ;;
@@ -150,7 +150,7 @@ select_deploy_key_instruction_mode() {
             answer=""
         fi
 
-        case "${answer,,}" in
+        case "$(lowercase_deploy_key_value "$answer")" in
             ""|1|provider) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="provider"; return 0 ;;
             2|ssh|server) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="ssh"; return 0 ;;
             3|both) DEPLOY_KEY_SELECTED_INSTRUCTION_MODE="both"; return 0 ;;
@@ -173,6 +173,9 @@ show_server_ssh_git_instructions() {
     local remote_url="git@${DEPLOY_KEY_PROVIDER}:${DEPLOY_KEY_OWNER}/${DEPLOY_KEY_REPOSITORY}.git"
 
     printf '\n%s\n' "$(get_deploy_key_message deploy_key.ssh.heading)"
+    if [[ "$OSTYPE" == msys* ]]; then
+        printf '%s\n' "$(get_deploy_key_message deploy_key.ssh.windows_shell)"
+    fi
     printf '\n%s\n\n' "$(get_deploy_key_message deploy_key.existing_clone.heading)"
     if [ -n "$checkout_directory" ]; then
         printf '%s\n\n' "$(get_deploy_key_message deploy_key.existing_clone.detected)"

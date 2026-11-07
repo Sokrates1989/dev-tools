@@ -269,8 +269,8 @@ try {
     Assert-Contains -Expected "https://github.com/watching" -Actual $auditOutput -Context "Watching management URL is missing"
 
     $launcherContent = [System.IO.File]::ReadAllText((Join-Path $repositoryRoot "start.ps1"))
-    Assert-Contains -Expected '"--github-notifications" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell quick-command routing is missing"
-    Assert-Contains -Expected '"--gn" { & "$RootDir\main_features\github-notifications\github_notifications.ps1"; exit $LASTEXITCODE }' -Actual $launcherContent -Context "PowerShell --gn routing is missing"
+    Assert-Contains -Expected '@("--github-notifications", "--gh-notifications", "--gn")' -Actual $launcherContent -Context "PowerShell quick-command aliases are missing"
+    Assert-Contains -Expected '& "$RootDir\main_features\github-notifications\github_notifications.ps1" -Help:$featureHelp' -Actual $launcherContent -Context "PowerShell quick-command routing is missing"
     Assert-Contains -Expected '"^(15|gn|--gn|github-notifications|' -Actual $launcherContent -Context "PowerShell interactive notification routing is missing"
     Assert-Contains -Expected '"^(17|cls|--cls)$"' -Actual $launcherContent -Context "PowerShell interactive menu numbering changed unexpectedly"
 
