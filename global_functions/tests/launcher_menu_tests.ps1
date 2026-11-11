@@ -108,6 +108,7 @@ $powerShellRows = @(
     [pscustomobject]@{ Key = "launcher.powershell.menu.github_notifications"; Number = "15"; Mnemonic = "gn"; Flag = "--gn" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.settings"; Number = "16"; Mnemonic = "cfg"; Flag = "--cfg" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.cls"; Number = "17"; Mnemonic = "cls"; Flag = "--cls" }
+    [pscustomobject]@{ Key = "launcher.powershell.menu.udc"; Number = "22"; Mnemonic = "udc"; Flag = "--udc" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.readme"; Number = "18"; Mnemonic = "rd"; Flag = "--rd" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.update"; Number = "19"; Mnemonic = "u"; Flag = "--u" }
     [pscustomobject]@{ Key = "launcher.powershell.menu.help"; Number = "20"; Mnemonic = "h"; Flag = "--h" }
@@ -118,6 +119,7 @@ $bashRows = @(
     [pscustomobject]@{ Key = "launcher.menu.github_notifications"; Number = "16"; Mnemonic = "gn"; Flag = "--gn" }
     [pscustomobject]@{ Key = "launcher.menu.settings"; Number = "17"; Mnemonic = "cfg"; Flag = "--cfg" }
     [pscustomobject]@{ Key = "launcher.menu.cls"; Number = "18"; Mnemonic = "cls"; Flag = "--cls" }
+    [pscustomobject]@{ Key = "launcher.menu.udc"; Number = "22"; Mnemonic = "udc"; Flag = "--udc" }
     [pscustomobject]@{ Key = "launcher.menu.readme"; Number = "19"; Mnemonic = "rd"; Flag = "--rd" }
     [pscustomobject]@{ Key = "launcher.menu.update"; Number = "20"; Mnemonic = "u"; Flag = "--u" }
     [pscustomobject]@{ Key = "launcher.menu.help"; Number = "21"; Mnemonic = "h"; Flag = "--h" }
@@ -205,6 +207,7 @@ try {
     foreach ($feature in @(
             @{ Path = 'password\generate_safe_passwords.ps1'; Flags = @('--password', '--pw', '-pw') },
             @{ Path = 'cls\cls_installer.ps1'; Flags = @('--cls', '-cls') },
+            @{ Path = 'udc\udc_installer.ps1'; Flags = @('--udc') },
             @{ Path = 'github-notifications\github_notifications.ps1'; Flags = @('--gn', '--gh-notifications', '--github-notifications') },
             @{ Path = 'deploy-key\deploy_key_manager.ps1'; Flags = @('--deploy-key', '--dk') })) {
         $stubPath = Join-Path $fixtureRoot "main_features\$($feature.Path)"

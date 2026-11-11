@@ -57,6 +57,7 @@ show_dev_tools_help() {
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.configuration_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.settings)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.cls)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.udc)"
     printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.readme)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.general_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.update)"
@@ -127,6 +128,7 @@ show_dev_tools_menu() {
         launcher.menu.setup_heading
         launcher.menu.settings
         launcher.menu.cls
+        launcher.menu.udc
         launcher.menu.readme
         ""
         launcher.menu.general_heading
@@ -217,6 +219,10 @@ if [[ $# -gt 0 ]]; then
             ;;
         --cls|-cls)
             bash "$ROOT_DIR/main_features/cls/cls_installer.sh" "${@:2}"
+            exit $?
+            ;;
+        --udc)
+            bash "$ROOT_DIR/main_features/udc/udc_installer.sh" "${@:2}"
             exit $?
             ;;
         --settings|--cfg|-settings|-cfg|--config|-config)
@@ -313,6 +319,9 @@ case "$choice_lower" in
     ;;
   18|"cls"|"--cls")
     bash "$ROOT_DIR/main_features/cls/cls_installer.sh"
+    ;;
+  22|"udc"|"--udc")
+    bash "$ROOT_DIR/main_features/udc/udc_installer.sh"
     ;;
   19|"readme"|"--readme"|"-r"|"r"|"rd"|"--rd")
     bash "$ROOT_DIR/main_features/readme/show_readme_instructions.sh"

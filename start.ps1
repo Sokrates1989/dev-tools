@@ -114,6 +114,7 @@ function Show-DevToolsHelp {
             "launcher.help.configuration_heading",
             "launcher.help.settings",
             "launcher.help.cls",
+            "launcher.help.udc_powershell",
             "launcher.help.readme",
             "launcher.help.general_heading",
             "launcher.help.update",
@@ -201,6 +202,7 @@ function Show-DevToolsMenu {
             "launcher.powershell.menu.setup_heading",
             "launcher.powershell.menu.settings",
             "launcher.powershell.menu.cls",
+            "launcher.powershell.menu.udc",
             "launcher.powershell.menu.readme",
             "",
             "launcher.powershell.menu.general_heading",
@@ -293,6 +295,11 @@ if ($gnuStyleArgument) {
             exit $LASTEXITCODE
         }
         "--cls" { & "$RootDir\main_features\cls\cls_installer.ps1" -Help:$featureHelp; return }
+        "--udc" {
+            if ($featureHelp) { $featureArguments = @("--help") }
+            & "$RootDir\main_features\udc\udc_installer.ps1" @featureArguments
+            exit $LASTEXITCODE
+        }
         "--help" { Show-DevToolsHelp; return }
         "--h" { Show-DevToolsHelp; return }
         "help" { Show-DevToolsHelp; return }
@@ -413,6 +420,10 @@ switch ($choiceLower) {
     { $_ -match "^(15|gn|--gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
     { $_ -match "^(16|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }
     { $_ -match "^(17|cls|--cls)$" } { & "$RootDir\main_features\cls\cls_installer.ps1" }
+    { $_ -match "^(22|udc|--udc)$" } {
+        & "$RootDir\main_features\udc\udc_installer.ps1"
+        exit $LASTEXITCODE
+    }
     { $_ -match "^(18|readme|--readme|-r|r|rd|--rd)$" } { & "$RootDir\main_features\readme\show_readme_instructions.ps1" }
     { $_ -match "^(19|u|update|--update|-u|--u)$" } {
         if ($updateAvailable) {

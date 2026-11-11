@@ -137,7 +137,7 @@ The interactive launcher groups related tools and shows every action as
 directly with a double dash. For example, `14` and `pw` select the password
 generator in the menu, while `dev-tools --pw` launches it directly. Commands and
 documented flag aliases work in both launchers. Run `dev-tools --help` for the
-command list. Add `--help` or `-h` after `--pw`, `--cls`, `--gn`, or `--dk` to
+command list. Add `--help` or `-h` after `--pw`, `--cls`, `--udc`, `--gn`, or `--dk` to
 see help for that tool.
 
 ### 🐧 Linux Usage
@@ -153,6 +153,7 @@ dev-tools --password # quick launch: generate safe passwords
 dev-tools --deploy-key # quick launch: create or show a server deploy key
 dev-tools --gn       # audit owned repository subscriptions
 dev-tools --cls      # install the persistent cls terminal cleaner
+dev-tools --udc      # install the Docker Scout updater for the current user
 ```
 
 ---
@@ -184,9 +185,12 @@ dev-tools --pw   # generate safe passwords
 dev-tools --dk   # create or show a repository deploy key
 dev-tools --gn   # audit owned repository subscriptions
 dev-tools --cls  # install the persistent cls terminal cleaner
+dev-tools --udc  # print the installer to paste into Bash on an Ubuntu server
 open .           # open current folder in Explorer
 open C:\anywhere
 ```
+
+See [Docker Scout updater setup](main_features/udc/README.md) for the SSH workflow.
 ---
 
 ## 🗑️ Uninstallation
