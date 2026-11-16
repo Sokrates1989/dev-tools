@@ -23,8 +23,9 @@ export PATH="$test_dir:$PATH"
 
 for answer in '' n y Y; do
     : > "$DOCKER_CLEANUP_TEST_LOG"
-    bash "$root_dir/start.sh" --dc <<< "$answer" 2> "$test_dir/prompt"
-    grep -Fq 'permanently delete data. [y/N]' "$test_dir/prompt"
+    printf '\n%s\n' "$answer" | bash "$root_dir/start.sh" --dc 2> "$test_dir/prompt"
+    prompt=$(< "$test_dir/prompt")
+    [[ "$prompt" == *'several minutes to finish. Continue? [Y/n]'*'permanently delete data. [y/N]'* ]]
     prune='system prune -a'
     if [[ "$answer" == [yY] ]]; then
         prune+=' --volumes'
@@ -33,6 +34,8 @@ for answer in '' n y Y; do
 done
 
 : > "$DOCKER_CLEANUP_TEST_LOG"
+[[ "$(bash "$root_dir/start.sh" --dc <<< n 2> "$test_dir/prompt")" == 'Docker cleanup canceled.' ]]
+[[ "$(< "$test_dir/prompt")" == 'Docker cleanup may take several minutes to finish. Continue? [Y/n] ' ]]
 DEV_TOOLS_LOCALE=de bash "$root_dir/start.sh" --docker-cleanup -h | grep -q '^Verwendung:'
 result=0
 bash "$root_dir/start.sh" --dc --volumes 2>/dev/null || result=$?
@@ -40,12 +43,15 @@ bash "$root_dir/start.sh" --dc --volumes 2>/dev/null || result=$?
 result=0
 bash "$root_dir/start.sh" --dc </dev/null 2>/dev/null || result=$?
 [[ "$result" == 1 ]]
+result=0
+bash "$root_dir/start.sh" --dc <<< y 2>/dev/null || result=$?
+[[ "$result" == 1 ]]
 [[ ! -s "$DOCKER_CLEANUP_TEST_LOG" ]]
 
 for failing_step in df prune; do
     : > "$DOCKER_CLEANUP_TEST_LOG"
     result=0
-    DOCKER_CLEANUP_TEST_FAIL=$failing_step bash "$root_dir/start.sh" --dc <<< '' 2>/dev/null || result=$?
+    DOCKER_CLEANUP_TEST_FAIL=$failing_step bash "$root_dir/start.sh" --dc <<< $'Y\n' 2>/dev/null || result=$?
     [[ "$result" == 17 ]]
     {
         printf '%s\n' 'system df'

@@ -418,9 +418,10 @@ for installation, state semantics, tests, and the API limitation.
 
 Run `dev-tools --docker-cleanup` (`--dc` or menu item `23`) on Ubuntu, macOS, or
 Windows PowerShell with Docker running. The cleanup affects the active Docker
-context. Dev Tools first asks whether to include unused anonymous volumes
-because deleting a volume can permanently erase its data. Press Enter to keep
-volumes, or enter `y` to include them.
+context and may take several minutes. At the first prompt, press Enter to
+continue or enter `n` to cancel. Dev Tools then asks whether to include unused
+anonymous volumes because deleting a volume can permanently erase its data.
+Press Enter to keep volumes, or enter `y` to include them.
 
 The workflow runs `docker system df`, `docker system prune -a`, then
 `docker system df` again. It adds `--volumes` only when requested and keeps

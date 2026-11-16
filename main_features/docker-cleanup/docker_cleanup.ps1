@@ -3,7 +3,7 @@
     Reports disk usage and prunes resources in the current Docker context.
 
 .DESCRIPTION
-    Prompts for optional volume cleanup, then lets Docker confirm the prune.
+    Confirms the workflow and optional volume cleanup before Docker's own prompt.
     Stops and returns the Docker CLI exit code if a Docker command fails.
 #>
 
@@ -31,13 +31,24 @@ if (-not $docker) {
     exit 127
 }
 
-$pruneArguments = @('system', 'prune', '-a')
-$answer = Read-Host (Get-DevToolsUpdateMessage -Key 'docker_cleanup.volumes_prompt')
-if ($null -eq $answer) {
-    [Console]::Error.WriteLine((Get-DevToolsUpdateMessage -Key 'docker_cleanup.input_closed'))
-    exit 1
+# Reads the answer to the specified localized prompt and stops on closed input.
+function Read-DockerCleanupAnswer([string]$Key) {
+    $answer = Read-Host (Get-DevToolsUpdateMessage -Key $Key)
+    if ($null -eq $answer) {
+        [Console]::Error.WriteLine((Get-DevToolsUpdateMessage -Key 'docker_cleanup.input_closed'))
+        exit 1
+    }
+    return $answer
 }
-if ($answer -ieq 'y') {
+
+$confirmation = Read-DockerCleanupAnswer 'docker_cleanup.continue_prompt'
+if ($confirmation -ne '' -and $confirmation -ine 'y') {
+    Get-DevToolsUpdateMessage -Key 'docker_cleanup.canceled'
+    exit 0
+}
+
+$pruneArguments = @('system', 'prune', '-a')
+if ((Read-DockerCleanupAnswer 'docker_cleanup.volumes_prompt') -ieq 'y') {
     $pruneArguments += '--volumes'
 }
 

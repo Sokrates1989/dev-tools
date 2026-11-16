@@ -1,7 +1,7 @@
 #!/bin/bash
 #
 # Reports disk usage and prunes resources in the current Docker context.
-# Docker handles the final confirmation after the optional volume prompt.
+# Dev Tools confirms the workflow and volume choice before Docker's own prompt.
 #
 
 set -euo pipefail
@@ -30,12 +30,23 @@ if ! command -v docker >/dev/null; then
     exit 127
 fi
 
-prune_arguments=(system prune -a)
-printf '%s ' "$(get_dev_tools_update_message docker_cleanup.volumes_prompt)" >&2
-if ! IFS= read -r answer; then
-    printf '\n%s\n' "$(get_dev_tools_update_message docker_cleanup.input_closed)" >&2
-    exit 1
+# Displays the localized prompt ($1) and stores the reply in answer, or exits on EOF.
+read_cleanup_answer() {
+    printf '%s ' "$(get_dev_tools_update_message "$1")" >&2
+    if ! IFS= read -r answer; then
+        printf '\n%s\n' "$(get_dev_tools_update_message docker_cleanup.input_closed)" >&2
+        exit 1
+    fi
+}
+
+read_cleanup_answer docker_cleanup.continue_prompt
+if [[ -n "$answer" && "$answer" != [yY] ]]; then
+    printf '%s\n' "$(get_dev_tools_update_message docker_cleanup.canceled)"
+    exit 0
 fi
+
+prune_arguments=(system prune -a)
+read_cleanup_answer docker_cleanup.volumes_prompt
 if [[ "$answer" == [yY] ]]; then
     prune_arguments+=(--volumes)
 fi
