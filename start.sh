@@ -49,7 +49,8 @@ show_dev_tools_help() {
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.log)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.remove_gitignored)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.reset)"
-    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.repair)"
+    printf '%s\n' "$(get_dev_tools_update_message launcher.help.repair)"
+    printf '%s\n\n' "$(get_dev_tools_update_message launcher.help.docker_cleanup)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.security_heading)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.password)"
     printf '%s\n' "$(get_dev_tools_update_message launcher.help.deploy_key)"
@@ -119,6 +120,7 @@ show_dev_tools_menu() {
         launcher.menu.remove_gitignored
         launcher.menu.reset
         launcher.menu.repair
+        launcher.menu.docker_cleanup
         ""
         launcher.menu.security_heading
         launcher.menu.password
@@ -225,6 +227,10 @@ if [[ $# -gt 0 ]]; then
             bash "$ROOT_DIR/main_features/udc/udc_installer.sh" "${@:2}"
             exit $?
             ;;
+        --docker-cleanup|--dc)
+            bash "$ROOT_DIR/main_features/docker-cleanup/docker_cleanup.sh" "${@:2}"
+            exit $?
+            ;;
         --settings|--cfg|-settings|-cfg|--config|-config)
             bash "$ROOT_DIR/main_features/settings/edit_settings.sh"
             exit 0
@@ -304,6 +310,9 @@ case "$choice_lower" in
     ;;
   13|"repair"|"--repair"|"rp"|"--rp"|"fix"|"--fix"|"-f"|"f")
     bash "$ROOT_DIR/main_features/git-repair/git_repair.sh"
+    ;;
+  23|"dc"|"--dc"|"docker-cleanup"|"--docker-cleanup")
+    bash "$ROOT_DIR/main_features/docker-cleanup/docker_cleanup.sh"
     ;;
   14|"password"|"--password"|"pw"|"--pw")
     bash "$ROOT_DIR/main_features/password/generate_safe_passwords.sh"

@@ -107,6 +107,7 @@ function Show-DevToolsHelp {
             "launcher.help.remove_gitignored",
             "launcher.help.reset",
             "launcher.help.repair",
+            "launcher.help.docker_cleanup",
             "launcher.help.security_heading",
             "launcher.help.password",
             "launcher.help.deploy_key",
@@ -129,7 +130,7 @@ function Show-DevToolsHelp {
         if ($key -in @(
                 "launcher.help.stash",
                 "launcher.help.branch_cleanup",
-                "launcher.help.repair",
+                "launcher.help.docker_cleanup",
                 "launcher.help.github_notifications",
                 "launcher.help.readme",
                 "launcher.help.quit")) {
@@ -193,6 +194,7 @@ function Show-DevToolsMenu {
             "launcher.menu.remove_gitignored",
             "launcher.menu.reset",
             "launcher.menu.repair",
+            "launcher.menu.docker_cleanup",
             "",
             "launcher.powershell.menu.security_heading",
             "launcher.menu.password",
@@ -298,6 +300,11 @@ if ($gnuStyleArgument) {
         "--udc" {
             if ($featureHelp) { $featureArguments = @("--help") }
             & "$RootDir\main_features\udc\udc_installer.ps1" @featureArguments
+            exit $LASTEXITCODE
+        }
+        { $_ -in @("--docker-cleanup", "--dc") } {
+            if ($featureHelp) { $featureArguments = @("--help") }
+            & "$RootDir\main_features\docker-cleanup\docker_cleanup.ps1" @featureArguments
             exit $LASTEXITCODE
         }
         "--help" { Show-DevToolsHelp; return }
@@ -416,6 +423,10 @@ switch ($choiceLower) {
     { $_ -match "^(11|remove-gitignored|--remove-gitignored|-i|i|rg|--rg|gitignored|--gitignored)$" } { & "$RootDir\main_features\remove-gitignored\remove_gitignored.ps1" }
     { $_ -match "^(12|reset|--reset|-x|x|revert|--revert|re|--re)$" } { & "$RootDir\main_features\git\reset_local_changes.ps1" }
     { $_ -match "^(13|repair|--repair|rp|--rp|fix|--fix|-f|f)$" } { & "$RootDir\main_features\git-repair\git_repair.ps1" }
+    { $_ -match "^(23|dc|--dc|docker-cleanup|--docker-cleanup)$" } {
+        & "$RootDir\main_features\docker-cleanup\docker_cleanup.ps1"
+        exit $LASTEXITCODE
+    }
     { $_ -match "^(14|password|--password|pw|--pw)$" } { & "$RootDir\main_features\password\generate_safe_passwords.ps1" }
     { $_ -match "^(15|gn|--gn|github-notifications|--github-notifications|gh-notifications|--gh-notifications)$" } { & "$RootDir\main_features\github-notifications\github_notifications.ps1" }
     { $_ -match "^(16|settings|--settings|cfg|--cfg|-cfg|config|--config)$" } { & "$RootDir\main_features\settings\edit_settings.ps1" }

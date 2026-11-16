@@ -101,6 +101,7 @@ $commonRows = @(
     [pscustomobject]@{ Key = "launcher.menu.remove_gitignored"; Number = "11"; Mnemonic = "rg"; Flag = "--rg" }
     [pscustomobject]@{ Key = "launcher.menu.reset"; Number = "12"; Mnemonic = "re"; Flag = "--re" }
     [pscustomobject]@{ Key = "launcher.menu.repair"; Number = "13"; Mnemonic = "rp"; Flag = "--rp" }
+    [pscustomobject]@{ Key = "launcher.menu.docker_cleanup"; Number = "23"; Mnemonic = "dc"; Flag = "--dc" }
     [pscustomobject]@{ Key = "launcher.menu.password"; Number = "14"; Mnemonic = "pw"; Flag = "--pw" }
     [pscustomobject]@{ Key = "launcher.menu.exit"; Number = "0"; Mnemonic = "q"; Flag = "--q" }
 )
@@ -208,6 +209,7 @@ try {
             @{ Path = 'password\generate_safe_passwords.ps1'; Flags = @('--password', '--pw', '-pw') },
             @{ Path = 'cls\cls_installer.ps1'; Flags = @('--cls', '-cls') },
             @{ Path = 'udc\udc_installer.ps1'; Flags = @('--udc') },
+            @{ Path = 'docker-cleanup\docker_cleanup.ps1'; Flags = @('--docker-cleanup', '--dc') },
             @{ Path = 'github-notifications\github_notifications.ps1'; Flags = @('--gn', '--gh-notifications', '--github-notifications') },
             @{ Path = 'deploy-key\deploy_key_manager.ps1'; Flags = @('--deploy-key', '--dk') })) {
         $stubPath = Join-Path $fixtureRoot "main_features\$($feature.Path)"

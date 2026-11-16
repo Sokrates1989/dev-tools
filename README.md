@@ -33,6 +33,7 @@ The **Dev AI Toolbox** is a developer-friendly command-line toolset designed to 
    - [🧹 cls Terminal Cleaner](#-cls-terminal-cleaner)
    - [🔑 Deploy Key Manager](#-deploy-key-manager)
    - [🔔 GitHub Notification Audit](#-github-notification-audit)
+   - [Docker Resource Cleanup](#docker-resource-cleanup)
 
 6. [🪟 Platform Support](#-platform-support)
    - [🖥️ Linux / macOS](#-linux--macos)
@@ -412,6 +413,19 @@ links to <https://github.com/watching> for centralized subscription management.
 See
 [main_features/github-notifications/README.md](main_features/github-notifications/README.md)
 for installation, state semantics, tests, and the API limitation.
+
+### Docker Resource Cleanup
+
+Run `dev-tools --docker-cleanup` (`--dc` or menu item `23`) on Ubuntu, macOS, or
+Windows PowerShell with Docker running. The cleanup affects the active Docker
+context. Dev Tools first asks whether to include unused anonymous volumes
+because deleting a volume can permanently erase its data. Press Enter to keep
+volumes, or enter `y` to include them.
+
+The workflow runs `docker system df`, `docker system prune -a`, then
+`docker system df` again. It adds `--volumes` only when requested and keeps
+Docker's own prune confirmation. See the [Docker prune reference](https://docs.docker.com/reference/cli/docker/system/prune/)
+for the resources eligible for removal.
 
 ---
 
